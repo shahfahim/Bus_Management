@@ -5,13 +5,14 @@ import type { Request, RequestHandler } from 'express';
 import multer from 'multer';
 import { env } from '../../config/env.js';
 import { AppError } from '../../lib/errors.js';
+import { getObject, putObject, removeObjects, usesRemoteObjectStorage } from '../../lib/object-storage.js';
 
 const uploadDirectory = resolve(process.cwd(), env.UPLOAD_DIR, 'lost-found');
 const acceptedMimeTypes = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: 4, fields: 30 },
+  limits: { fileSize: env.UPLOAD_MAX_MB * 1024 * 1024, files: 4, fields: 30 },
   fileFilter: (_request, file, callback) => {
     callback(null, acceptedMimeTypes.has(file.mimetype));
   },
@@ -60,7 +61,7 @@ const uploadedFiles = (request: Request): Express.Multer.File[] => {
 export const persistLostFoundUploads = async (request: Request): Promise<StoredLostFoundImage[]> => {
   const files = uploadedFiles(request);
   if (!files.length) return [];
-  await mkdir(uploadDirectory, { recursive: true });
+  if (!usesRemoteObjectStorage()) await mkdir(uploadDirectory, { recursive: true });
   const stored: StoredLostFoundImage[] = [];
   try {
     for (const file of files) {
@@ -69,7 +70,8 @@ export const persistLostFoundUploads = async (request: Request): Promise<StoredL
         throw new AppError(400, 'INVALID_IMAGE_CONTENT', 'Uploaded image content does not match its declared type');
       }
       const filename = `${randomUUID()}${type.extension}`;
-      await writeFile(resolve(uploadDirectory, filename), file.buffer, { flag: 'wx' });
+      if (usesRemoteObjectStorage()) await putObject(`lost-found/${filename}`, file.buffer, type.mimeType);
+      else await writeFile(resolve(uploadDirectory, filename), file.buffer, { flag: 'wx' });
       stored.push({
         filename,
         mimeType: type.mimeType,
@@ -85,7 +87,8 @@ export const persistLostFoundUploads = async (request: Request): Promise<StoredL
 };
 
 export const removeLostFoundUploads = async (images: StoredLostFoundImage[]): Promise<void> => {
-  await Promise.all(images.map(({ filename }) => rm(resolve(uploadDirectory, filename), { force: true })));
+  if (usesRemoteObjectStorage()) await removeObjects(images.map(({ filename }) => `lost-found/${filename}`));
+  else await Promise.all(images.map(({ filename }) => rm(resolve(uploadDirectory, filename), { force: true })));
 };
 
 export const removeLostFoundUrls = async (urls: string[]): Promise<void> => {
@@ -98,7 +101,8 @@ export const removeLostFoundUrls = async (urls: string[]): Promise<void> => {
       }
     })
     .filter((value): value is string => Boolean(value && /^[0-9a-f-]{36}\.(?:jpg|png|webp)$/.test(value)));
-  await Promise.all(filenames.map((filename) => rm(resolve(uploadDirectory, filename), { force: true })));
+  if (usesRemoteObjectStorage()) await removeObjects(filenames.map((filename) => `lost-found/${filename}`));
+  else await Promise.all(filenames.map((filename) => rm(resolve(uploadDirectory, filename), { force: true })));
 };
 
 export const sendLostFoundImage: RequestHandler = (request, response, next) => {
@@ -108,6 +112,15 @@ export const sendLostFoundImage: RequestHandler = (request, response, next) => {
   }
   response.setHeader('Cache-Control', 'private, max-age=300');
   response.setHeader('X-Content-Type-Options', 'nosniff');
+  if (usesRemoteObjectStorage()) {
+    void getObject(`lost-found/${filename}`)
+      .then((object) => {
+        if (!object) return next(new AppError(404, 'IMAGE_NOT_FOUND', 'Image not found'));
+        response.type(object.contentType).send(object.body);
+      })
+      .catch(next);
+    return;
+  }
   response.sendFile(filename, { root: uploadDirectory }, (error) => {
     if (error) next(new AppError(404, 'IMAGE_NOT_FOUND', 'Image not found'));
   });

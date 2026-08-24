@@ -20,6 +20,8 @@ const schema = z
     WEB_ORIGIN: z.string().url().default('http://localhost:5173'),
     PUBLIC_API_URL: z.string().url().default('http://localhost:4000'),
     DATABASE_URL: z.string().min(1),
+    DATABASE_CONNECTION_LIMIT: z.coerce.number().int().min(1).max(20).default(5),
+    DATABASE_POOL_TIMEOUT_SECONDS: z.coerce.number().int().min(5).max(120).default(30),
     JWT_ACCESS_SECRET: z.string().min(32),
     JWT_REFRESH_SECRET: z.string().min(32),
     QR_SIGNING_SECRET: z.string().min(32),
@@ -32,7 +34,14 @@ const schema = z
     VAPID_PUBLIC_KEY: z.preprocess(blankToUndefined, z.string().optional()),
     VAPID_PRIVATE_KEY: z.preprocess(blankToUndefined, z.string().optional()),
     VAPID_SUBJECT: z.string().default('mailto:transport@example.edu'),
+    SUPABASE_URL: z.preprocess(blankToUndefined, z.string().url().optional()),
+    SUPABASE_SECRET_KEY: z.preprocess(blankToUndefined, z.string().min(20).optional()),
+    SUPABASE_SERVICE_ROLE_KEY: z.preprocess(blankToUndefined, z.string().min(20).optional()),
+    SUPABASE_STORAGE_BUCKET: z.preprocess(blankToUndefined, z.string().regex(/^[a-z0-9][a-z0-9-]{1,62}$/).optional()),
+    UPLOAD_MAX_MB: z.coerce.number().int().min(1).max(10).default(10),
     UPLOAD_DIR: z.string().default('uploads'),
+    WEB_DIST_DIR: z.string().default('apps/web/dist'),
+    SERVE_WEB_ASSETS: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
     SEED_ADMIN_EMAIL: z.string().email().default('admin@example.edu'),
     SEED_ADMIN_PASSWORD: z.string().min(10).default('ChangeMe123!'),
@@ -52,6 +61,15 @@ const schema = z
         code: z.ZodIssueCode.custom,
         path: ['VAPID_PUBLIC_KEY'],
         message: 'VAPID_PUBLIC_KEY and VAPID_PRIVATE_KEY must be configured together',
+      });
+    }
+    const storageKey = value.SUPABASE_SECRET_KEY ?? value.SUPABASE_SERVICE_ROLE_KEY;
+    const storageValues = [value.SUPABASE_URL, storageKey, value.SUPABASE_STORAGE_BUCKET];
+    if (storageValues.some(Boolean) && !storageValues.every(Boolean)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['SUPABASE_URL'],
+        message: 'SUPABASE_URL, a Supabase secret/service-role key, and SUPABASE_STORAGE_BUCKET must be configured together',
       });
     }
     if (new Set([value.JWT_ACCESS_SECRET, value.JWT_REFRESH_SECRET, value.QR_SIGNING_SECRET]).size !== 3) {

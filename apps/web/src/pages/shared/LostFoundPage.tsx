@@ -65,7 +65,7 @@ export function LostFoundPage() {
           <Field label="Short title" maxLength={100} name="title" placeholder="e.g. Black water bottle" required />
           <TextAreaField label="Description" maxLength={1000} name="description" placeholder="Color, brand and identifying details that are safe to share" required rows={4} />
           <div className="form-grid"><Field label="Location" name="location" placeholder="Bus, route or stop" required /><Field label="Date and time" max={new Date().toISOString().slice(0, 16)} name="occurredAt" required type="datetime-local" /></div>
-          <label className="image-upload"><span className="field__label">Photo (optional)</span><input accept="image/jpeg,image/png,image/webp" name="image" onChange={(event) => { const file = event.target.files?.[0]; setPreview(file ? URL.createObjectURL(file) : ''); }} type="file" />{preview ? <img alt="Selected item preview" src={preview} /> : <span><ImagePlus aria-hidden="true" /> Add a clear photo · JPG, PNG or WebP</span>}</label>
+          <label className="image-upload"><span className="field__label">Photo (optional)</span><input accept="image/jpeg,image/png,image/webp" name="image" onChange={(event) => { const file = event.target.files?.[0]; setPreview(file ? URL.createObjectURL(file) : ''); }} type="file" />{preview ? <img alt="Selected item preview" src={preview} /> : <span><ImagePlus aria-hidden="true" /> Add a clear photo · JPG, PNG or WebP · up to 10 MB</span>}</label>
           <Button loading={submitting} type="submit">Publish report</Button>
         </form>
       </Modal>

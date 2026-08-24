@@ -1,12 +1,13 @@
-import pino from 'pino';
+import pino, { type DestinationStream, type LoggerOptions } from 'pino';
 import { env } from '../config/env.js';
 
-export const logger = pino({
+const options: LoggerOptions = {
   level: env.LOG_LEVEL,
   redact: {
     paths: [
       'req.headers.authorization',
       'req.headers.cookie',
+      'res.headers["set-cookie"]',
       'password',
       '*.password',
       'token',
@@ -16,4 +17,8 @@ export const logger = pino({
     ],
     censor: '[REDACTED]',
   },
-});
+};
+
+export const createLogger = (destination?: DestinationStream) => pino(options, destination);
+
+export const logger = createLogger();

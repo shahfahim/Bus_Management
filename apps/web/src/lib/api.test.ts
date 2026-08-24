@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { api, asItems, setAccessToken, withQuery } from './api';
+import { ApiError, api, asItems, errorMessage, setAccessToken, withQuery } from './api';
 
 describe('API client', () => {
   afterEach(() => {
@@ -30,5 +30,14 @@ describe('API client', () => {
     const [, init] = fetchMock.mock.calls[0];
     expect(init?.credentials).toBe('include');
     expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer test-access-token');
+  });
+
+  it('turns service and network failures into actionable messages', () => {
+    expect(errorMessage(new ApiError('Internal error', 503))).toBe(
+      'The transport service is temporarily unavailable. Please try again shortly.',
+    );
+    expect(errorMessage(new TypeError('Failed to fetch'))).toBe(
+      'Unable to reach the transport service. Check your connection and try again.',
+    );
   });
 });

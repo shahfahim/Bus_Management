@@ -5,12 +5,13 @@ import type { Request, RequestHandler } from 'express';
 import multer from 'multer';
 import { env } from '../../config/env.js';
 import { AppError } from '../../lib/errors.js';
+import { getObject, putObject, removeObjects, usesRemoteObjectStorage } from '../../lib/object-storage.js';
 
 const directory = resolve(process.cwd(), env.UPLOAD_DIR, 'incidents');
 const accepted = new Set(['image/jpeg', 'image/png', 'image/webp']);
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: 5 * 1024 * 1024, files: 1, fields: 30 },
+  limits: { fileSize: env.UPLOAD_MAX_MB * 1024 * 1024, files: 1, fields: 30 },
   fileFilter: (_request, file, callback) => callback(null, accepted.has(file.mimetype)),
 }).single('image');
 
@@ -46,9 +47,12 @@ export const persistIncidentUpload = async (request: Request): Promise<StoredInc
   if (!detected || detected.mimeType !== request.file.mimetype) {
     throw new AppError(400, 'INVALID_IMAGE_CONTENT', 'Uploaded image content does not match its declared type');
   }
-  await mkdir(directory, { recursive: true });
   const filename = `${randomUUID()}${detected.extension}`;
-  await writeFile(resolve(directory, filename), request.file.buffer, { flag: 'wx' });
+  if (usesRemoteObjectStorage()) await putObject(`incidents/${filename}`, request.file.buffer, detected.mimeType);
+  else {
+    await mkdir(directory, { recursive: true });
+    await writeFile(resolve(directory, filename), request.file.buffer, { flag: 'wx' });
+  }
   return {
     filename,
     mediaType: detected.mimeType,
@@ -57,7 +61,9 @@ export const persistIncidentUpload = async (request: Request): Promise<StoredInc
 };
 
 export const removeIncidentUpload = async (image: StoredIncidentImage | undefined): Promise<void> => {
-  if (image) await rm(resolve(directory, image.filename), { force: true });
+  if (!image) return;
+  if (usesRemoteObjectStorage()) await removeObjects([`incidents/${image.filename}`]);
+  else await rm(resolve(directory, image.filename), { force: true });
 };
 
 export const sendIncidentImage: RequestHandler = (request, response, next) => {
@@ -67,6 +73,15 @@ export const sendIncidentImage: RequestHandler = (request, response, next) => {
   }
   response.setHeader('Cache-Control', 'private, max-age=3600');
   response.setHeader('X-Content-Type-Options', 'nosniff');
+  if (usesRemoteObjectStorage()) {
+    void getObject(`incidents/${filename}`)
+      .then((object) => {
+        if (!object) return next(new AppError(404, 'IMAGE_NOT_FOUND', 'Image not found'));
+        response.type(object.contentType).send(object.body);
+      })
+      .catch(next);
+    return;
+  }
   response.sendFile(filename, { root: directory }, (error) => {
     if (error) next(new AppError(404, 'IMAGE_NOT_FOUND', 'Image not found'));
   });

@@ -28,10 +28,10 @@
 .field__label { color: #3a514c; font-size: .72rem; font-weight: 750; }
 .field__control { position: relative; display: flex; align-items: center; }
 .field__control > svg { position: absolute; left: 12px; color: var(--ink-faint); pointer-events: none; }
-.field__control--icon input { padding-left: 38px; }
 .field input, .field select, .field textarea, .modal-form input, .modal-form select, .modal-form textarea, .incident-form input, .incident-form select, .incident-form textarea {
   width: 100%; min-height: 42px; border: 1px solid var(--line-strong); border-radius: 9px; background: white; padding: 10px 12px; color: var(--ink); font-size: .8rem; transition: border-color .18s, box-shadow .18s;
 }
+.field__control--icon > input { padding-inline-start: 40px; }
 .field textarea, .modal-form textarea, .incident-form textarea { min-height: 94px; resize: vertical; line-height: 1.5; }
 .field input::placeholder, .field textarea::placeholder { color: #9aa8a5; }
 .field input:focus, .field select:focus, .field textarea:focus, .modal-form input:focus, .modal-form select:focus, .modal-form textarea:focus, .incident-form input:focus, .incident-form select:focus, .incident-form textarea:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgb(15 102 87 / 10%); }

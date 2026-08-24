@@ -131,5 +131,11 @@ export function asItems<T>(payload: unknown): T[] {
 }
 
 export function errorMessage(error: unknown, fallback = 'Something went wrong. Please try again.') {
+  if (error instanceof ApiError && error.status >= 500) {
+    return 'The transport service is temporarily unavailable. Please try again shortly.';
+  }
+  if (error instanceof TypeError) {
+    return 'Unable to reach the transport service. Check your connection and try again.';
+  }
   return error instanceof Error && error.message ? error.message : fallback;
 }

@@ -1,0 +1,55 @@
+services:
+  - type: web
+    name: uniride-shahfahim
+    runtime: node
+    region: singapore
+    plan: free
+    buildCommand: npm ci --include=dev && npm run db:generate && npm run build
+    startCommand: npm run db:migrate && npm run start -w @bus/api
+    healthCheckPath: /health/ready
+    maxShutdownDelaySeconds: 30
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: WEB_ORIGIN
+        value: https://uniride-shahfahim.onrender.com
+      - key: PUBLIC_API_URL
+        value: https://uniride-shahfahim.onrender.com
+      - key: SERVE_WEB_ASSETS
+        value: "true"
+      - key: WEB_DIST_DIR
+        value: apps/web/dist
+      - key: DATABASE_CONNECTION_LIMIT
+        value: "5"
+      - key: DATABASE_POOL_TIMEOUT_SECONDS
+        value: "30"
+      - key: UPLOAD_MAX_MB
+        value: "10"
+      - key: LOG_LEVEL
+        value: info
+      - key: DATABASE_URL
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SECRET_KEY
+        sync: false
+      - key: SUPABASE_STORAGE_BUCKET
+        value: bus-uploads
+      - key: JWT_ACCESS_SECRET
+        generateValue: true
+      - key: JWT_REFRESH_SECRET
+        generateValue: true
+      - key: QR_SIGNING_SECRET
+        generateValue: true
+      - key: SEED_ADMIN_PASSWORD
+        generateValue: true
+      - key: SEED_DRIVER_PASSWORD
+        generateValue: true
+      - key: SEED_STUDENT_PASSWORD
+        generateValue: true
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        sync: false

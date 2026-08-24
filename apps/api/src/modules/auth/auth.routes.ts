@@ -17,17 +17,26 @@ import {
 
 export const authRouter = Router();
 
-const limiter = rateLimit({
+const authenticationLimiter = rateLimit({
   windowMs: 15 * 60_000,
   limit: 20,
+  skipSuccessfulRequests: true,
   standardHeaders: 'draft-8',
   legacyHeaders: false,
   message: { error: { code: 'RATE_LIMITED', message: 'Too many authentication attempts; please try again later' } },
 });
 
+const sessionLimiter = rateLimit({
+  windowMs: 15 * 60_000,
+  limit: 120,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many session refresh attempts; please try again later' } },
+});
+
 authRouter.post(
   '/register',
-  limiter,
+  authenticationLimiter,
   asyncRoute(async (request, response) => {
     const result = await registerStudent(registerSchema.parse(request.body), request);
     setAuthCookies(response, result);
@@ -37,7 +46,7 @@ authRouter.post(
 
 authRouter.post(
   '/login',
-  limiter,
+  authenticationLimiter,
   asyncRoute(async (request, response) => {
     const result = await login(loginSchema.parse(request.body), request);
     setAuthCookies(response, result);
@@ -47,7 +56,7 @@ authRouter.post(
 
 authRouter.post(
   '/refresh',
-  limiter,
+  sessionLimiter,
   asyncRoute(async (request, response) => {
     const token = readCookie(request, 'refresh_token');
     if (!token) throw new AppError(401, 'REFRESH_TOKEN_REQUIRED', 'No refresh token was supplied');
@@ -78,7 +87,7 @@ authRouter.get(
 authRouter.post(
   '/change-password',
   requireAuth,
-  limiter,
+  authenticationLimiter,
   asyncRoute(async (request, response) => {
     response.json(
       await changePassword(

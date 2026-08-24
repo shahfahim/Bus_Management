@@ -16,7 +16,7 @@
     "test:coverage": "npm run test:coverage --workspaces --if-present",
     "db:generate": "npm run db:generate -w @bus/api",
     "db:validate": "npm exec --prefix apps/api -- prisma validate --schema apps/api/prisma/schema.prisma",
-    "db:migrate": "npm run db:migrate -w @bus/api",
+    "db:migrate": "npm exec --prefix apps/api -- prisma migrate deploy --schema apps/api/prisma/schema.prisma",
     "db:seed": "npm run db:seed -w @bus/api",
     "verify": "npm run lint && npm run typecheck && npm run test && npm run build",
     "verify:release": "npm run verify && npm run db:validate && npm audit --audit-level=high"

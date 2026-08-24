@@ -14,6 +14,7 @@ apps/
 docs/
   API.md               API and real-time interface summary
   ARCHITECTURE.md      Design, invariants, and operations notes
+  DEPLOY_FREE.md       Supabase + Render showcase deployment
 ```
 
 The API is available under both `/api` and the versioned `/api/v1` prefix. The web development server proxies API and Socket.IO traffic to port `4000`.
@@ -89,7 +90,8 @@ Optional integrations:
   npm exec -w @bus/api -- web-push generate-vapid-keys
   ```
 
-- `UPLOAD_DIR` controls protected incident and lost-and-found image storage. Use durable object storage or a persistent mounted volume in a multi-instance deployment.
+- Supabase Storage: set `SUPABASE_URL`, `SUPABASE_SECRET_KEY`, and `SUPABASE_STORAGE_BUCKET` for private, durable incident and lost-and-found images. The legacy `SUPABASE_SERVICE_ROLE_KEY` variable remains supported. `UPLOAD_MAX_MB` is capped at 10 MB.
+- `UPLOAD_DIR` is the local-development fallback when Supabase Storage is not configured.
 
 ## Quality commands
 
@@ -122,7 +124,9 @@ $env:NODE_ENV='production'
 npm run start -w @bus/api
 ```
 
-Serve `apps/web/dist` from a static web server and reverse-proxy `/api`, `/api/v1`, and `/socket.io` to the API. Use TLS, a managed PostgreSQL database, durable upload storage, rotated secrets, and the real public origins in production.
+Set `SERVE_WEB_ASSETS=true` to have the API serve `apps/web/dist` as a same-origin deployment, or serve it from a separate static web server and reverse-proxy `/api`, `/api/v1`, and `/socket.io`. Use TLS, a managed PostgreSQL database, durable upload storage, rotated secrets, and the real public origins in production.
+
+For the zero-budget showcase deployment, follow [the Supabase + Render guide](docs/DEPLOY_FREE.md). The repository-level `render.yaml` builds the React client, runs Prisma migrations, starts the API, and serves everything from one free Render web service.
 
 ### Container deployment
 

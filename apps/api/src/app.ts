@@ -9,6 +9,7 @@ import { env } from './config/env.js';
 import { AppError, errorHandler, notFoundHandler } from './lib/errors.js';
 import { logger } from './lib/logger.js';
 import { prisma } from './lib/prisma.js';
+import { attachProductionWebAssets } from './lib/web-assets.js';
 import { adminRouter } from './modules/admin/admin.routes.js';
 import { authRouter } from './modules/auth/auth.routes.js';
 import { bookingRouter } from './modules/bookings/booking.routes.js';
@@ -83,7 +84,26 @@ export const createApp = () => {
       exposedHeaders: ['X-Request-Id'],
     }),
   );
-  app.use(helmet({ crossOriginResourcePolicy: { policy: 'cross-origin' } }));
+  app.use(
+    helmet({
+      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      contentSecurityPolicy: {
+        directives: {
+          defaultSrc: ["'self'"],
+          connectSrc: ["'self'", 'https:', 'wss:'],
+          imgSrc: ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org'],
+          styleSrc: ["'self'", "'unsafe-inline'"],
+          fontSrc: ["'self'", 'data:'],
+          objectSrc: ["'none'"],
+          frameAncestors: ["'self'"],
+        },
+      },
+    }),
+  );
+  app.use((_request, response, next) => {
+    response.setHeader('Permissions-Policy', 'camera=(self), geolocation=(self), microphone=()');
+    next();
+  });
   app.use(
     rateLimit({
       windowMs: 15 * 60_000,
@@ -113,6 +133,7 @@ export const createApp = () => {
 
   app.use('/api', buildApiRouter());
   app.use('/api/v1', buildApiRouter());
+  attachProductionWebAssets(app);
   app.use(notFoundHandler);
   app.use(errorHandler);
   return app;

@@ -47,7 +47,12 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
       const state = location.state as LocationState | null;
       navigate(state?.from?.pathname ?? '/dashboard', { replace: true });
     } catch (reason) {
-      setError(errorMessage(reason, 'We could not sign you in.'));
+      setError(
+        errorMessage(
+          reason,
+          mode === 'login' ? 'We could not sign you in.' : 'We could not create your student account.',
+        ),
+      );
     } finally {
       setSubmitting(false);
     }
