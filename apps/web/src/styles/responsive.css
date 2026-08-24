@@ -1,0 +1,131 @@
+@media (max-width: 1250px) {
+  .trip-result__main { grid-template-columns: 65px minmax(220px, 1.6fr) minmax(110px, .7fr) 65px auto; }
+  .trip-price { display: none; }
+  .lost-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+
+@media (max-width: 1040px) {
+  :root { --sidebar-width: 0px; }
+  .sidebar { width: min(292px, 85vw); transform: translateX(-105%); transition: transform .22s ease; }
+  .sidebar--open { transform: none; box-shadow: 20px 0 60px rgb(2 20 16 / 28%); }
+  .sidebar__close, .topbar__menu { display: inline-grid !important; }
+  .sidebar-scrim { position: fixed; z-index: 55; inset: 0; display: block; background: rgb(7 26 23 / 46%); }
+  .app-shell__body { margin-left: 0; }
+  .topbar__menu { margin-right: 11px; }
+  .auth-layout { grid-template-columns: minmax(460px, 55%) 1fr; }
+  .auth-panel { padding-inline: clamp(28px, 6vw, 65px); }
+  .auth-visual { padding: 35px; }
+  .route-illustration { left: 6%; width: 88%; }
+  .dashboard-grid--map, .driver-control-grid { grid-template-columns: 1fr; }
+  .dashboard-grid--map .live-map .map-frame, .dashboard-grid--map .live-map .leaflet-container { min-height: 390px; }
+  .trip-search { grid-template-columns: 1fr 1fr; }
+  .trip-search .button { height: 42px; }
+  .trip-result__main { grid-template-columns: 65px minmax(210px, 1.5fr) 70px auto; }
+  .trip-bus { display: none; }
+  .routes-map-layout { grid-template-columns: 230px 1fr; }
+  .booking-layout, .booking-detail-grid { grid-template-columns: 1fr; }
+  .booking-summary-stack { position: static; }
+  .booking-detail-sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .booking-detail-sidebar > .full-width { grid-column: 1 / -1; }
+}
+
+@media (max-width: 760px) {
+  .main-content { padding: 24px 16px 36px; }
+  .topbar { height: 61px; padding-inline: 12px; }
+  .topbar__campus { display: none; }
+  .profile-trigger__copy, .profile-trigger > svg { display: none; }
+  .page-stack { gap: 19px; }
+  .page-header { align-items: flex-start; flex-direction: column; gap: 14px; }
+  .page-header__actions { width: 100%; justify-content: flex-start; }
+  .page-header__actions > .button, .page-header__actions > a { flex: 1; }
+  .auth-layout { display: block; }
+  .auth-panel { min-height: 100vh; padding: 26px 22px; }
+  .auth-card { width: min(100%, 520px); padding-top: 38px; }
+  .auth-visual { display: none; }
+  .stat-grid--3, .stat-grid--4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .stat-grid .stat-card:last-child:nth-child(odd) { grid-column: 1 / -1; }
+  .quick-grid { grid-template-columns: 1fr; }
+  .trip-search { grid-template-columns: 1fr; }
+  .trip-search-card { padding: 13px; }
+  .results-toolbar { align-items: flex-end; }
+  .trip-result__main { grid-template-columns: 58px 1fr auto; gap: 10px; padding: 14px; }
+  .trip-route-summary { grid-column: 2; }
+  .trip-time { grid-row: 1; grid-column: 1; }
+  .seat-count { grid-row: 2; grid-column: 1; }
+  .trip-result__actions { grid-row: 1 / 3; grid-column: 3; align-items: flex-end; flex-direction: column; }
+  .trip-result__actions .button { padding-inline: 10px; }
+  .routes-map-layout { display: flex; min-height: auto; flex-direction: column; }
+  .routes-map-list { max-height: 220px; }
+  .routes-map-layout .map-frame { min-height: 420px; }
+  .booking-layout { display: flex; flex-direction: column; }
+  .booking-layout > * { width: 100%; }
+  .seat-card { min-height: auto; }
+  .booking-card { grid-template-columns: 45px 1fr; }
+  .booking-card__actions { grid-column: 1 / -1; justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 11px; }
+  .payment-callout { grid-template-columns: auto 1fr; }
+  .payment-callout .button { grid-column: 1 / -1; }
+  .booking-detail-sidebar { grid-template-columns: 1fr; }
+  .travel-pass__details { grid-template-columns: repeat(2, 1fr); }
+  .travel-pass__qr { grid-template-columns: 1fr; justify-items: center; text-align: center; }
+  .rating-eligible-grid, .review-list { grid-template-columns: 1fr; }
+  .lost-search { grid-template-columns: 1fr 1fr; }
+  .lost-search .field:first-child { grid-column: 1 / -1; }
+  .lost-grid { grid-template-columns: 1fr; }
+  .lost-card { display: grid; grid-template-columns: 150px 1fr; }
+  .lost-card__image { height: 100%; min-height: 220px; }
+  .driver-trip-filters { grid-template-columns: 1fr 1fr; }
+  .driver-trip-filters .button { grid-column: 1 / -1; }
+  .driver-trip-card { grid-template-columns: 55px 1fr auto; }
+  .driver-trip-card > .pill { grid-column: 3; grid-row: 1; }
+  .driver-trip-card > .button { grid-column: 1 / -1; }
+  .scanner-layout { grid-template-columns: 1fr; }
+  .scanner-viewport { aspect-ratio: 1; }
+  .profile-form { grid-template-columns: 1fr; }
+  .trip-safety-bar { grid-template-columns: auto 1fr; }
+  .trip-safety-bar .button { grid-column: 1 / -1; }
+}
+
+@media (max-width: 520px) {
+  h1 { font-size: 1.7rem; }
+  .main-content { padding-inline: 12px; }
+  .card { padding: 15px; border-radius: 12px; }
+  .form-grid { grid-template-columns: 1fr; }
+  .stat-grid--3, .stat-grid--4 { grid-template-columns: 1fr; }
+  .stat-grid .stat-card:last-child:nth-child(odd) { grid-column: auto; }
+  .stat-card { padding: 13px; }
+  .road-alert-card { padding: 12px; }
+  .road-alert-card__title { align-items: flex-start; flex-direction: column; }
+  .detail-grid { grid-template-columns: 1fr; }
+  .trip-result__main { grid-template-columns: 48px 1fr; }
+  .trip-result__actions { grid-row: 3; grid-column: 1 / -1; align-items: center; flex-direction: row; justify-content: flex-end; }
+  .trip-result__actions .button { flex: 1; }
+  .stop-sequence li { min-width: 125px; }
+  .seat-picker { padding-inline: 12px; }
+  .seat--aisle { margin-left: 10px; }
+  .booking-card { grid-template-columns: 1fr; }
+  .booking-card__date { width: 48px; }
+  .booking-card__actions { grid-column: 1; justify-content: stretch; }
+  .booking-card__actions .button { flex: 1; }
+  .travel-pass__top { padding: 17px; }
+  .travel-pass__details { padding: 16px 17px; }
+  .travel-pass__qr { padding: 17px; }
+  .lost-search { grid-template-columns: 1fr; }
+  .lost-search .field:first-child { grid-column: auto; }
+  .lost-card { display: block; }
+  .lost-card__image { height: 190px; min-height: 0; }
+  .driver-trip-filters { grid-template-columns: 1fr; }
+  .driver-trip-filters .button { grid-column: auto; }
+  .driver-trip-card { grid-template-columns: 50px 1fr; }
+  .driver-trip-card > .pill { grid-row: auto; grid-column: 1; }
+  .driver-trip-card > .button { grid-column: 2; }
+  .passenger-row { grid-template-columns: auto 1fr auto; }
+  .passenger-row > .pill { grid-column: 2 / -1; width: max-content; }
+  .driver-map-meta { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .manual-scan { grid-template-columns: 1fr; }
+  .scanner-actions .button { flex: 1 1 45%; }
+  .modal-backdrop { align-items: end; padding: 0; }
+  .modal { max-height: 92vh; border-radius: 18px 18px 0 0; }
+  .modal__footer .button { flex: 1; }
+  .toast-region { right: 10px; bottom: 10px; width: calc(100vw - 20px); }
+}

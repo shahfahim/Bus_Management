@@ -1,0 +1,15 @@
+node_modules/
+dist/
+coverage/
+.env
+.env.local
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+apps/api/uploads/*
+!apps/api/uploads/.gitkeep
+apps/web/public/workbox-*.js
+playwright-report/
+test-results/

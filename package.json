@@ -1,0 +1,31 @@
+{
+  "name": "university-bus-management",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Production-oriented university bus operations, booking, tracking, and administration platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,green \"npm run dev -w @bus/api\" \"npm run dev -w @bus/web\"",
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:coverage": "npm run test:coverage --workspaces --if-present",
+    "db:generate": "npm run db:generate -w @bus/api",
+    "db:validate": "npm exec --prefix apps/api -- prisma validate --schema apps/api/prisma/schema.prisma",
+    "db:migrate": "npm run db:migrate -w @bus/api",
+    "db:seed": "npm run db:seed -w @bus/api",
+    "verify": "npm run lint && npm run typecheck && npm run test && npm run build",
+    "verify:release": "npm run verify && npm run db:validate && npm audit --audit-level=high"
+  },
+  "engines": {
+    "node": ">=22.0.0",
+    "npm": ">=10.0.0"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  }
+}

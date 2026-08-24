@@ -1,0 +1,17 @@
+{
+  "name": "UniRide University Bus Management",
+  "short_name": "UniRide",
+  "description": "University bus booking, live tracking, and transport operations.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#f4f8f6",
+  "theme_color": "#0f6657",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

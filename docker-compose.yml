@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: university_bus
+      POSTGRES_USER: bus_admin
+      POSTGRES_PASSWORD: bus_dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - bus_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U bus_admin -d university_bus"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  bus_postgres_data:

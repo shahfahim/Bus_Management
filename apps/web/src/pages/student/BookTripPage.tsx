@@ -1,0 +1,196 @@
+import { ArrowLeft, BusFront, Clock3, CreditCard, MapPin, ShieldCheck } from 'lucide-react';
+import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Link, useNavigate, useParams } from 'react-router-dom';
+import { RouteMap } from '../../components/LiveMap';
+import { SeatMap } from '../../components/SeatMap';
+import { Button, Card, InlineAlert, PageHeader, Pill, SelectField, Skeleton, useToast } from '../../components/ui';
+import { useSocket } from '../../contexts/SocketContext';
+import { api, asItems, errorMessage, unwrap } from '../../lib/api';
+import { formatDateTime, formatMoney } from '../../lib/format';
+import type { Booking, Seat, StudentSubscription, Trip } from '../../types';
+
+interface SeatHold {
+  id: string;
+  seatNumber: string;
+  expiresAt: string;
+}
+
+export function BookTripPage() {
+  const { tripId = '' } = useParams();
+  const navigate = useNavigate();
+  const { notify } = useToast();
+  const { socket } = useSocket();
+  const [trip, setTrip] = useState<Trip>();
+  const [seats, setSeats] = useState<Seat[]>([]);
+  const [subscriptions, setSubscriptions] = useState<StudentSubscription[]>([]);
+  const [hold, setHold] = useState<SeatHold>();
+  const [boardingStopId, setBoardingStopId] = useState('');
+  const [destinationStopId, setDestinationStopId] = useState('');
+  const [subscriptionId, setSubscriptionId] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [holding, setHolding] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const bookingAttemptKey = useRef(crypto.randomUUID());
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const [tripResponse, seatsResponse, subscriptionResponse] = await Promise.all([
+        api.get<Trip | { data: Trip }>(`/trips/${tripId}`),
+        api.get<unknown>(`/trips/${tripId}/seats`),
+        api.get<unknown>('/subscriptions?status=ACTIVE'),
+      ]);
+      const nextTrip = unwrap(tripResponse);
+      setTrip(nextTrip);
+      setSeats(asItems<Seat>(seatsResponse));
+      setSubscriptions(asItems<StudentSubscription>(subscriptionResponse));
+      if (nextTrip.route?.stops?.length) {
+        setBoardingStopId((value) => value || nextTrip.boardingStopId || nextTrip.route!.stops[0].id);
+        setDestinationStopId((value) => value || nextTrip.destinationStopId || nextTrip.route!.stops.at(-1)!.id);
+      }
+    } catch (reason) {
+      setError(errorMessage(reason, 'Could not load this trip.'));
+    } finally {
+      setLoading(false);
+    }
+  }, [tripId]);
+  useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    if (!socket) return undefined;
+    socket.emit('trip:join', { tripId });
+    const seatUpdate = (payload: { tripId: string; seats?: Seat[]; seat?: Seat }) => {
+      if (payload.tripId !== tripId) return;
+      if (payload.seats) setSeats(payload.seats);
+      else if (payload.seat) setSeats((current) => current.map((seat) => seat.number === payload.seat!.number ? payload.seat! : seat));
+    };
+    socket.on('trip:seats', seatUpdate);
+    return () => {
+      socket.emit('trip:leave', { tripId });
+      socket.off('trip:seats', seatUpdate);
+    };
+  }, [socket, tripId]);
+
+  useEffect(() => {
+    if (!hold) { setSecondsRemaining(0); return undefined; }
+    const update = () => {
+      const remaining = Math.max(0, Math.ceil((new Date(hold.expiresAt).getTime() - Date.now()) / 1000));
+      setSecondsRemaining(remaining);
+      if (remaining === 0) {
+        setHold(undefined);
+        void load();
+      }
+    };
+    update();
+    const interval = window.setInterval(update, 1000);
+    return () => window.clearInterval(interval);
+  }, [hold, load]);
+
+  const selectSeat = async (seat: Seat) => {
+    if (holding || hold?.seatNumber === seat.number) return;
+    setHolding(true);
+    setError('');
+    try {
+      if (hold) await api.delete(`/trips/${tripId}/seat-holds/${hold.id}`);
+      const response = await api.post<SeatHold | { data: SeatHold }>(`/trips/${tripId}/seat-holds`, { seatNumber: seat.number });
+      const nextHold = unwrap(response);
+      bookingAttemptKey.current = crypto.randomUUID();
+      setHold(nextHold);
+      setSeats((current) => current.map((item) => ({ ...item, heldByCurrentUser: item.number === seat.number })));
+      notify({ title: `Seat ${seat.number} held`, description: 'Complete the booking before the timer expires.', tone: 'success' });
+    } catch (reason) {
+      setError(errorMessage(reason, 'That seat was just taken. Choose another seat.'));
+      await load();
+    } finally {
+      setHolding(false);
+    }
+  };
+
+  const submitBooking = async (event: FormEvent) => {
+    event.preventDefault();
+    if (!hold) { setError('Choose an available seat first.'); return; }
+    if (boardingStopId === destinationStopId) { setError('Boarding and destination stops must be different.'); return; }
+    setSubmitting(true);
+    setError('');
+    try {
+      const response = await api.post<Booking | { data: Booking }>(
+        '/bookings',
+        {
+          tripId,
+          seatNumber: hold.seatNumber,
+          seatHoldId: hold.id,
+          boardingStopId,
+          destinationStopId,
+          subscriptionId: subscriptionId || undefined,
+        },
+        { 'Idempotency-Key': bookingAttemptKey.current },
+      );
+      const booking = unwrap(response);
+      setHold(undefined);
+      notify({
+        title: 'Seat booked',
+        description: booking.status === 'CONFIRMED'
+          ? `Booking ${booking.reference} is confirmed with your bus pass.`
+          : `Booking ${booking.reference} is awaiting payment.`,
+        tone: 'success',
+      });
+      navigate(`/student/bookings/${booking.id}`, { replace: true });
+    } catch (reason) {
+      setError(errorMessage(reason, 'The booking could not be completed.'));
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const orderedStops = trip?.route?.stops ?? [];
+  const boardingIndex = orderedStops.findIndex((stop) => stop.id === boardingStopId);
+  const destinationOptions = orderedStops.filter((_, index) => index > Math.max(boardingIndex, -1));
+  const selectedSeat = seats.find((seat) => seat.number === hold?.seatNumber);
+  const eligibleSubscriptions = subscriptions.filter((subscription) => {
+    if (!trip || subscription.status !== 'ACTIVE') return false;
+    const routes = subscription.plan.routes.map((item) => ('route' in item ? item.route : item));
+    return routes.some(({ id }) => id === trip.routeId);
+  });
+  const canSubmit = Boolean(hold && boardingStopId && destinationStopId && secondsRemaining > 0);
+  const formattedTimer = `${String(Math.floor(secondsRemaining / 60)).padStart(2, '0')}:${String(secondsRemaining % 60).padStart(2, '0')}`;
+  const routePath = useMemo(() => trip?.route, [trip]);
+
+  if (loading) return <div className="page-stack"><Skeleton lines={2} /><div className="booking-layout"><Card><Skeleton lines={8} /></Card><Card><Skeleton lines={8} /></Card></div></div>;
+  if (!trip) return <div className="page-stack"><Link className="back-link" to="/student/routes"><ArrowLeft /> Back to trips</Link><InlineAlert>{error || 'Trip not found.'}</InlineAlert></div>;
+
+  return (
+    <div className="page-stack">
+      <Link className="back-link" to="/student/routes"><ArrowLeft aria-hidden="true" /> Back to trip results</Link>
+      <PageHeader description={`${formatDateTime(trip.departureTime)} · ${trip.bus?.registrationNumber ?? 'Bus assignment pending'}`} eyebrow={trip.route?.code} title={`Choose a seat · ${trip.route?.name}`} />
+      {error && <InlineAlert>{error}</InlineAlert>}
+      <div className="booking-layout">
+        <Card className="seat-card">
+          <div className="card-heading"><div><h2>Seat selection</h2><p>Availability changes in real time.</p></div><Pill tone={trip.availableSeats < 6 ? 'warning' : 'positive'}>{trip.availableSeats} left</Pill></div>
+          {holding && <div className="seat-loading"><span className="spin-small" /> Securing your seat…</div>}
+          <SeatMap onSelect={(seat) => void selectSeat(seat)} seats={seats} selected={selectedSeat?.number} />
+        </Card>
+        <aside className="booking-summary-stack">
+          <Card className="booking-summary">
+            <div className="card-heading"><div><p className="eyebrow">Trip summary</p><h2>{trip.route?.origin} → {trip.route?.destination}</h2></div><BusFront aria-hidden="true" /></div>
+            <RouteMap className="booking-mini-map" route={routePath} />
+            <form onSubmit={submitBooking}>
+              <SelectField label="Board at" onChange={(event) => { setBoardingStopId(event.target.value); setDestinationStopId(''); }} options={orderedStops.slice(0, -1).map((stop) => ({ value: stop.id, label: stop.name }))} value={boardingStopId} />
+              <SelectField label="Get off at" onChange={(event) => setDestinationStopId(event.target.value)} options={[{ value: '', label: 'Choose destination', disabled: true }, ...destinationOptions.map((stop) => ({ value: stop.id, label: stop.name }))]} value={destinationStopId} />
+              {eligibleSubscriptions.length > 0 && <SelectField label="Fare option" onChange={(event) => setSubscriptionId(event.target.value)} options={[{ value: '', label: 'Pay single-trip fare' }, ...eligibleSubscriptions.map((subscription) => ({ value: subscription.id, label: `${subscription.plan.name} · ${subscription.remainingTrips == null ? 'unlimited' : `${subscription.remainingTrips} left`}` }))]} value={subscriptionId} />}
+              <div className="summary-lines">
+                <div><span><MapPin aria-hidden="true" /> Seat</span><strong>{hold?.seatNumber ?? 'Choose one'}</strong></div>
+                <div><span><CreditCard aria-hidden="true" /> Fare</span><strong>{subscriptionId ? 'Covered by pass' : formatMoney(trip.fare, trip.currency)}</strong></div>
+              </div>
+              {hold && <div className="hold-timer"><Clock3 aria-hidden="true" /><span>Seat held for</span><strong>{formattedTimer}</strong></div>}
+              <Button className="booking-submit" disabled={!canSubmit} loading={submitting} size="lg" type="submit">Confirm booking</Button>
+              <p className="secure-note"><ShieldCheck aria-hidden="true" /> {subscriptionId ? 'One eligible trip credit is reserved atomically.' : 'Payment is completed securely on the next step.'}</p>
+            </form>
+          </Card>
+        </aside>
+      </div>
+    </div>
+  );
+}
