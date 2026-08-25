@@ -7,7 +7,6 @@ services:
     buildCommand: npm ci --include=dev && npm run db:generate && npm run build
     startCommand: npm run db:migrate && npm run start -w @bus/api
     healthCheckPath: /health/ready
-    maxShutdownDelaySeconds: 30
     envVars:
       - key: NODE_ENV
         value: production
