@@ -12,6 +12,7 @@ describe('API application smoke checks', () => {
     const body = response.body as unknown as { time: string };
     expect(Number.isNaN(Date.parse(body.time))).toBe(false);
     expect(response.headers['x-request-id']).toEqual(expect.any(String));
+    expect(response.headers['referrer-policy']).toBe('strict-origin-when-cross-origin');
   });
 
   it.each(['/api', '/api/v1'])('publishes API metadata at %s', async (path) => {

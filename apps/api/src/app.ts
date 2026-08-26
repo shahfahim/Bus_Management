@@ -87,6 +87,9 @@ export const createApp = () => {
   app.use(
     helmet({
       crossOriginResourcePolicy: { policy: 'same-origin' },
+      // OSM's public tile service requires a Referer. Send only this site's
+      // origin across HTTPS origins, never the route, query, or user data.
+      referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
