@@ -42,11 +42,13 @@ import {
 } from '../road-alerts/road-alert.service.js';
 import {
   adminListQuerySchema,
+  assignmentQuerySchema,
   bookingQuerySchema,
   busQuerySchema,
   cancellationSchema,
   checkInQuerySchema,
   createAdminBookingSchema,
+  createAssignmentSchema,
   createAdminNotificationSchema,
   createBusSchema,
   createManualCheckInSchema,
@@ -67,6 +69,7 @@ import {
   stopQuerySchema,
   tripQuerySchema,
   updateAdminBookingSchema,
+  updateAssignmentSchema,
   updateIncidentSchema,
   updateBusSchema,
   updateRouteSchema,
@@ -75,6 +78,13 @@ import {
   updateUserSchema,
   userQuerySchema,
 } from './admin.schemas.js';
+import {
+  createAdminAssignment,
+  deleteAdminAssignment,
+  getAdminAssignment,
+  listAdminAssignments,
+  updateAdminAssignment,
+} from './assignment-admin.service.js';
 import { getAdminOverview, getAdminReports } from './analytics.service.js';
 import { auditContext } from './audit.service.js';
 import {
@@ -260,6 +270,16 @@ adminRouter.post('/trips/:id/cancel', asyncRoute(async (request, response) => {
 }));
 adminRouter.delete('/trips/:id', asyncRoute(async (request, response) => {
   await deleteAdminTrip(idSchema.parse(request.params.id), auditContext(request));
+  response.status(204).end();
+}));
+
+adminRouter.get('/assignments', asyncRoute(async (request, response) => response.json(await listAdminAssignments(assignmentQuerySchema.parse(request.query)))));
+adminRouter.get('/assignments/:id', asyncRoute(async (request, response) => response.json(await getAdminAssignment(idSchema.parse(request.params.id)))));
+adminRouter.post('/assignments', asyncRoute(async (request, response) => response.status(201).json(await createAdminAssignment(createAssignmentSchema.parse(request.body), auditContext(request)))));
+adminRouter.patch('/assignments/:id', asyncRoute(async (request, response) => response.json(await updateAdminAssignment(idSchema.parse(request.params.id), updateAssignmentSchema.parse(request.body), auditContext(request)))));
+adminRouter.put('/assignments/:id', asyncRoute(async (request, response) => response.json(await updateAdminAssignment(idSchema.parse(request.params.id), updateAssignmentSchema.parse(request.body), auditContext(request)))));
+adminRouter.delete('/assignments/:id', asyncRoute(async (request, response) => {
+  await deleteAdminAssignment(idSchema.parse(request.params.id), auditContext(request));
   response.status(204).end();
 }));
 

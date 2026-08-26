@@ -1,4 +1,5 @@
 import {
+  AssignmentStatus,
   BookingStatus,
   BusStatus,
   CheckInResult,
@@ -151,6 +152,39 @@ export const tripQuerySchema = adminListQuerySchema.extend({
   busId: idSchema.optional(),
   driverId: idSchema.optional(),
 });
+
+export const assignmentQuerySchema = adminListQuerySchema.extend({
+  status: enumValue(AssignmentStatus).optional(),
+  driverId: idSchema.optional(),
+  busId: idSchema.optional(),
+});
+
+export const createAssignmentSchema = z
+  .object({
+    driverId: idSchema,
+    busId: idSchema,
+    routeId: idSchema,
+    startsAt: z.coerce.date(),
+    endsAt: nullableDate,
+    status: enumValue(AssignmentStatus).default(AssignmentStatus.SCHEDULED),
+    notes: optionalText(2_000),
+  })
+  .refine((value) => !value.endsAt || value.endsAt > value.startsAt, {
+    path: ['endsAt'],
+    message: 'Assignment end must be after its start',
+  });
+
+export const updateAssignmentSchema = z
+  .object({
+    driverId: idSchema.optional(),
+    busId: idSchema.optional(),
+    routeId: idSchema.optional(),
+    startsAt: optionalDate,
+    endsAt: nullableDate,
+    status: enumValue(AssignmentStatus).optional(),
+    notes: nullableText(2_000),
+  })
+  .refine((value) => Object.keys(value).length > 0, 'At least one field is required');
 
 export const createTripSchema = z
   .object({

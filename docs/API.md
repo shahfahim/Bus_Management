@@ -52,12 +52,23 @@ The browser client authenticates with secure, HTTP-only, same-site cookies. Sess
 | --- | --- | --- |
 | GET | `/driver/profile` | Driver profile and assignment summary |
 | GET | `/driver/trips`, `/driver/trips/:id` | Assigned trips |
+| GET | `/driver/trip-setup/options` | Active assigned buses and campus preset for custom-trip setup |
+| POST | `/driver/trips` | Create a custom scheduled trip between any two validated map coordinates using an assigned bus |
 | POST | `/driver/trips/:id/start` | Start an assigned trip |
 | POST | `/driver/trips/:id/end` | Complete an assigned trip |
 | GET | `/driver/trips/:id/passengers` | Passenger/check-in manifest |
 | POST | `/driver/location` | Throttled GPS sample (supports offline replay metadata) |
 | POST | `/driver/check-ins/scan` | Atomically validate and consume a QR |
 | POST | `/driver/incidents` | Driver incident report; multipart with optional `image` |
+
+## Admin driver assignments
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET/POST | `/admin/assignments` | List assignments / authorize a verified driver to use an active bus |
+| GET/PATCH/DELETE | `/admin/assignments/:id` | Inspect, update, cancel, or remove an unused assignment |
+
+Active and scheduled windows cannot overlap for the same driver or bus. Assignments referenced by trips remain in the audit trail and must be cancelled instead of deleted.
 
 ## Payments and notifications
 

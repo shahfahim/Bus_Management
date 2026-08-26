@@ -20,6 +20,7 @@ const RatingsPage = lazy(() => import('./pages/student/RatingsPage').then((modul
 const NotificationsPage = lazy(() => import('./pages/shared/NotificationsPage').then((module) => ({ default: module.NotificationsPage })));
 const LostFoundPage = lazy(() => import('./pages/shared/LostFoundPage').then((module) => ({ default: module.LostFoundPage })));
 const DriverTripsPage = lazy(() => import('./pages/driver/DriverTripsPage').then((module) => ({ default: module.DriverTripsPage })));
+const CreateDriverTripPage = lazy(() => import('./pages/driver/CreateDriverTripPage').then((module) => ({ default: module.CreateDriverTripPage })));
 const DriverTripDetailPage = lazy(() => import('./pages/driver/DriverTripDetailPage').then((module) => ({ default: module.DriverTripDetailPage })));
 const QrScannerPage = lazy(() => import('./pages/driver/QrScannerPage').then((module) => ({ default: module.QrScannerPage })));
 const IncidentPage = lazy(() => import('./pages/driver/IncidentPage').then((module) => ({ default: module.IncidentPage })));
@@ -56,6 +57,7 @@ export default function App() {
           <Route element={<RoleGuard roles={['STUDENT', 'TEACHER']}><RatingsPage /></RoleGuard>} path="student/ratings" />
 
           <Route element={<RoleGuard roles={['DRIVER', 'CONDUCTOR']}><DriverTripsPage /></RoleGuard>} path="driver/trips" />
+          <Route element={<RoleGuard roles={['DRIVER']}><CreateDriverTripPage /></RoleGuard>} path="driver/trips/new" />
           <Route element={<RoleGuard roles={['DRIVER', 'CONDUCTOR']}><DriverTripDetailPage /></RoleGuard>} path="driver/trips/:tripId" />
           <Route element={<RoleGuard roles={['DRIVER', 'CONDUCTOR']}><QrScannerPage /></RoleGuard>} path="driver/check-in" />
           <Route element={<RoleGuard roles={['DRIVER']}><IncidentPage /></RoleGuard>} path="driver/incidents" />

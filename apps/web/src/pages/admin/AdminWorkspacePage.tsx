@@ -16,6 +16,7 @@ type AdminSectionId =
   | 'routes'
   | 'stops'
   | 'trips'
+  | 'assignments'
   | 'users'
   | 'bookings'
   | 'payments'
@@ -282,6 +283,36 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { id: 'delay', label: 'Mark delayed', tone: 'warning', visible: (row) => valueMatches(row.status, 'scheduled', 'boarding', 'in_progress') },
       { id: 'cancel', label: 'Cancel trip', tone: 'danger', visible: (row) => !valueMatches(row.status, 'completed', 'cancelled') },
     ],
+  },
+  assignments: {
+    id: 'assignments',
+    title: 'Driver assignments',
+    singular: 'driver assignment',
+    description: 'Authorize verified drivers to use a bus during a defined operating window.',
+    endpoint: '/admin/assignments',
+    searchPlaceholder: 'Search driver, bus, or route…',
+    canCreate: true,
+    canEdit: true,
+    canDelete: true,
+    createLabel: 'Assign a bus',
+    columns: [
+      { key: 'driver.name', label: 'Driver', sortable: true },
+      { key: 'bus.fleetNumber', label: 'Bus' },
+      { key: 'route.name', label: 'Coverage route', mobileHidden: true },
+      { key: 'startsAt', label: 'Starts', kind: 'datetime', sortable: true },
+      { key: 'endsAt', label: 'Ends', kind: 'datetime', mobileHidden: true },
+      { key: 'status', label: 'Status', kind: 'status' },
+    ],
+    fields: [
+      { name: 'driverId', label: 'Verified driver', kind: 'select', required: true, lookup: '/admin/users?role=driver&status=active', lookupLabel: ['name', 'email'] },
+      { name: 'busId', label: 'Active bus', kind: 'select', required: true, lookup: '/admin/buses?status=active', lookupLabel: ['fleetNumber', 'registrationNumber'] },
+      { name: 'routeId', label: 'Default coverage route', kind: 'select', required: true, lookup: '/admin/routes?status=active', lookupLabel: ['code', 'name'], help: 'This authorizes the bus. The driver can still define custom pickup and destination points.' },
+      { name: 'startsAt', label: 'Assignment starts', kind: 'datetime-local', required: true },
+      { name: 'endsAt', label: 'Assignment ends (optional)', kind: 'datetime-local', help: 'Leave blank for an ongoing assignment.' },
+      { name: 'status', label: 'Status', kind: 'select', required: true, options: [{ label: 'Scheduled', value: 'scheduled' }, { label: 'Active', value: 'active' }, { label: 'Completed', value: 'completed' }, { label: 'Cancelled', value: 'cancelled' }] },
+      { name: 'notes', label: 'Operations note', kind: 'textarea', fullWidth: true },
+    ],
+    filters: [{ name: 'status', label: 'All statuses', options: [{ label: 'Scheduled', value: 'scheduled' }, { label: 'Active', value: 'active' }, { label: 'Completed', value: 'completed' }, { label: 'Cancelled', value: 'cancelled' }] }],
   },
   users: {
     id: 'users',
@@ -574,7 +605,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
 }
 
 const SECTION_GROUPS: Array<{ label: string; items: Array<{ id: 'overview' | 'reports' | AdminSectionId; label: string }> }> = [
-  { label: 'Monitor', items: [{ id: 'overview', label: 'Overview' }, { id: 'reports', label: 'Reports' }, { id: 'trips', label: 'Trips' }, { id: 'incidents', label: 'Incidents' }] },
+  { label: 'Monitor', items: [{ id: 'overview', label: 'Overview' }, { id: 'reports', label: 'Reports' }, { id: 'trips', label: 'Trips' }, { id: 'assignments', label: 'Driver assignments' }, { id: 'incidents', label: 'Incidents' }] },
   { label: 'Network', items: [{ id: 'buses', label: 'Buses' }, { id: 'routes', label: 'Routes' }, { id: 'stops', label: 'Stops' }, { id: 'maintenance', label: 'Maintenance' }, { id: 'road-alerts', label: 'Road alerts' }] },
   { label: 'People & service', items: [{ id: 'users', label: 'Users' }, { id: 'bookings', label: 'Bookings' }, { id: 'payments', label: 'Payments' }, { id: 'checkins', label: 'QR check-ins' }] },
   { label: 'Community', items: [{ id: 'lost-found', label: 'Lost & found' }, { id: 'ratings', label: 'Driver ratings' }, { id: 'notifications', label: 'Notifications' }] },
@@ -760,6 +791,7 @@ function AdminIcon({ name }: { name: string }) {
     routes: <><circle cx="6" cy="19" r="3"/><circle cx="18" cy="5" r="3"/><path d="M8.5 17.5c2-2 1-5 3-7s3-1 4.5-3"/></>,
     stops: <><path d="M12 21s6-5.1 6-11a6 6 0 1 0-12 0c0 5.9 6 11 6 11Z"/><circle cx="12" cy="10" r="2"/></>,
     trips: <><path d="M3 12h18M16 7l5 5-5 5"/><path d="M8 7 3 12l5 5"/></>,
+    assignments: <><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 9h10M8 19v2m8-2v2"/><circle cx="8" cy="14" r="1"/><circle cx="16" cy="14" r="1"/></>,
     users: <><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8m2 3a6 6 0 0 1 4 6"/></>,
     bookings: <><path d="M4 3h16v18l-4-2-4 2-4-2-4 2V3Z"/><path d="m8 11 2 2 5-5"/></>,
     payments: <><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h3"/></>,

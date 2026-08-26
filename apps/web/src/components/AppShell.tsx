@@ -61,6 +61,7 @@ const roleNavigation: Record<Role, NavItem[]> = {
   ],
   DRIVER: [
     { label: 'Assigned trips', to: '/driver/trips', icon: BusFront },
+    { label: 'Set up a trip', to: '/driver/trips/new', icon: MapPinned },
     { label: 'Scan entry QR', to: '/driver/check-in', icon: QrCode },
     { label: 'Report an issue', to: '/driver/incidents', icon: ShieldCheck },
   ],

@@ -1,14 +1,19 @@
 import { randomBytes } from 'node:crypto';
 import {
   AlertSeverity,
+  AssignmentStatus,
   BookingStatus,
+  BusStatus,
+  DriverStatus,
   IncidentStatus,
   LocationSource,
   NotificationType,
   Role,
+  RouteStatus,
   TrackingStatus,
   TripStatus,
   TripStopStatus,
+  UserStatus,
 } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import type { z } from 'zod';
@@ -22,11 +27,12 @@ import { logger } from '../../lib/logger.js';
 import { prisma } from '../../lib/prisma.js';
 import { emitToRole, emitToTrip } from '../../realtime/hub.js';
 import { notifyUser, notifyUsers } from '../notifications/notification.service.js';
-import type { incidentSchema, locationUpdateSchema } from './tracking.schemas.js';
+import type { createDriverTripSchema, incidentSchema, locationUpdateSchema } from './tracking.schemas.js';
 import type { StoredIncidentImage } from './tracking.upload.js';
 
 type LocationInput = z.infer<typeof locationUpdateSchema>;
 type IncidentInput = z.infer<typeof incidentSchema>;
+type CreateDriverTripInput = z.infer<typeof createDriverTripSchema>;
 
 const driverTripInclude = {
   route: { include: { stops: { include: { stop: true }, orderBy: { sequence: 'asc' as const } } } },
@@ -108,6 +114,214 @@ export const getDriverProfile = async (userId: string) => {
   });
   if (!profile) throw new AppError(404, 'DRIVER_PROFILE_NOT_FOUND', 'Driver profile not found');
   return { ...profile, averageRating: Number(profile.averageRating) };
+};
+
+const activeTripStatuses = [TripStatus.SCHEDULED, TripStatus.BOARDING, TripStatus.IN_PROGRESS, TripStatus.DELAYED];
+
+export const listDriverTripSetupOptions = async (driverId: string) => {
+  const now = new Date();
+  const [profile, assignments, campus] = await Promise.all([
+    prisma.driverProfile.findUnique({
+      where: { userId: driverId },
+      include: { user: { select: { status: true } } },
+    }),
+    prisma.driverAssignment.findMany({
+      where: {
+        driverId,
+        status: { in: [AssignmentStatus.SCHEDULED, AssignmentStatus.ACTIVE] },
+        OR: [{ endsAt: null }, { endsAt: { gte: now } }],
+        bus: { status: BusStatus.ACTIVE },
+      },
+      include: { bus: true },
+      orderBy: { startsAt: 'asc' },
+    }),
+    prisma.stop.findFirst({
+      where: { isActive: true, OR: [{ code: 'CAMPUS' }, { name: { contains: 'campus', mode: 'insensitive' } }] },
+      orderBy: { code: 'asc' },
+    }),
+  ]);
+  if (!profile || profile.status !== DriverStatus.ACTIVE || profile.user.status !== UserStatus.ACTIVE) {
+    throw new AppError(409, 'DRIVER_NOT_ACTIVE', 'Your driver account must be verified and active before creating trips');
+  }
+  if (profile.licenseExpiresAt < now) {
+    throw new AppError(409, 'DRIVER_LICENSE_EXPIRED', 'Your driver license has expired');
+  }
+
+  const buses = [...new Map(assignments.map((assignment) => [assignment.busId, assignment.bus])).values()].map((bus) => ({
+    id: bus.id,
+    fleetNumber: bus.fleetNumber,
+    registrationNumber: bus.registrationNumber,
+    capacity: bus.capacity,
+    status: bus.status,
+    assignmentWindows: assignments
+      .filter((assignment) => assignment.busId === bus.id)
+      .map((assignment) => ({ startsAt: assignment.startsAt, endsAt: assignment.endsAt })),
+  }));
+  return {
+    buses,
+    campus: campus
+      ? {
+          name: campus.name,
+          address: campus.address,
+          latitude: Number(campus.latitude),
+          longitude: Number(campus.longitude),
+        }
+      : null,
+  };
+};
+
+export const createDriverTrip = async (driverId: string, input: CreateDriverTripInput) => {
+  const distanceMeters = Math.round(haversineMeters(input.origin, input.destination));
+  if (distanceMeters < 25) {
+    throw new AppError(400, 'TRIP_LOCATIONS_TOO_CLOSE', 'Pickup and destination must be different locations');
+  }
+
+  const tripId = await prisma.$transaction(async (tx) => {
+    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'driver-schedule:' + driverId}))`;
+    await lockBusSchedule(tx, input.busId);
+    const [profile, assignment, conflict, activeCustomTrips] = await Promise.all([
+      tx.driverProfile.findUnique({ where: { userId: driverId }, include: { user: true } }),
+      tx.driverAssignment.findFirst({
+        where: {
+          driverId,
+          busId: input.busId,
+          status: { in: [AssignmentStatus.SCHEDULED, AssignmentStatus.ACTIVE] },
+          startsAt: { lte: input.scheduledStart },
+          OR: [{ endsAt: null }, { endsAt: { gte: input.scheduledEnd } }],
+          bus: { status: BusStatus.ACTIVE },
+        },
+        include: { bus: true },
+      }),
+      tx.trip.findFirst({
+        where: {
+          status: { in: activeTripStatuses },
+          scheduledStartAt: { lt: input.scheduledEnd },
+          AND: [
+            { OR: [{ driverId }, { busId: input.busId }] },
+            { OR: [{ scheduledEndAt: null }, { scheduledEndAt: { gt: input.scheduledStart } }] },
+          ],
+        },
+        select: { publicCode: true, driverId: true, busId: true },
+      }),
+      tx.trip.count({
+        where: {
+          driverId,
+          status: { in: activeTripStatuses },
+          scheduledStartAt: { gte: new Date() },
+          route: { code: { startsWith: 'DRV-' } },
+        },
+      }),
+    ]);
+    if (!profile || profile.status !== DriverStatus.ACTIVE || profile.user.status !== UserStatus.ACTIVE) {
+      throw new AppError(409, 'DRIVER_NOT_ACTIVE', 'Your driver account must be verified and active before creating trips');
+    }
+    if (profile.licenseExpiresAt < input.scheduledEnd) {
+      throw new AppError(409, 'DRIVER_LICENSE_EXPIRED', 'Your driver license expires before this trip ends');
+    }
+    if (!assignment) {
+      throw new AppError(403, 'BUS_NOT_ASSIGNED', 'Select an active bus assigned to you for the full trip time');
+    }
+    if (activeCustomTrips >= 20) {
+      throw new AppError(409, 'CUSTOM_TRIP_LIMIT_REACHED', 'Complete or cancel an existing custom trip before creating another');
+    }
+    if (conflict) {
+      const resource = conflict.driverId === driverId ? 'You are' : 'The selected bus is';
+      throw new AppError(409, 'TRIP_SCHEDULE_CONFLICT', `${resource} already assigned to ${conflict.publicCode} during this time`);
+    }
+    await assertBusHasNoMaintenanceConflict(tx, {
+      busId: input.busId,
+      startsAt: input.scheduledStart,
+      endsAt: input.scheduledEnd,
+    });
+
+    const suffix = randomBytes(6).toString('hex').toUpperCase();
+    const [originStop, destinationStop] = await Promise.all([
+      tx.stop.create({
+        data: {
+          code: `DRV-O-${suffix}`,
+          name: input.origin.name,
+          address: input.origin.address,
+          latitude: input.origin.latitude,
+          longitude: input.origin.longitude,
+        },
+      }),
+      tx.stop.create({
+        data: {
+          code: `DRV-D-${suffix}`,
+          name: input.destination.name,
+          address: input.destination.address,
+          latitude: input.destination.latitude,
+          longitude: input.destination.longitude,
+        },
+      }),
+    ]);
+    const estimatedDurationMinutes = Math.max(1, Math.round((input.scheduledEnd.getTime() - input.scheduledStart.getTime()) / 60_000));
+    const route = await tx.route.create({
+      data: {
+        code: `DRV-${suffix}`,
+        name: `${input.origin.name} to ${input.destination.name}`.slice(0, 160),
+        description: 'Custom trip created by the assigned driver',
+        status: RouteStatus.ACTIVE,
+        distanceMeters,
+        estimatedDurationMinutes,
+      },
+    });
+    const [originRouteStop, destinationRouteStop] = await Promise.all([
+      tx.routeStop.create({
+        data: { routeId: route.id, stopId: originStop.id, sequence: 1, distanceFromStartMeters: 0, plannedOffsetMinutes: 0 },
+      }),
+      tx.routeStop.create({
+        data: {
+          routeId: route.id,
+          stopId: destinationStop.id,
+          sequence: 2,
+          distanceFromStartMeters: distanceMeters,
+          plannedOffsetMinutes: estimatedDurationMinutes,
+        },
+      }),
+    ]);
+    const trip = await tx.trip.create({
+      data: {
+        publicCode: `DRV-${new Date().toISOString().slice(0, 10).replaceAll('-', '')}-${suffix.slice(0, 8)}`,
+        assignmentId: assignment.id,
+        routeId: route.id,
+        busId: assignment.busId,
+        driverId,
+        status: TripStatus.SCHEDULED,
+        scheduledStartAt: input.scheduledStart,
+        scheduledEndAt: input.scheduledEnd,
+        boardingOpensAt: new Date(Math.max(Date.now(), input.scheduledStart.getTime() - 30 * 60_000)),
+        bookingClosesAt: input.scheduledStart,
+        fareAmount: input.fare,
+        currency: 'BDT',
+      },
+    });
+    await tx.tripStop.createMany({
+      data: [
+        { tripId: trip.id, routeStopId: originRouteStop.id, sequence: 1, scheduledArrivalAt: input.scheduledStart },
+        { tripId: trip.id, routeStopId: destinationRouteStop.id, sequence: 2, scheduledArrivalAt: input.scheduledEnd },
+      ],
+    });
+    await tx.auditLog.create({
+      data: {
+        actorId: driverId,
+        action: 'driver.trip.create',
+        entityType: 'Trip',
+        entityId: trip.id,
+        after: {
+          publicCode: trip.publicCode,
+          busId: trip.busId,
+          routeId: trip.routeId,
+          scheduledStartAt: trip.scheduledStartAt.toISOString(),
+          scheduledEndAt: trip.scheduledEndAt?.toISOString(),
+        },
+      },
+    });
+    return trip.id;
+  });
+  const created = await getDriverTrip(tripId, { userId: driverId, role: Role.DRIVER });
+  emitToRole(Role.ADMIN, 'trip:updated', created);
+  return created;
 };
 
 export const listDriverTrips = async (

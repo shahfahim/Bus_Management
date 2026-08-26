@@ -4,12 +4,14 @@ import { z } from 'zod';
 import { asyncRoute } from '../../lib/async-route.js';
 import { uploadRateLimit } from '../../lib/upload-rate-limit.js';
 import { requireAuth, requireRole } from '../auth/auth.middleware.js';
-import { incidentSchema, locationUpdateSchema } from './tracking.schemas.js';
+import { createDriverTripSchema, incidentSchema, locationUpdateSchema } from './tracking.schemas.js';
 import {
+  createDriverTrip,
   endTrip,
   getDriverProfile,
   getDriverTrip,
   listDriverTrips,
+  listDriverTripSetupOptions,
   listPassengers,
   recordLocation,
   reportIncident,
@@ -40,6 +42,18 @@ driverRouter.get(
       })
       .parse(request.query);
     response.json(await listDriverTrips(request.auth!, query));
+  }),
+);
+driverRouter.get(
+  '/trip-setup/options',
+  requireRole(Role.DRIVER),
+  asyncRoute(async (request, response) => response.json(await listDriverTripSetupOptions(request.auth!.userId))),
+);
+driverRouter.post(
+  '/trips',
+  requireRole(Role.DRIVER),
+  asyncRoute(async (request, response) => {
+    response.status(201).json(await createDriverTrip(request.auth!.userId, createDriverTripSchema.parse(request.body)));
   }),
 );
 driverRouter.get(

@@ -22,6 +22,7 @@ Routes validate untrusted input with Zod, enforce authentication and role policy
 ## Modules
 
 - `auth`: role-aware student/teacher/driver registration, administrator approval, login throttling, short-lived access JWTs, rotating refresh sessions, forced temporary-password replacement, logout, and current-user identity.
+- `tracking`: assigned-trip controls, GPS updates, incidents, and driver-created custom trips. Custom trip creation atomically creates its route, two stops, trip timings, and audit record after assignment, licence, maintenance, overlap, and abuse-limit checks.
 - `catalog`: public buses, routes, stops, trips, route alerts, latest trip position, and authoritative seat availability.
 - `bookings`: expiring seat holds, booking confirmation/cancellation, subscription use, and ownership checks.
 - `tracking`: driver assignments, trip lifecycle, adaptive GPS ingestion, ETA calculation, passenger manifests, incidents, and offline/degraded tracking state.

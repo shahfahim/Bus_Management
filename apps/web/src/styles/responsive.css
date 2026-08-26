@@ -17,7 +17,7 @@
   .auth-panel { padding-inline: clamp(28px, 6vw, 65px); }
   .auth-visual { padding: 35px; }
   .route-illustration { left: 6%; width: 88%; }
-  .dashboard-grid--map, .driver-control-grid { grid-template-columns: 1fr; }
+  .dashboard-grid--map, .driver-control-grid, .custom-trip-layout { grid-template-columns: 1fr; }
   .dashboard-grid--map .live-map .map-frame, .dashboard-grid--map .live-map .leaflet-container { min-height: 390px; }
   .trip-search { grid-template-columns: 1fr 1fr; }
   .trip-search .button { height: 42px; }
@@ -122,6 +122,8 @@
   .passenger-row { grid-template-columns: auto 1fr auto; }
   .passenger-row > .pill { grid-column: 2 / -1; width: max-content; }
   .driver-map-meta { align-items: flex-start; flex-direction: column; gap: 5px; }
+  .custom-trip-map-panel { position: static; }
+  .trip-location-map, .trip-location-map .leaflet-container { min-height: 420px; height: 420px; }
   .manual-scan { grid-template-columns: 1fr; }
   .scanner-actions .button { flex: 1 1 45%; }
   .modal-backdrop { align-items: end; padding: 0; }

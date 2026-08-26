@@ -1,8 +1,9 @@
-import { BookingStatus, BusStatus, IncidentStatus, NotificationType, TripStatus } from '@prisma/client';
+import { AssignmentStatus, BookingStatus, BusStatus, IncidentStatus, NotificationType, TripStatus } from '@prisma/client';
 import { describe, expect, it } from 'vitest';
 import {
   adminListQuerySchema,
   createAdminBookingSchema,
+  createAssignmentSchema,
   createAdminNotificationSchema,
   createBusSchema,
   createTripSchema,
@@ -65,6 +66,19 @@ describe('admin compatibility schemas', () => {
     };
     expect(createTripSchema.parse(base).status).toBe(TripStatus.SCHEDULED);
     expect(() => createTripSchema.parse({ ...base, scheduledEnd: base.scheduledStart })).toThrow();
+  });
+
+  it('normalizes assignment status and rejects an invalid operating window', () => {
+    const assignment = {
+      driverId: '11111111-1111-4111-8111-111111111111',
+      busId: '22222222-2222-4222-8222-222222222222',
+      routeId: '33333333-3333-4333-8333-333333333333',
+      startsAt: '2026-08-26T08:00:00.000Z',
+      endsAt: '2026-08-26T18:00:00.000Z',
+      status: 'active',
+    };
+    expect(createAssignmentSchema.parse(assignment).status).toBe(AssignmentStatus.ACTIVE);
+    expect(() => createAssignmentSchema.parse({ ...assignment, endsAt: assignment.startsAt })).toThrow();
   });
 
   it('requires regulatory fields for new driver accounts', () => {
