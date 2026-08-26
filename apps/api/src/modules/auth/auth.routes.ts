@@ -1,7 +1,8 @@
 import { Router } from 'express';
-import rateLimit from 'express-rate-limit';
+import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { asyncRoute } from '../../lib/async-route.js';
 import { AppError } from '../../lib/errors.js';
+import { normalizeEmail, sha256 } from '../../lib/security.js';
 import { readCookie, requireAuth } from './auth.middleware.js';
 import { changePasswordSchema, loginSchema, registerSchema } from './auth.schemas.js';
 import {
@@ -9,7 +10,7 @@ import {
   clearAuthCookies,
   getCurrentUser,
   login,
-  registerStudent,
+  registerAccount,
   revokeSession,
   rotateRefreshToken,
   setAuthCookies,
@@ -34,23 +35,38 @@ const sessionLimiter = rateLimit({
   message: { error: { code: 'RATE_LIMITED', message: 'Too many session refresh attempts; please try again later' } },
 });
 
+const credentialLimiter = rateLimit({
+  windowMs: 15 * 60_000,
+  limit: 5,
+  skipSuccessfulRequests: true,
+  keyGenerator: (request) => {
+    const body: unknown = request.body;
+    const rawEmail = body && typeof body === 'object' ? (body as Record<string, unknown>).email : undefined;
+    const email = typeof rawEmail === 'string' ? normalizeEmail(rawEmail) : 'invalid';
+    return `${ipKeyGenerator(request.ip ?? 'unknown')}:${sha256(email)}`;
+  },
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many sign-in attempts; please try again later' } },
+});
+
 authRouter.post(
   '/register',
   authenticationLimiter,
   asyncRoute(async (request, response) => {
-    const result = await registerStudent(registerSchema.parse(request.body), request);
-    setAuthCookies(response, result);
-    response.status(201).json(result);
+    const result = await registerAccount(registerSchema.parse(request.body), request);
+    response.status(202).json(result);
   }),
 );
 
 authRouter.post(
   '/login',
   authenticationLimiter,
+  credentialLimiter,
   asyncRoute(async (request, response) => {
     const result = await login(loginSchema.parse(request.body), request);
     setAuthCookies(response, result);
-    response.json(result);
+    response.json({ user: result.user, expiresIn: result.expiresIn });
   }),
 );
 
@@ -62,7 +78,7 @@ authRouter.post(
     if (!token) throw new AppError(401, 'REFRESH_TOKEN_REQUIRED', 'No refresh token was supplied');
     const result = await rotateRefreshToken(token, request);
     setAuthCookies(response, result);
-    response.json(result);
+    response.json({ expiresIn: result.expiresIn });
   }),
 );
 

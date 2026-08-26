@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { Role, TripStatus } from '@prisma/client';
 import { z } from 'zod';
 import { asyncRoute } from '../../lib/async-route.js';
+import { uploadRateLimit } from '../../lib/upload-rate-limit.js';
 import { requireAuth, requireRole } from '../auth/auth.middleware.js';
 import { incidentSchema, locationUpdateSchema } from './tracking.schemas.js';
 import {
@@ -78,6 +79,7 @@ driverRouter.post(
 );
 driverRouter.post(
   '/incidents',
+  uploadRateLimit,
   incidentUpload,
   asyncRoute(async (request, response) => {
     const image = await persistIncidentUpload(request);

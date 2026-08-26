@@ -21,7 +21,7 @@ Routes validate untrusted input with Zod, enforce authentication and role policy
 
 ## Modules
 
-- `auth`: student registration, login throttling, short-lived access JWTs, rotating refresh sessions, forced temporary-password replacement, logout, and current-user identity.
+- `auth`: role-aware student/teacher/driver registration, administrator approval, login throttling, short-lived access JWTs, rotating refresh sessions, forced temporary-password replacement, logout, and current-user identity.
 - `catalog`: public buses, routes, stops, trips, route alerts, latest trip position, and authoritative seat availability.
 - `bookings`: expiring seat holds, booking confirmation/cancellation, subscription use, and ownership checks.
 - `tracking`: driver assignments, trip lifecycle, adaptive GPS ingestion, ETA calculation, passenger manifests, incidents, and offline/degraded tracking state.
@@ -53,7 +53,7 @@ PostgreSQL, not the browser, is the final authority for business rules.
 
 Passwords use bcrypt with cost 12. Admin-created accounts must replace their temporary password before using protected domain APIs. Access tokens are short-lived. Refresh tokens are kept in HTTP-only cookies, stored as hashes, rotated on each refresh, and the session family is revoked on replay/logout. The UI stores the access token in session storage; all resource-level ownership remains enforced by the API.
 
-RBAC roles are `STUDENT`, `DRIVER`, `CONDUCTOR`, and `ADMIN`. Route guards provide a first check; domain services also validate assignment and ownership. Admin-only routes are guarded before handlers run.
+RBAC roles are `STUDENT`, `TEACHER`, `DRIVER`, `CONDUCTOR`, and `ADMIN`. Teachers use rider features without being asked for a student ID. Route guards provide a first check; domain services also validate assignment and ownership. Admin-only routes are guarded before handlers run.
 
 Security middleware includes Helmet, exact-origin credentialed CORS, bounded request bodies, endpoint and global rate limiting, structured request IDs/logs, MIME and file-signature image checks, randomized filenames, and normalized error responses. No raw card data enters this system.
 

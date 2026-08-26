@@ -13,13 +13,13 @@ The same interface is mounted at `/api` and `/api/v1`. JSON is used unless an im
 }
 ```
 
-Use `Authorization: Bearer <access-token>` for authenticated calls. Refresh tokens are rotated in an HTTP-only cookie. List endpoints accept bounded `page`/`pageSize` parameters and domain filters.
+The browser client authenticates with secure, HTTP-only, same-site cookies. Session credentials are never returned in JSON or stored in browser JavaScript storage. Refresh tokens are rotated on every refresh. List endpoints accept bounded `page`/`pageSize` parameters and domain filters.
 
 ## Authentication and profile
 
 | Method | Path | Access | Purpose |
 | --- | --- | --- | --- |
-| POST | `/auth/register` | Public | Register a student |
+| POST | `/auth/register` | Public | Submit a student, teacher, or driver account for administrator verification (HTTP 202). Student ID is required only for students; driver credentials are required for drivers. |
 | POST | `/auth/login` | Public | Authenticate and create a rotating session |
 | POST | `/auth/refresh` | Refresh cookie | Rotate refresh/access tokens |
 | POST | `/auth/logout` | Authenticated | Revoke the current session |

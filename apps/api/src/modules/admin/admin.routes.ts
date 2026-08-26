@@ -302,7 +302,7 @@ adminRouter.patch('/checkins/:id', asyncRoute(() => unsupported('check-in')));
 adminRouter.delete('/checkins/:id', asyncRoute(() => unsupported('check-in')));
 
 adminRouter.get('/maintenance', asyncRoute(async (request, response) => response.json(adminPayload(await listMaintenance(maintenanceQuerySchema.parse(request.query), true)))));
-adminRouter.get('/maintenance/:id', asyncRoute(async (request, response) => response.json(adminPayload(await getMaintenance(idSchema.parse(request.params.id))))));
+adminRouter.get('/maintenance/:id', asyncRoute(async (request, response) => response.json(adminPayload(await getMaintenance(idSchema.parse(request.params.id), true)))));
 adminRouter.post('/maintenance', asyncRoute(async (request, response) => response.status(201).json(adminPayload(await createMaintenance(createMaintenanceSchema.parse(maintenanceBody(request.body, true)), auditContext(request))))));
 adminRouter.patch('/maintenance/:id', asyncRoute(async (request, response) => response.json(adminPayload(await updateMaintenance(idSchema.parse(request.params.id), updateMaintenanceSchema.parse(maintenanceBody(request.body)), auditContext(request))))));
 adminRouter.put('/maintenance/:id', asyncRoute(async (request, response) => response.json(adminPayload(await updateMaintenance(idSchema.parse(request.params.id), updateMaintenanceSchema.parse(maintenanceBody(request.body)), auditContext(request))))));

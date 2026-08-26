@@ -75,6 +75,9 @@ Required settings:
 - `DATABASE_URL`
 - `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`, and `QR_SIGNING_SECRET` (at least 32 characters)
 - `WEB_ORIGIN` and `PUBLIC_API_URL`
+- Self-registration accepts any syntactically valid email for students, teachers, and drivers; every new account remains pending until an administrator verifies it.
+
+Self-registered students are created as `PENDING_VERIFICATION`. An administrator must verify the university identity and activate the account in the Users workspace before the student can sign in.
 
 Optional integrations:
 

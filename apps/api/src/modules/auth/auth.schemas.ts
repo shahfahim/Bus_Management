@@ -1,17 +1,37 @@
 import { z } from 'zod';
+import { Role } from '@prisma/client';
 import { strongPassword } from '../../lib/password-policy.js';
 
 const userPassword = strongPassword();
 
-export const registerSchema = z.object({
+const registrationBase = {
   email: z.string().trim().email().max(254),
   password: userPassword,
   name: z.string().trim().min(2).max(100),
   phone: z.string().trim().min(7).max(20).optional(),
-  studentId: z.string().trim().min(2).max(40),
-  department: z.string().trim().min(2).max(100),
-  emergencyContact: z.string().trim().min(7).max(20).optional(),
-});
+};
+
+export const registerSchema = z.discriminatedUnion('role', [
+  z.object({
+    ...registrationBase,
+    role: z.literal(Role.STUDENT),
+    studentId: z.string().trim().min(2).max(40),
+    department: z.string().trim().min(2).max(100),
+    emergencyContact: z.string().trim().min(7).max(20).optional(),
+  }),
+  z.object({
+    ...registrationBase,
+    role: z.literal(Role.TEACHER),
+    department: z.string().trim().min(2).max(100).optional(),
+  }),
+  z.object({
+    ...registrationBase,
+    role: z.literal(Role.DRIVER),
+    employeeNumber: z.string().trim().min(2).max(64),
+    licenseNumber: z.string().trim().min(2).max(96),
+    licenseExpiresAt: z.coerce.date().refine((date) => date > new Date(), 'Driver license must not be expired'),
+  }),
+]);
 
 export const loginSchema = z.object({
   email: z.string().trim().email().max(254),

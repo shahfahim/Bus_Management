@@ -29,12 +29,31 @@ const include = {
   createdBy: { select: { id: true, name: true } },
 } as const;
 
-const dto = (record: Awaited<ReturnType<typeof prisma.maintenanceRecord.findUniqueOrThrow>>) => ({
+type MaintenanceRecordWithRelations = Prisma.MaintenanceRecordGetPayload<{ include: typeof include }>;
+
+const dto = (record: MaintenanceRecordWithRelations) => ({
   ...record,
   cost: record.cost === null ? null : Number(record.cost),
   reason: record.title,
   startedAt: record.startsAt,
   expectedAvailableAt: record.expectedReturnAt,
+});
+
+export const publicMaintenanceDto = (record: MaintenanceRecordWithRelations) => ({
+  id: record.id,
+  busId: record.busId,
+  bus: record.bus,
+  type: record.type,
+  status: record.status,
+  title: record.title,
+  description: record.description,
+  reason: record.title,
+  startsAt: record.startsAt,
+  startedAt: record.startsAt,
+  expectedReturnAt: record.expectedReturnAt,
+  expectedAvailableAt: record.expectedReturnAt,
+  createdAt: record.createdAt,
+  updatedAt: record.updatedAt,
 });
 
 const allowedTransitions: Record<MaintenanceStatus, MaintenanceStatus[]> = {
@@ -244,14 +263,26 @@ export const listMaintenance = async (rawQuery: MaintenanceQuery, admin = false)
     prisma.maintenanceRecord.findMany({ where, include, ...toPagination(query), orderBy: { startsAt: 'desc' } }),
     prisma.maintenanceRecord.count({ where }),
   ]);
-  const result = paginated(items.map(dto), total, query.page, pageSize);
+  const result = paginated(items.map((item) => (admin ? dto(item) : publicMaintenanceDto(item))), total, query.page, pageSize);
   return { ...result, pagination: { ...result.pagination, totalPages: result.pagination.pages } };
 };
 
-export const getMaintenance = async (id: string) => {
-  const record = await prisma.maintenanceRecord.findUnique({ where: { id }, include });
+export const getMaintenance = async (id: string, admin = false) => {
+  const now = new Date();
+  const record = await prisma.maintenanceRecord.findFirst({
+    where: {
+      id,
+      ...(admin
+        ? {}
+        : {
+            status: { in: [MaintenanceStatus.SCHEDULED, MaintenanceStatus.IN_PROGRESS] },
+            OR: [{ expectedReturnAt: null }, { expectedReturnAt: { gt: now } }],
+          }),
+    },
+    include,
+  });
   if (!record) throw new AppError(404, 'MAINTENANCE_NOT_FOUND', 'Maintenance record not found');
-  return dto(record);
+  return admin ? dto(record) : publicMaintenanceDto(record);
 };
 
 export const createMaintenance = async (

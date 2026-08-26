@@ -52,6 +52,13 @@ const roleNavigation: Record<Role, NavItem[]> = {
     { label: 'Bus passes', to: '/student/subscriptions', icon: ShieldCheck },
     { label: 'Driver ratings', to: '/student/ratings', icon: Star },
   ],
+  TEACHER: [
+    { label: 'Find a bus', to: '/student/routes', icon: RouteIcon },
+    { label: 'My bookings', to: '/student/bookings', icon: BookOpenCheck },
+    { label: 'Payments', to: '/student/payments', icon: WalletCards },
+    { label: 'Bus passes', to: '/student/subscriptions', icon: ShieldCheck },
+    { label: 'Driver ratings', to: '/student/ratings', icon: Star },
+  ],
   DRIVER: [
     { label: 'Assigned trips', to: '/driver/trips', icon: BusFront },
     { label: 'Scan entry QR', to: '/driver/check-in', icon: QrCode },

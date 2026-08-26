@@ -156,7 +156,9 @@ export const createAdminUser = async (input: CreateUser, context: AuditContext) 
         passwordHash,
         emailVerifiedAt: input.status === UserStatus.ACTIVE ? new Date() : undefined,
         studentProfile:
-          input.role === Role.STUDENT ? { create: { studentNumber: input.identifier } } : undefined,
+          input.role === Role.STUDENT || input.role === Role.TEACHER
+            ? { create: { studentNumber: input.identifier } }
+            : undefined,
         driverProfile:
           input.role === Role.DRIVER
             ? {
@@ -215,9 +217,9 @@ export const updateAdminUser = async (id: string, input: UpdateUser, context: Au
       throw new AppError(409, 'USER_ROLE_IMMUTABLE', 'Role changes require a dedicated identity migration and are not supported by this endpoint');
     }
     await protectAdminMutation(tx, before, context, { role: input.role, status: input.status });
-    if (input.identifier && before.role === Role.STUDENT) {
+    if (input.identifier && (before.role === Role.STUDENT || before.role === Role.TEACHER)) {
       await tx.studentProfile.update({ where: { userId: id }, data: { studentNumber: input.identifier } });
-    } else if (before.role === Role.DRIVER && (input.identifier || input.licenseNumber || input.licenseExpiresAt || input.driverStatus)) {
+    } else if (before.role === Role.DRIVER && (input.identifier || input.licenseNumber || input.licenseExpiresAt || input.driverStatus || input.status)) {
       await tx.driverProfile.update({
         where: { userId: id },
         data: {
@@ -235,6 +237,8 @@ export const updateAdminUser = async (id: string, input: UpdateUser, context: Au
         email: input.email?.toLowerCase(),
         phone: input.phone,
         status: input.status,
+        emailVerifiedAt:
+          input.status === UserStatus.ACTIVE && before.status !== UserStatus.ACTIVE ? new Date() : undefined,
         failedLoginAttempts: input.status === UserStatus.ACTIVE ? 0 : undefined,
         lockedUntil: input.status === UserStatus.ACTIVE ? null : undefined,
         sessions:

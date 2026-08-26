@@ -1,4 +1,4 @@
-export type Role = 'STUDENT' | 'DRIVER' | 'CONDUCTOR' | 'ADMIN';
+export type Role = 'STUDENT' | 'TEACHER' | 'DRIVER' | 'CONDUCTOR' | 'ADMIN';
 export type EntityStatus = 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
 export type BookingStatus = 'PENDING' | 'CONFIRMED' | 'CHECKED_IN' | 'CANCELLED' | 'COMPLETED' | 'EXPIRED' | 'REFUND_PENDING' | 'REFUNDED';
 export type PaymentStatus = 'PENDING' | 'PROCESSING' | 'SUCCESS' | 'FAILED' | 'REFUND_PENDING' | 'PARTIALLY_REFUNDED' | 'REFUNDED';
@@ -235,7 +235,12 @@ export interface ApiPage<T> {
 
 export interface AuthResponse {
   user: User;
-  accessToken?: string;
+  expiresIn: number;
+}
+
+export interface RegistrationResponse {
+  user: User;
+  approvalRequired: true;
 }
 
 export interface DashboardSummary {

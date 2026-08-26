@@ -86,11 +86,11 @@ export const createApp = () => {
   );
   app.use(
     helmet({
-      crossOriginResourcePolicy: { policy: 'cross-origin' },
+      crossOriginResourcePolicy: { policy: 'same-origin' },
       contentSecurityPolicy: {
         directives: {
           defaultSrc: ["'self'"],
-          connectSrc: ["'self'", 'https:', 'wss:'],
+          connectSrc: ["'self'"],
           imgSrc: ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org'],
           styleSrc: ["'self'", "'unsafe-inline'"],
           fontSrc: ["'self'", 'data:'],

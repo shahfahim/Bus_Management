@@ -9,6 +9,7 @@ datasource db {
 
 enum Role {
   STUDENT
+  TEACHER
   DRIVER
   CONDUCTOR
   ADMIN

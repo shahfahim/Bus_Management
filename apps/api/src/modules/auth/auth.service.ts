@@ -1,6 +1,6 @@
 import { timingSafeEqual } from 'node:crypto';
 import bcrypt from 'bcryptjs';
-import { Role, UserStatus } from '@prisma/client';
+import { DriverStatus, Role, UserStatus } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import type { Request, Response } from 'express';
 import { env } from '../../config/env.js';
@@ -92,7 +92,7 @@ export const clearAuthCookies = (response: Response): void => {
   response.clearCookie('refresh_token', { path: '/api' });
 };
 
-export const registerStudent = async (input: RegisterInput, request: Request) => {
+export const registerAccount = async (input: RegisterInput, _request: Request) => {
   const email = normalizeEmail(input.email);
   const passwordHash = await bcrypt.hash(input.password, 12);
 
@@ -107,23 +107,41 @@ export const registerStudent = async (input: RegisterInput, request: Request) =>
         passwordChangedAt: new Date(),
         name: input.name,
         phone: input.phone,
-        role: Role.STUDENT,
-        status: UserStatus.ACTIVE,
-        emailVerifiedAt: new Date(),
-        studentProfile: {
-          create: {
-            studentNumber: input.studentId,
-            department: input.department,
-            emergencyContact: input.emergencyContact,
-          },
-        },
+        role: input.role,
+        status: UserStatus.PENDING_VERIFICATION,
+        emailVerifiedAt: null,
+        studentProfile: input.role === Role.STUDENT
+          ? {
+              create: {
+                studentNumber: input.studentId,
+                department: input.department,
+                emergencyContact: input.emergencyContact,
+              },
+            }
+          : input.role === Role.TEACHER
+            ? {
+                create: {
+                  studentNumber: `TEACHER-${randomToken(12)}`,
+                  department: input.department,
+                },
+              }
+            : undefined,
+        driverProfile: input.role === Role.DRIVER
+          ? {
+              create: {
+                employeeNumber: input.employeeNumber,
+                licenseNumber: input.licenseNumber,
+                licenseExpiresAt: input.licenseExpiresAt,
+                status: DriverStatus.INACTIVE,
+              },
+            }
+          : undefined,
       },
       select: publicUserSelect,
     });
   });
 
-  const tokens = await issueSession(user, request);
-  return { user: serializeUser(user), ...tokens };
+  return { user: serializeUser(user), approvalRequired: true as const };
 };
 
 export const login = async (input: LoginInput, request: Request) => {
@@ -131,18 +149,13 @@ export const login = async (input: LoginInput, request: Request) => {
     where: { email: normalizeEmail(input.email) },
     select: { ...publicUserSelect, passwordHash: true, failedLoginAttempts: true, lockedUntil: true },
   });
-  if (user?.lockedUntil && user.lockedUntil > new Date()) {
-    throw new AppError(423, 'ACCOUNT_LOCKED', 'Too many failed attempts; try again later');
-  }
   const valid = await bcrypt.compare(input.password, user?.passwordHash ?? DUMMY_PASSWORD_HASH);
   if (!user || !valid) {
     if (user) {
-      const failedAttempts = user.failedLoginAttempts + 1;
       await prisma.user.update({
         where: { id: user.id },
         data: {
-          failedLoginAttempts: failedAttempts,
-          ...(failedAttempts >= 5 ? { lockedUntil: new Date(Date.now() + 15 * 60_000) } : {}),
+          failedLoginAttempts: Math.min(user.failedLoginAttempts + 1, 1_000_000),
         },
       });
     }

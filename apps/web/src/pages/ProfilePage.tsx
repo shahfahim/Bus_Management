@@ -47,7 +47,7 @@ export function ProfilePage() {
           <Field defaultValue={user.email} disabled label="Email" name="email" type="email" />
           {user.studentId && <Field defaultValue={user.studentId} disabled label="Student ID" name="studentId" />}
           <Field defaultValue={user.phone} label="Phone" name="phone" type="tel" />
-          {user.role === 'STUDENT' && <Field defaultValue={user.department} label="Department" name="department" />}
+          {(user.role === 'STUDENT' || user.role === 'TEACHER') && <Field defaultValue={user.department} label="Department" name="department" />}
           <div className="form-actions"><Button icon={<Save aria-hidden="true" size={17} />} loading={saving} type="submit">Save changes</Button></div>
         </form>
       </Card>

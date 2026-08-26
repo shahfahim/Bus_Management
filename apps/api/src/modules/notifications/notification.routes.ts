@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { env } from '../../config/env.js';
 import { asyncRoute } from '../../lib/async-route.js';
+import { AppError } from '../../lib/errors.js';
 import { paginated, toPagination } from '../../lib/pagination.js';
 import { prisma } from '../../lib/prisma.js';
 import { emitToUser } from '../../realtime/hub.js';
@@ -90,6 +91,13 @@ notificationRouter.get('/push-config', (_request, response) => response.json({ v
 
 const savePushSubscription = asyncRoute(async (request, response) => {
     const input = subscriptionSchema.parse(request.body);
+    const existing = await prisma.pushSubscription.findUnique({
+      where: { endpoint: input.endpoint },
+      select: { userId: true },
+    });
+    if (existing && existing.userId !== request.auth!.userId) {
+      throw new AppError(409, 'PUSH_SUBSCRIPTION_OWNED', 'That push subscription belongs to another account');
+    }
     const subscription = await prisma.pushSubscription.upsert({
       where: { endpoint: input.endpoint },
       create: {
@@ -101,7 +109,6 @@ const savePushSubscription = asyncRoute(async (request, response) => {
         userAgent: request.get('user-agent'),
       },
       update: {
-        userId: request.auth!.userId,
         p256dh: input.keys.p256dh,
         auth: input.keys.auth,
         deviceName: input.deviceName,

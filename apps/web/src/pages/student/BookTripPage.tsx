@@ -15,6 +15,11 @@ interface SeatHold {
   expiresAt: string;
 }
 
+interface SeatResponse {
+  items: Seat[];
+  currentHold?: SeatHold | null;
+}
+
 export function BookTripPage() {
   const { tripId = '' } = useParams();
   const navigate = useNavigate();
@@ -29,6 +34,7 @@ export function BookTripPage() {
   const [subscriptionId, setSubscriptionId] = useState('');
   const [loading, setLoading] = useState(true);
   const [holding, setHolding] = useState(false);
+  const [pendingSeatNumber, setPendingSeatNumber] = useState<string>();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [secondsRemaining, setSecondsRemaining] = useState(0);
@@ -40,12 +46,14 @@ export function BookTripPage() {
     try {
       const [tripResponse, seatsResponse, subscriptionResponse] = await Promise.all([
         api.get<Trip | { data: Trip }>(`/trips/${tripId}`),
-        api.get<unknown>(`/trips/${tripId}/seats`),
+        api.get<SeatResponse | { data: SeatResponse }>(`/trips/${tripId}/seats`),
         api.get<unknown>('/subscriptions?status=ACTIVE'),
       ]);
       const nextTrip = unwrap(tripResponse);
+      const seatState = unwrap(seatsResponse);
       setTrip(nextTrip);
-      setSeats(asItems<Seat>(seatsResponse));
+      setSeats(asItems<Seat>(seatState));
+      setHold(seatState.currentHold ?? undefined);
       setSubscriptions(asItems<StudentSubscription>(subscriptionResponse));
       if (nextTrip.route?.stops?.length) {
         setBoardingStopId((value) => value || nextTrip.boardingStopId || nextTrip.route!.stops[0].id);
@@ -92,6 +100,7 @@ export function BookTripPage() {
   const selectSeat = async (seat: Seat) => {
     if (holding || hold?.seatNumber === seat.number) return;
     setHolding(true);
+    setPendingSeatNumber(seat.number);
     setError('');
     try {
       if (hold) await api.delete(`/trips/${tripId}/seat-holds/${hold.id}`);
@@ -106,6 +115,7 @@ export function BookTripPage() {
       await load();
     } finally {
       setHolding(false);
+      setPendingSeatNumber(undefined);
     }
   };
 
@@ -148,7 +158,7 @@ export function BookTripPage() {
   const orderedStops = trip?.route?.stops ?? [];
   const boardingIndex = orderedStops.findIndex((stop) => stop.id === boardingStopId);
   const destinationOptions = orderedStops.filter((_, index) => index > Math.max(boardingIndex, -1));
-  const selectedSeat = seats.find((seat) => seat.number === hold?.seatNumber);
+  const selectedSeatNumber = pendingSeatNumber ?? hold?.seatNumber;
   const eligibleSubscriptions = subscriptions.filter((subscription) => {
     if (!trip || subscription.status !== 'ACTIVE') return false;
     const routes = subscription.plan.routes.map((item) => ('route' in item ? item.route : item));
@@ -170,7 +180,7 @@ export function BookTripPage() {
         <Card className="seat-card">
           <div className="card-heading"><div><h2>Seat selection</h2><p>Availability changes in real time.</p></div><Pill tone={trip.availableSeats < 6 ? 'warning' : 'positive'}>{trip.availableSeats} left</Pill></div>
           {holding && <div className="seat-loading"><span className="spin-small" /> Securing your seat…</div>}
-          <SeatMap onSelect={(seat) => void selectSeat(seat)} seats={seats} selected={selectedSeat?.number} />
+          <SeatMap onSelect={(seat) => void selectSeat(seat)} seats={seats} selected={selectedSeatNumber} />
         </Card>
         <aside className="booking-summary-stack">
           <Card className="booking-summary">

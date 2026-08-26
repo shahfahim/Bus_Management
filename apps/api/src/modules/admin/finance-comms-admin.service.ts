@@ -228,7 +228,7 @@ const resolveAudience = async (input: CreateNotification): Promise<string[]> => 
   if (input.audience === 'all_students' || input.audience === 'all_drivers') {
     const users = await prisma.user.findMany({
       where: {
-        role: input.audience === 'all_students' ? Role.STUDENT : Role.DRIVER,
+        role: input.audience === 'all_students' ? { in: [Role.STUDENT, Role.TEACHER] } : Role.DRIVER,
         status: UserStatus.ACTIVE,
         deletedAt: null,
       },

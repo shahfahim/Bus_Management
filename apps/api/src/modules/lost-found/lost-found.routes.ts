@@ -2,6 +2,7 @@ import { Role } from '@prisma/client';
 import { Router } from 'express';
 import { z } from 'zod';
 import { asyncRoute } from '../../lib/async-route.js';
+import { uploadRateLimit } from '../../lib/upload-rate-limit.js';
 import { auditContext } from '../admin/audit.service.js';
 import { optionalAuth, requireAuth, requireRole } from '../auth/auth.middleware.js';
 import {
@@ -57,7 +58,8 @@ lostFoundRouter.get(
 lostFoundRouter.post(
   '/',
   requireAuth,
-  requireRole(Role.STUDENT, Role.ADMIN),
+  requireRole(Role.STUDENT, Role.TEACHER, Role.ADMIN),
+  uploadRateLimit,
   lostFoundUpload,
   asyncRoute(async (request, response) => {
     const images = await persistLostFoundUploads(request);
@@ -101,7 +103,7 @@ lostFoundRouter.delete(
 lostFoundRouter.post(
   '/:id/claims',
   requireAuth,
-  requireRole(Role.STUDENT),
+  requireRole(Role.STUDENT, Role.TEACHER),
   asyncRoute(async (request, response) => {
     response.status(201).json(
       await createLostFoundClaim(

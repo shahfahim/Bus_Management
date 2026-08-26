@@ -18,8 +18,9 @@ describe('API client', () => {
     expect(asItems<{ id: string }>({ results: [{ id: 'trip-2' }] })).toEqual([{ id: 'trip-2' }]);
   });
 
-  it('sends credentials and the short-lived bearer token', async () => {
-    setAccessToken('test-access-token');
+  it('uses HttpOnly cookie credentials without exposing a bearer token to JavaScript', async () => {
+    sessionStorage.setItem('uniride.access-token', 'test-access-token');
+    setAccessToken();
     const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
       new Response(JSON.stringify({ ok: true }), { status: 200, headers: { 'Content-Type': 'application/json' } }),
     );
@@ -29,7 +30,8 @@ describe('API client', () => {
     expect(fetchMock).toHaveBeenCalledOnce();
     const [, init] = fetchMock.mock.calls[0];
     expect(init?.credentials).toBe('include');
-    expect(new Headers(init?.headers).get('Authorization')).toBe('Bearer test-access-token');
+    expect(new Headers(init?.headers).get('Authorization')).toBeNull();
+    expect(sessionStorage.getItem('uniride.access-token')).toBeNull();
   });
 
   it('turns service and network failures into actionable messages', () => {

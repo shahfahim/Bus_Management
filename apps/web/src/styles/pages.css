@@ -7,6 +7,9 @@
 .segmented-control { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 20px; padding: 4px; border-radius: 10px; background: #edf2f0; }
 .segmented-control button { min-height: 38px; border-radius: 7px; background: transparent; color: var(--ink-faint); cursor: pointer; font-size: .75rem; font-weight: 750; }
 .segmented-control button[aria-selected="true"] { background: white; color: var(--ink); box-shadow: var(--shadow-sm); }
+.segmented-control--roles { grid-template-columns: repeat(3, 1fr); margin-bottom: 0; }
+.role-picker { min-width: 0; margin: 0; padding: 0; border: 0; }
+.role-picker legend { margin-bottom: 7px; color: var(--ink); font-size: .7rem; font-weight: 750; }
 .auth-form { display: grid; gap: 14px; margin-top: 17px; }
 .password-field { position: relative; }
 .password-toggle { position: absolute; z-index: 2; top: 29px; right: 8px; display: grid; width: 34px; height: 34px; place-items: center; border-radius: 7px; background: transparent; color: var(--ink-faint); cursor: pointer; }

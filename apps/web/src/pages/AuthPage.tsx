@@ -12,9 +12,11 @@ interface LocationState {
 
 export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'register' }) {
   const [mode, setMode] = useState(initialMode);
+  const [registrationRole, setRegistrationRole] = useState<'STUDENT' | 'TEACHER' | 'DRIVER'>('STUDENT');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const { user, loading, login, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -26,6 +28,7 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
     event.preventDefault();
     setSubmitting(true);
     setError('');
+    setNotice('');
     const form = new FormData(event.currentTarget);
     try {
       if (mode === 'login') {
@@ -35,14 +38,39 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
         if (password.length < 10 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
           throw new Error('Use at least 10 characters, including lowercase, uppercase and a number.');
         }
-        await register({
+        const common = {
           name: String(form.get('name')),
           email: String(form.get('email')),
           password,
-          studentId: String(form.get('studentId')),
-          department: String(form.get('department') || ''),
-          phone: String(form.get('phone') || ''),
-        });
+          phone: String(form.get('phone') || '') || undefined,
+        };
+        const registration = await register(
+          registrationRole === 'STUDENT'
+            ? {
+                ...common,
+                role: 'STUDENT',
+                studentId: String(form.get('studentId')),
+                department: String(form.get('department')),
+              }
+            : registrationRole === 'TEACHER'
+              ? {
+                  ...common,
+                  role: 'TEACHER',
+                  department: String(form.get('department') || '') || undefined,
+                }
+              : {
+                  ...common,
+                  role: 'DRIVER',
+                  employeeNumber: String(form.get('employeeNumber')),
+                  licenseNumber: String(form.get('licenseNumber')),
+                  licenseExpiresAt: String(form.get('licenseExpiresAt')),
+                },
+        );
+        if (registration.approvalRequired) {
+          setMode('login');
+          setNotice('Account submitted. A transport administrator must verify and activate it before you can sign in.');
+          return;
+        }
       }
       const state = location.state as LocationState | null;
       navigate(state?.from?.pathname ?? '/dashboard', { replace: true });
@@ -50,7 +78,7 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
       setError(
         errorMessage(
           reason,
-          mode === 'login' ? 'We could not sign you in.' : 'We could not create your student account.',
+          mode === 'login' ? 'We could not sign you in.' : 'We could not create your account.',
         ),
       );
     } finally {
@@ -64,28 +92,62 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
         <Brand />
         <div className="auth-card">
           <div className="auth-card__heading">
-            <p className="eyebrow">{mode === 'login' ? 'Welcome back' : 'Student registration'}</p>
+            <p className="eyebrow">{mode === 'login' ? 'Welcome back' : 'Account registration'}</p>
             <h1>{mode === 'login' ? 'Your campus, on schedule.' : 'Start riding smarter.'}</h1>
-            <p>{mode === 'login' ? 'Sign in to manage trips, seats and live bus updates.' : 'Create your verified student transport account.'}</p>
+            <p>{mode === 'login' ? 'Sign in to manage trips, seats and live bus updates.' : 'Register with any valid email. A transport administrator will review your account.'}</p>
           </div>
           <div aria-label="Authentication mode" className="segmented-control" role="tablist">
-            <button aria-selected={mode === 'login'} onClick={() => { setMode('login'); setError(''); }} role="tab" type="button">Sign in</button>
-            <button aria-selected={mode === 'register'} onClick={() => { setMode('register'); setError(''); }} role="tab" type="button">Register</button>
+            <button aria-selected={mode === 'login'} onClick={() => { setMode('login'); setError(''); setNotice(''); }} role="tab" type="button">Sign in</button>
+            <button aria-selected={mode === 'register'} onClick={() => { setMode('register'); setError(''); setNotice(''); }} role="tab" type="button">Register</button>
           </div>
           {error && <InlineAlert>{error}</InlineAlert>}
+          {notice && <InlineAlert tone="success">{notice}</InlineAlert>}
           <form className="auth-form" onSubmit={handleSubmit}>
             {mode === 'register' && (
-              <div className="form-grid">
+              <>
+                <fieldset className="role-picker">
+                  <legend>Register as</legend>
+                  <div aria-label="Account role" className="segmented-control segmented-control--roles" role="radiogroup">
+                    {(['STUDENT', 'TEACHER', 'DRIVER'] as const).map((role) => (
+                      <button
+                        aria-checked={registrationRole === role}
+                        aria-selected={registrationRole === role}
+                        key={role}
+                        onClick={() => { setRegistrationRole(role); setError(''); }}
+                        role="radio"
+                        type="button"
+                      >
+                        {role[0]}{role.slice(1).toLowerCase()}
+                      </button>
+                    ))}
+                  </div>
+                </fieldset>
                 <Field autoComplete="name" icon={<UserRound aria-hidden="true" size={18} />} label="Full name" name="name" placeholder="Your full name" required />
-                <Field autoComplete="off" label="Student ID" name="studentId" placeholder="e.g. 2026-00123" required />
-              </div>
+              </>
             )}
-            <Field autoComplete="email" icon={<Mail aria-hidden="true" size={18} />} label="University email" name="email" placeholder="name@university.edu" required type="email" />
+            <Field autoComplete="email" icon={<Mail aria-hidden="true" size={18} />} label="Email address" name="email" placeholder="name@example.com" required type="email" />
             {mode === 'register' && (
-              <div className="form-grid">
-                <Field label="Department" name="department" placeholder="Computer Science" required />
-                <Field autoComplete="tel" label="Phone" name="phone" placeholder="+880 …" type="tel" />
-              </div>
+              <>
+                {registrationRole === 'STUDENT' && (
+                  <div className="form-grid">
+                    <Field autoComplete="off" label="Student ID" name="studentId" placeholder="e.g. 2026-00123" required />
+                    <Field label="Department" name="department" placeholder="Computer Science" required />
+                  </div>
+                )}
+                {registrationRole === 'TEACHER' && (
+                  <Field label="Department (optional)" name="department" placeholder="Computer Science" />
+                )}
+                {registrationRole === 'DRIVER' && (
+                  <>
+                    <div className="form-grid">
+                      <Field autoComplete="off" label="Employee ID" name="employeeNumber" placeholder="e.g. DRV-104" required />
+                      <Field autoComplete="off" label="License number" name="licenseNumber" placeholder="Driver license number" required />
+                    </div>
+                    <Field label="License expiry date" min={new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)} name="licenseExpiresAt" required type="date" />
+                  </>
+                )}
+                <Field autoComplete="tel" label="Phone (optional)" name="phone" placeholder="+880 …" type="tel" />
+              </>
             )}
             <div className="password-field">
               <Field
@@ -103,7 +165,7 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
               </button>
             </div>
             <Button className="auth-submit" loading={submitting} size="lg" type="submit">
-              {mode === 'login' ? 'Sign in securely' : 'Create student account'}
+              {mode === 'login' ? 'Sign in securely' : `Create ${registrationRole.toLowerCase()} account`}
             </Button>
           </form>
           <p className="auth-security"><ShieldCheck aria-hidden="true" size={16} /> Protected by encrypted authentication and role-based access.</p>

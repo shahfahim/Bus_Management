@@ -56,6 +56,13 @@ const dto = (alert: AlertWithRelations) => {
   };
 };
 
+export const publicRoadAlertDto = (alert: AlertWithRelations) => {
+  const { createdBy: _createdBy, createdById: _createdById, ...publicAlert } = dto(alert);
+  void _createdBy;
+  void _createdById;
+  return publicAlert;
+};
+
 const validateRoutes = async (tx: Prisma.TransactionClient, routeIds: string[]): Promise<void> => {
   const count = await tx.route.count({ where: { id: { in: routeIds } } });
   if (count !== routeIds.length) throw new AppError(404, 'ROUTE_NOT_FOUND', 'One or more affected routes do not exist');
@@ -145,7 +152,7 @@ export const listRoadAlerts = async (rawQuery: RoadAlertQuery, admin = false) =>
     prisma.roadAlert.findMany({ where, include, ...toPagination(query), orderBy: [{ severity: 'desc' }, { startsAt: 'desc' }] }),
     prisma.roadAlert.count({ where }),
   ]);
-  const result = paginated(items.map(dto), total, query.page, pageSize);
+  const result = paginated(items.map((item) => (admin ? dto(item) : publicRoadAlertDto(item))), total, query.page, pageSize);
   return { ...result, pagination: { ...result.pagination, totalPages: result.pagination.pages } };
 };
 
@@ -154,7 +161,7 @@ export const getRoadAlert = async (id: string, admin = false) => {
   if (!alert) throw new AppError(404, 'ROAD_ALERT_NOT_FOUND', 'Road alert not found');
   const value = dto(alert);
   if (!admin && !value.active) throw new AppError(404, 'ROAD_ALERT_NOT_FOUND', 'Road alert not found');
-  return value;
+  return admin ? value : publicRoadAlertDto(alert);
 };
 
 export const createRoadAlert = async (input: CreateRoadAlertInput, context: AuditContext) => {

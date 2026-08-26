@@ -1,26 +1,28 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ApiError, api, setAccessToken, unwrap } from '../lib/api';
-import type { AuthResponse, User } from '../types';
+import type { AuthResponse, RegistrationResponse, User } from '../types';
 
 interface LoginInput {
   email: string;
   password: string;
 }
 
-interface RegisterInput {
+type RegisterInput = {
   name: string;
   email: string;
   password: string;
-  studentId: string;
-  department: string;
   phone?: string;
-}
+} & (
+  | { role: 'STUDENT'; studentId: string; department: string }
+  | { role: 'TEACHER'; department?: string }
+  | { role: 'DRIVER'; employeeNumber: string; licenseNumber: string; licenseExpiresAt: string }
+);
 
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (input: LoginInput) => Promise<User>;
-  register: (input: RegisterInput) => Promise<User>;
+  register: (input: RegisterInput) => Promise<RegistrationResponse>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
   updateUser: (user: User) => void;
@@ -61,20 +63,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = useCallback(async (input: LoginInput) => {
     const payload = await api.post<AuthResponse | { data: AuthResponse }>('/auth/login', input);
     const auth = normalizeAuth(payload);
-    setAccessToken(auth.accessToken);
+    setAccessToken();
     setUser(auth.user);
     return auth.user;
   }, []);
 
   const register = useCallback(async (input: RegisterInput) => {
-    const payload = await api.post<AuthResponse | { data: AuthResponse }>('/auth/register', {
-      ...input,
-      role: 'STUDENT',
-    });
-    const auth = normalizeAuth(payload);
-    setAccessToken(auth.accessToken);
-    setUser(auth.user);
-    return auth.user;
+    const payload = await api.post<RegistrationResponse | { data: RegistrationResponse }>('/auth/register', input);
+    const auth = unwrap(payload);
+    setAccessToken();
+    return auth;
   }, []);
 
   const logout = useCallback(async () => {

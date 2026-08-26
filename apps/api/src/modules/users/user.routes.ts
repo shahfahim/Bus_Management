@@ -24,7 +24,7 @@ userRouter.patch(
         where: { id: request.auth!.userId },
         data: { name: input.name, phone: input.phone || null },
       });
-      if (request.auth!.role === 'STUDENT' && input.department) {
+      if ((request.auth!.role === 'STUDENT' || request.auth!.role === 'TEACHER') && input.department) {
         await tx.studentProfile.update({ where: { userId: request.auth!.userId }, data: { department: input.department } });
       }
       await tx.auditLog.create({

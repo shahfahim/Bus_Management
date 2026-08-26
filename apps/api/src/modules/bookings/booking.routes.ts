@@ -12,7 +12,7 @@ bookingRouter.use(requireAuth);
 
 bookingRouter.get(
   '/',
-  requireRole(Role.STUDENT),
+  requireRole(Role.STUDENT, Role.TEACHER),
   asyncRoute(async (request, response) => {
     response.json(await listBookings(request.auth!.userId, bookingListSchema.parse(request.query)));
   }),
@@ -20,7 +20,7 @@ bookingRouter.get(
 
 bookingRouter.post(
   '/',
-  requireRole(Role.STUDENT),
+  requireRole(Role.STUDENT, Role.TEACHER),
   asyncRoute(async (request, response) => {
     const key = request.get('idempotency-key')?.trim();
     if (key && (key.length < 8 || key.length > 128)) {
@@ -50,9 +50,11 @@ bookingRouter.get(
   }),
 );
 
-const cancellationSchema = z.object({ reason: z.string().trim().min(3).max(500).default('Cancelled by student') });
+const cancellationSchema = z.object({ reason: z.string().trim().min(3).max(500).default('Cancelled by rider') });
 const cancelHandler = asyncRoute(async (request, response) => {
-  if (request.auth!.role !== Role.STUDENT) throw new AppError(403, 'FORBIDDEN', 'Only a student may cancel this booking');
+  if (request.auth!.role !== Role.STUDENT && request.auth!.role !== Role.TEACHER) {
+    throw new AppError(403, 'FORBIDDEN', 'Only the rider may cancel this booking');
+  }
   const { reason } = cancellationSchema.parse(request.body ?? {});
   response.json(await cancelBooking({ bookingId: z.string().uuid().parse(request.params.id), studentId: request.auth!.userId, reason }));
 });

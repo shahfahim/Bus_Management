@@ -7,7 +7,7 @@ import { scanQrSchema } from './qr.schemas.js';
 import { getBookingQr, rotateBookingQr, scanBookingQr } from './qr.service.js';
 
 export const bookingQrRouter = Router();
-bookingQrRouter.use(requireAuth, requireRole(Role.STUDENT));
+bookingQrRouter.use(requireAuth, requireRole(Role.STUDENT, Role.TEACHER));
 bookingQrRouter.get(
   '/:id/qr',
   asyncRoute(async (request, response) => {

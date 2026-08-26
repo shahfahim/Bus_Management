@@ -47,13 +47,13 @@ export default function App() {
           <Route element={<NotificationsPage />} path="notifications" />
           <Route element={<LostFoundPage />} path="lost-found" />
 
-          <Route element={<RoleGuard roles={['STUDENT']}><RoutesPage /></RoleGuard>} path="student/routes" />
-          <Route element={<RoleGuard roles={['STUDENT']}><BookTripPage /></RoleGuard>} path="student/trips/:tripId/book" />
-          <Route element={<RoleGuard roles={['STUDENT']}><BookingsPage /></RoleGuard>} path="student/bookings" />
-          <Route element={<RoleGuard roles={['STUDENT']}><BookingDetailPage /></RoleGuard>} path="student/bookings/:bookingId" />
-          <Route element={<RoleGuard roles={['STUDENT']}><PaymentsPage /></RoleGuard>} path="student/payments" />
-          <Route element={<RoleGuard roles={['STUDENT']}><SubscriptionsPage /></RoleGuard>} path="student/subscriptions" />
-          <Route element={<RoleGuard roles={['STUDENT']}><RatingsPage /></RoleGuard>} path="student/ratings" />
+          <Route element={<RoleGuard roles={['STUDENT', 'TEACHER']}><RoutesPage /></RoleGuard>} path="student/routes" />
+          <Route element={<RoleGuard roles={['STUDENT', 'TEACHER']}><BookTripPage /></RoleGuard>} path="student/trips/:tripId/book" />
+          <Route element={<RoleGuard roles={['STUDENT', 'TEACHER']}><BookingsPage /></RoleGuard>} path="student/bookings" />
+          <Route element={<RoleGuard roles={['STUDENT', 'TEACHER']}><BookingDetailPage /></RoleGuard>} path="student/bookings/:bookingId" />
+          <Route element={<RoleGuard roles={['STUDENT', 'TEACHER']}><PaymentsPage /></RoleGuard>} path="student/payments" />
+          <Route element={<RoleGuard roles={['STUDENT', 'TEACHER']}><SubscriptionsPage /></RoleGuard>} path="student/subscriptions" />
+          <Route element={<RoleGuard roles={['STUDENT', 'TEACHER']}><RatingsPage /></RoleGuard>} path="student/ratings" />
 
           <Route element={<RoleGuard roles={['DRIVER', 'CONDUCTOR']}><DriverTripsPage /></RoleGuard>} path="driver/trips" />
           <Route element={<RoleGuard roles={['DRIVER', 'CONDUCTOR']}><DriverTripDetailPage /></RoleGuard>} path="driver/trips/:tripId" />

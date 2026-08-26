@@ -25,7 +25,8 @@ maintenanceRouter.get(
 );
 maintenanceRouter.get(
   '/:id',
-  asyncRoute(async (request, response) => response.json(await getMaintenance(z.string().uuid().parse(request.params.id)))),
+  asyncRoute(async (request, response) =>
+    response.json(await getMaintenance(z.string().uuid().parse(request.params.id), request.auth?.role === Role.ADMIN))),
 );
 maintenanceRouter.post(
   '/',

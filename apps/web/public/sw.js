@@ -13,7 +13,10 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  const target = new URL(event.notification.data?.url || '/notifications', self.location.origin).href;
+  const requestedTarget = new URL(event.notification.data?.url || '/notifications', self.location.origin);
+  const target = requestedTarget.origin === self.location.origin
+    ? requestedTarget.href
+    : new URL('/notifications', self.location.origin).href;
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((windows) => {
       const existing = windows.find((client) => client.url === target);

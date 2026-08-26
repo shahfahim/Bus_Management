@@ -315,7 +315,9 @@ export const getTripSeats = async (tripId: string, userId?: string) => {
       bus: { include: { seats: { orderBy: [{ rowNumber: 'asc' }, { seatNumber: 'asc' }] } } },
       seatAllocations: {
         where: activeAllocationWhere(now),
-        include: { booking: { select: { studentId: true } } },
+        include: {
+          booking: { select: { id: true, studentId: true, status: true, holdExpiresAt: true } },
+        },
       },
     },
   });
@@ -324,6 +326,14 @@ export const getTripSeats = async (tripId: string, userId?: string) => {
   const seats = trip.bus.seats.map((seat) => {
     const allocation = allocations.get(seat.id);
     const held = allocation?.status === SeatAllocationStatus.HELD;
+    const recoverableByCurrentUser = Boolean(
+      held &&
+      userId &&
+      allocation?.booking.studentId === userId &&
+      allocation.booking.status === BookingStatus.HELD &&
+      allocation.booking.holdExpiresAt &&
+      allocation.booking.holdExpiresAt > now,
+    );
     return {
       id: seat.id,
       number: seat.seatNumber,
@@ -338,13 +348,32 @@ export const getTripSeats = async (tripId: string, userId?: string) => {
               ? 'HELD'
               : 'BOOKED'
             : 'AVAILABLE',
-      heldByCurrentUser: Boolean(userId && allocation?.booking.studentId === userId),
+      heldByCurrentUser: recoverableByCurrentUser,
     };
   });
+  const currentAllocation = trip.seatAllocations.find(
+    (allocation) =>
+      allocation.status === SeatAllocationStatus.HELD &&
+      allocation.booking.studentId === userId &&
+      allocation.booking.status === BookingStatus.HELD &&
+      allocation.booking.holdExpiresAt &&
+      allocation.booking.holdExpiresAt > now,
+  );
+  const currentSeat = currentAllocation
+    ? trip.bus.seats.find((seat) => seat.id === currentAllocation.seatId)
+    : undefined;
   return {
     tripId,
     items: seats,
     seats,
+    currentHold:
+      currentAllocation && currentSeat && currentAllocation.booking.holdExpiresAt
+        ? {
+            id: currentAllocation.booking.id,
+            seatNumber: currentSeat.seatNumber,
+            expiresAt: currentAllocation.booking.holdExpiresAt,
+          }
+        : null,
     updatedAt: new Date(),
   };
 };

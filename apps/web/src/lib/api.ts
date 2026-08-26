@@ -18,14 +18,15 @@ export class ApiError extends Error {
   }
 }
 
-export function getAccessToken() {
-  return sessionStorage.getItem(ACCESS_TOKEN_KEY);
+export function setAccessToken() {
+  // Remove tokens left by older releases. Authentication now uses HttpOnly cookies
+  // so JavaScript cannot read or exfiltrate session credentials.
+  sessionStorage.removeItem(ACCESS_TOKEN_KEY);
 }
 
-export function setAccessToken(token?: string) {
-  if (token) sessionStorage.setItem(ACCESS_TOKEN_KEY, token);
-  else sessionStorage.removeItem(ACCESS_TOKEN_KEY);
-}
+// Apply the migration immediately, including for users whose cookie session is
+// already valid and therefore would not pass through a login or refresh form.
+if (typeof sessionStorage !== 'undefined') setAccessToken();
 
 export function withQuery(path: string, query: Record<string, QueryValue>) {
   const params = new URLSearchParams();
@@ -42,8 +43,6 @@ export function withQuery(path: string, query: Record<string, QueryValue>) {
 function createHeaders(body?: unknown, extraHeaders?: HeadersInit) {
   const headers = new Headers(extraHeaders);
   headers.set('Accept', 'application/json');
-  const token = getAccessToken();
-  if (token) headers.set('Authorization', `Bearer ${token}`);
   if (body !== undefined && !(body instanceof FormData)) headers.set('Content-Type', 'application/json');
   return headers;
 }
@@ -66,8 +65,6 @@ async function refreshSession() {
     })
       .then(async (response) => {
         if (!response.ok) return false;
-        const body = (await parseResponse(response)) as { accessToken?: string; data?: { accessToken?: string } } | undefined;
-        setAccessToken(body?.accessToken ?? body?.data?.accessToken);
         return true;
       })
       .catch(() => false)

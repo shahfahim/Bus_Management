@@ -17,7 +17,7 @@ export const ratingRouter = Router();
 ratingRouter.use(requireAuth);
 ratingRouter.get(
   '/mine',
-  requireRole(Role.STUDENT),
+  requireRole(Role.STUDENT, Role.TEACHER),
   asyncRoute(async (request, response) => {
     response.json(await listRatings(ratingQuerySchema.parse(request.query), { studentId: request.auth!.userId }));
   }),
@@ -38,14 +38,14 @@ ratingRouter.get(
 );
 ratingRouter.post(
   '/',
-  requireRole(Role.STUDENT),
+  requireRole(Role.STUDENT, Role.TEACHER),
   asyncRoute(async (request, response) => {
     response.status(201).json(await createRating(request.auth!.userId, createRatingSchema.parse(request.body)));
   }),
 );
 ratingRouter.patch(
   '/:id',
-  requireRole(Role.STUDENT),
+  requireRole(Role.STUDENT, Role.TEACHER),
   asyncRoute(async (request, response) => {
     response.json(
       await updateOwnRating(
@@ -58,7 +58,7 @@ ratingRouter.patch(
 );
 ratingRouter.delete(
   '/:id',
-  requireRole(Role.STUDENT),
+  requireRole(Role.STUDENT, Role.TEACHER),
   asyncRoute(async (request, response) => {
     await deleteOwnRating(z.string().uuid().parse(request.params.id), request.auth!.userId);
     response.status(204).end();

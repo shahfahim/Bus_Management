@@ -34,7 +34,7 @@ catalogRouter.get(
 catalogRouter.post(
   '/trips/:id/seat-holds',
   requireAuth,
-  requireRole(Role.STUDENT),
+  requireRole(Role.STUDENT, Role.TEACHER),
   asyncRoute(async (request, response) => {
     const tripId = z.string().uuid().parse(request.params.id);
     const { seatNumber } = createSeatHoldSchema.parse(request.body);
@@ -44,7 +44,7 @@ catalogRouter.post(
 catalogRouter.delete(
   '/trips/:id/seat-holds/:holdId',
   requireAuth,
-  requireRole(Role.STUDENT),
+  requireRole(Role.STUDENT, Role.TEACHER),
   asyncRoute(async (request, response) => {
     response.json(
       await releaseSeatHold(
