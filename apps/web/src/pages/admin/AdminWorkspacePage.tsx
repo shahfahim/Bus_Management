@@ -129,6 +129,14 @@ const STATUS_OPTIONS: SelectOption[] = [
   { label: 'Inactive', value: 'inactive' },
 ]
 
+const USER_STATUS_OPTIONS: SelectOption[] = [
+  { label: 'Pending verification', value: 'pending_verification' },
+  { label: 'Active', value: 'active' },
+  { label: 'Suspended', value: 'suspended' },
+  { label: 'Locked', value: 'locked' },
+  { label: 'Inactive', value: 'inactive' },
+]
+
 const TRIP_STATUS_OPTIONS: SelectOption[] = [
   { label: 'Scheduled', value: 'scheduled' },
   { label: 'Boarding', value: 'boarding' },
@@ -295,19 +303,22 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
     fields: [
       { name: 'name', label: 'Full name', kind: 'text', required: true },
       { name: 'email', label: 'Email address', kind: 'email', required: true },
-      { name: 'phone', label: 'Phone number', kind: 'tel', required: true },
+      { name: 'phone', label: 'Phone number (optional)', kind: 'tel' },
       { name: 'role', label: 'Role', kind: 'select', required: true, options: [{ label: 'Student', value: 'student' }, { label: 'Teacher', value: 'teacher' }, { label: 'Driver', value: 'driver' }, { label: 'Conductor', value: 'conductor' }, { label: 'Administrator', value: 'admin' }] },
       { name: 'identifier', label: 'Student / staff / employee ID', kind: 'text', required: true },
       { name: 'licenseNumber', label: 'Driver license number', kind: 'text', required: true, createOnly: true, visibleWhen: { field: 'role', value: 'driver' } },
       { name: 'licenseExpiresAt', label: 'Driver license expiry', kind: 'date', required: true, createOnly: true, visibleWhen: { field: 'role', value: 'driver' } },
-      { name: 'status', label: 'Account status', kind: 'select', required: true, options: [...STATUS_OPTIONS, { label: 'Suspended', value: 'suspended' }] },
+      { name: 'status', label: 'Account status', kind: 'select', required: true, options: USER_STATUS_OPTIONS },
       { name: 'temporaryPassword', label: 'Temporary password', kind: 'password', required: true, createOnly: true, min: 12, help: 'Use at least 12 characters. The user must change it at first sign-in.' },
     ],
     filters: [
       { name: 'role', label: 'All roles', options: [{ label: 'Students', value: 'student' }, { label: 'Teachers', value: 'teacher' }, { label: 'Drivers', value: 'driver' }, { label: 'Conductors', value: 'conductor' }, { label: 'Administrators', value: 'admin' }] },
-      { name: 'status', label: 'All statuses', options: [...STATUS_OPTIONS, { label: 'Suspended', value: 'suspended' }] },
+      { name: 'status', label: 'All statuses', options: USER_STATUS_OPTIONS },
     ],
-    actions: [{ id: 'suspend', label: 'Suspend', tone: 'danger', visible: (row) => valueMatches(row.status, 'active') }],
+    actions: [
+      { id: 'approve', label: 'Verify & activate', tone: 'success', visible: (row) => valueMatches(row.status, 'pending', 'pending_verification') },
+      { id: 'suspend', label: 'Suspend', tone: 'danger', visible: (row) => valueMatches(row.status, 'active') },
+    ],
   },
   bookings: {
     id: 'bookings',
@@ -1077,6 +1088,7 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
       refund: 'Issue a refund for this payment? The payment gateway will be contacted and the action cannot be reversed here.',
       revoke: 'Revoke this check-in? The passenger entry will remain in the audit trail.',
       cancel: `Cancel this ${config.singular}? Affected users will be notified.`,
+      approve: 'Verify and activate this account? The user will be allowed to sign in immediately.',
       suspend: 'Suspend this user account? They will be signed out and unable to sign in.',
       hide: 'Hide this rating comment from public views?',
       dismiss: 'Dismiss this incident? A reason will be recorded and the report will be closed.',
@@ -1090,7 +1102,7 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
       else if (action.id === 'revoke') await api.post(`${config.endpoint}/${encodedId}/revoke`, {})
       else if (action.id === 'resend') await api.post(`${config.endpoint}/${encodedId}/resend`, { failedOnly: true })
       else {
-        const statusByAction: Record<string, string> = { delay: 'delayed', suspend: 'suspended', complete: 'completed', resolve: 'resolved', verify: 'verified', hide: 'hidden', acknowledge: 'acknowledged', dismiss: 'dismissed' }
+        const statusByAction: Record<string, string> = { approve: 'active', delay: 'delayed', suspend: 'suspended', complete: 'completed', resolve: 'resolved', verify: 'verified', hide: 'hidden', acknowledge: 'acknowledged', dismiss: 'dismissed' }
         const payload: Record<string, unknown> = { status: statusByAction[action.id] }
         if (config.id === 'incidents' && (action.id === 'resolve' || action.id === 'dismiss')) {
           const notes = window.prompt(`Enter ${action.id === 'resolve' ? 'resolution' : 'dismissal'} notes.`)
