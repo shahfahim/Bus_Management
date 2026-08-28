@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { createDriverTripSchema } from './tracking.schemas.js';
+import { TripStatus } from '@prisma/client';
+import { createDriverTripSchema, driverTripQuerySchema } from './tracking.schemas.js';
 
 const validTrip = {
   busId: '00000000-0000-4000-8000-000000000001',
@@ -27,5 +28,22 @@ describe('driver custom trip validation', () => {
       ...validTrip,
       scheduledEnd: new Date(Date.now() + 26 * 60 * 60_000).toISOString(),
     })).toThrow();
+  });
+});
+
+describe('driver trip filters', () => {
+  it('accepts the service date and active flag used by the driver panel', () => {
+    expect(driverTripQuerySchema.parse({ date: '2026-08-28', active: 'true' })).toMatchObject({
+      date: '2026-08-28',
+      active: true,
+      page: 1,
+      pageSize: 20,
+    });
+    expect(driverTripQuerySchema.parse({ status: 'DELAYED' }).status).toBe(TripStatus.DELAYED);
+  });
+
+  it('rejects malformed dates and boolean filters', () => {
+    expect(() => driverTripQuerySchema.parse({ date: '28-08-2026' })).toThrow();
+    expect(() => driverTripQuerySchema.parse({ active: 'yes' })).toThrow();
   });
 });

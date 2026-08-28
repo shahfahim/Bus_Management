@@ -7,6 +7,9 @@ import { errorHandler } from '../../lib/errors.js';
 const mocks = vi.hoisted(() => ({
   findSubscription: vi.fn(),
   upsertSubscription: vi.fn(),
+  findNotification: vi.fn(),
+  updateNotification: vi.fn(),
+  emitToUser: vi.fn(),
 }));
 
 vi.mock('../../lib/prisma.js', () => ({
@@ -14,6 +17,10 @@ vi.mock('../../lib/prisma.js', () => ({
     pushSubscription: {
       findUnique: mocks.findSubscription,
       upsert: mocks.upsertSubscription,
+    },
+    notification: {
+      findFirst: mocks.findNotification,
+      update: mocks.updateNotification,
     },
   },
 }));
@@ -25,7 +32,7 @@ vi.mock('../auth/auth.middleware.js', () => ({
   },
 }));
 
-vi.mock('../../realtime/hub.js', () => ({ emitToUser: vi.fn() }));
+vi.mock('../../realtime/hub.js', () => ({ emitToUser: mocks.emitToUser }));
 
 import { notificationRouter } from './notification.routes.js';
 
@@ -37,7 +44,7 @@ const createTestApp = () => {
   return app;
 };
 
-describe('push subscription ownership', () => {
+describe('notification routes', () => {
   beforeEach(() => vi.clearAllMocks());
 
   it('refuses to reassign another account\'s push endpoint', async () => {
@@ -54,5 +61,23 @@ describe('push subscription ownership', () => {
     const body = response.body as unknown as { error: { code: string } };
     expect(body.error.code).toBe('PUSH_SUBSCRIPTION_OWNED');
     expect(mocks.upsertSubscription).not.toHaveBeenCalled();
+  });
+
+  it('broadcasts an exact unread-count change when one notification is read', async () => {
+    const id = '00000000-0000-4000-8000-000000000001';
+    const notification = {
+      id,
+      userId: 'current-user',
+      title: 'Trip update',
+      body: 'Your bus is boarding.',
+      readAt: null,
+      createdAt: new Date(),
+    };
+    mocks.findNotification.mockResolvedValue(notification);
+    mocks.updateNotification.mockResolvedValue({ ...notification, readAt: new Date() });
+
+    await request(createTestApp()).patch(`/notifications/${id}/read`).send({}).expect(200);
+
+    expect(mocks.emitToUser).toHaveBeenCalledWith('current-user', 'notifications:read', { all: false, updated: 1 });
   });
 });

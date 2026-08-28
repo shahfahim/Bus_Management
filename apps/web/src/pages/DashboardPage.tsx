@@ -170,7 +170,7 @@ function QuickActions({ role }: { role: 'STUDENT' | 'DRIVER' | 'ADMIN' }) {
 function AlertsPanel({ alerts }: { alerts: RoadAlert[] }) {
   if (!alerts.length) return null;
   return (
-    <section><div className="section-heading"><div><p className="eyebrow">Network status</p><h2>Active road updates</h2></div></div><div className="alert-list">{alerts.map((alert) => <Card className="road-alert-card" key={alert.id}><span className={`alert-icon alert-icon--${alert.severity.toLowerCase()}`}><AlertTriangle aria-hidden="true" /></span><div><div className="road-alert-card__title"><h3>{alert.title}</h3><Pill tone={alert.severity === 'HIGH' || alert.severity === 'CRITICAL' ? 'danger' : 'warning'}>{alert.category}</Pill></div><p>{alert.description}</p><small>{alert.route?.name ?? 'Network-wide'} · active until {alert.activeUntil ? formatDateTime(alert.activeUntil) : 'further notice'}</small></div></Card>)}</div></section>
+    <section><div className="section-heading"><div><p className="eyebrow">Network status</p><h2>Active road updates</h2></div></div><div className="alert-list">{alerts.map((alert) => <Card className="road-alert-card" key={alert.id}><span className={`alert-icon alert-icon--${alert.severity.toLowerCase()}`}><AlertTriangle aria-hidden="true" /></span><div><div className="road-alert-card__title"><h3>{alert.title}</h3><Pill tone={['HIGH', 'MAJOR', 'CRITICAL'].includes(alert.severity) ? 'danger' : 'warning'}>{alert.category}</Pill></div><p>{alert.description}</p><small>{alert.route?.name ?? 'Network-wide'} · active until {alert.activeUntil ? formatDateTime(alert.activeUntil) : 'further notice'}</small></div></Card>)}</div></section>
   );
 }
 

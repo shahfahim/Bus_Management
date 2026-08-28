@@ -103,7 +103,6 @@ export function BookTripPage() {
     setPendingSeatNumber(seat.number);
     setError('');
     try {
-      if (hold) await api.delete(`/trips/${tripId}/seat-holds/${hold.id}`);
       const response = await api.post<SeatHold | { data: SeatHold }>(`/trips/${tripId}/seat-holds`, { seatNumber: seat.number });
       const nextHold = unwrap(response);
       bookingAttemptKey.current = crypto.randomUUID();

@@ -178,6 +178,7 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
   const held = await withSerializableRetry(() =>
     prisma.$transaction(
       async (tx) => {
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'seat-hold:' + studentId + ':' + tripId}))`;
         await expireStaleHolds(tx, tripId);
         const trip = await tx.trip.findUnique({
           where: { id: tripId },
@@ -206,9 +207,28 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
         if (!seat) throw new AppError(409, 'SEAT_UNAVAILABLE', 'The selected seat is unavailable');
         const existing = await tx.booking.findFirst({
           where: { studentId, tripId, status: { in: [...activeBookingStatuses] } },
-          select: { id: true },
+          include: { seatAllocations: { where: { status: SeatAllocationStatus.HELD }, include: { seat: true } } },
         });
-        if (existing) throw new AppError(409, 'DUPLICATE_BOOKING', 'You already have an active booking or hold for this trip');
+        if (existing && existing.status !== BookingStatus.HELD) {
+          throw new AppError(409, 'DUPLICATE_BOOKING', 'You already have an active booking for this trip');
+        }
+        const previousSeatNumber = existing?.seatAllocations[0]?.seat.seatNumber;
+        if (existing) {
+          const releasedAt = new Date();
+          await tx.booking.update({
+            where: { id: existing.id },
+            data: {
+              status: BookingStatus.CANCELLED,
+              cancelledAt: releasedAt,
+              cancellationReason: 'Seat hold replaced',
+              version: { increment: 1 },
+            },
+          });
+          await tx.seatAllocation.updateMany({
+            where: { bookingId: existing.id, status: SeatAllocationStatus.HELD },
+            data: { status: SeatAllocationStatus.RELEASED, releasedAt, releaseReason: 'Seat hold replaced' },
+          });
+        }
         const expiresAt = new Date(Date.now() + env.BOOKING_HOLD_MINUTES * 60_000);
         const booking = await tx.booking.create({
           data: {
@@ -226,17 +246,24 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
         await tx.seatAllocation.create({
           data: { bookingId: booking.id, tripId, seatId: seat.id, status: SeatAllocationStatus.HELD },
         });
-        return { id: booking.id, seatNumber: seat.seatNumber, expiresAt };
+        return { id: booking.id, seatNumber: seat.seatNumber, expiresAt, previousSeatNumber };
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
     ),
   );
+  if (held.previousSeatNumber && held.previousSeatNumber !== held.seatNumber) {
+    emitToTrip(tripId, 'trip:seats', {
+      tripId,
+      seat: { number: held.previousSeatNumber, status: 'AVAILABLE' },
+      changedAt: new Date(),
+    });
+  }
   emitToTrip(tripId, 'trip:seats', {
     tripId,
     seat: { number: held.seatNumber, status: 'HELD', heldByCurrentUser: true },
     changedAt: new Date(),
   });
-  return held;
+  return { id: held.id, seatNumber: held.seatNumber, expiresAt: held.expiresAt };
 };
 
 export const releaseSeatHold = async (tripId: string, holdId: string, studentId: string) => {

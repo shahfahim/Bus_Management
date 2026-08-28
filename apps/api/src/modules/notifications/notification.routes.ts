@@ -64,6 +64,9 @@ notificationRouter.patch(
     const updated = notification.readAt
       ? notification
       : await prisma.notification.update({ where: { id }, data: { readAt: new Date() } });
+    if (!notification.readAt) {
+      emitToUser(request.auth!.userId, 'notifications:read', { all: false, updated: 1 });
+    }
     response.json({ ...updated, message: updated.body });
   }),
 );

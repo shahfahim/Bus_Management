@@ -228,7 +228,10 @@ export const createUserSchema = z
   .object({
     name: z.string().trim().min(2).max(160),
     email: z.string().trim().email().max(320),
-    phone: z.string().trim().min(5).max(32),
+    phone: z.preprocess(
+      (value) => (value === null || value === '' ? undefined : value),
+      z.string().trim().min(5).max(32).optional(),
+    ),
     role: enumValue(Role),
     identifier: z.string().trim().min(1).max(64),
     status: enumValue(UserStatus, { INACTIVE: UserStatus.DEACTIVATED }).default(UserStatus.ACTIVE),

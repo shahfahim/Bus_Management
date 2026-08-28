@@ -107,7 +107,9 @@ export function AppShell() {
       setUnread((count) => count + 1);
       notify({ title: message.title, description: message.message, tone: 'info' });
     };
-    const onRead = () => setUnread(0);
+    const onRead = (payload?: { all?: boolean; updated?: number }) => {
+      setUnread((count) => payload?.all ? 0 : Math.max(0, count - Math.max(1, payload?.updated ?? 1)));
+    };
     socket.on('notification:new', onNotification);
     socket.on('notifications:read', onRead);
     return () => {

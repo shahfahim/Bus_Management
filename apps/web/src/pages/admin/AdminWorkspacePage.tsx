@@ -130,6 +130,11 @@ const STATUS_OPTIONS: SelectOption[] = [
   { label: 'Inactive', value: 'inactive' },
 ]
 
+const BUS_STATUS_OPTIONS: SelectOption[] = [
+  ...STATUS_OPTIONS,
+  { label: 'Retired', value: 'retired' },
+]
+
 const USER_STATUS_OPTIONS: SelectOption[] = [
   { label: 'Pending verification', value: 'pending_verification' },
   { label: 'Active', value: 'active' },
@@ -180,11 +185,11 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { name: 'registrationNumber', label: 'Registration number', kind: 'text', required: true, placeholder: 'DHAKA-METRO-B-00-0000' },
       { name: 'model', label: 'Model', kind: 'text', required: true },
       { name: 'capacity', label: 'Seat capacity', kind: 'number', required: true, min: 1, max: 120 },
-      { name: 'status', label: 'Operating status', kind: 'select', required: true, options: STATUS_OPTIONS, help: 'Use the Maintenance workspace to start or finish fleet downtime.' },
+      { name: 'status', label: 'Operating status', kind: 'select', required: true, options: BUS_STATUS_OPTIONS, help: 'Use the Maintenance workspace to start or finish fleet downtime.' },
       { name: 'gpsDeviceId', label: 'GPS device ID', kind: 'text', help: 'Optional identifier from the approved tracking provider.' },
       { name: 'notes', label: 'Notes', kind: 'textarea', fullWidth: true },
     ],
-    filters: [{ name: 'status', label: 'All statuses', options: [...STATUS_OPTIONS, { label: 'Under maintenance', value: 'maintenance' }] }],
+    filters: [{ name: 'status', label: 'All statuses', options: [...BUS_STATUS_OPTIONS, { label: 'Under maintenance', value: 'maintenance' }] }],
   },
   routes: {
     id: 'routes',
@@ -268,7 +273,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
     fields: [
       { name: 'routeId', label: 'Route', kind: 'select', required: true, lookup: '/admin/routes', lookupLabel: ['code', 'name'] },
       { name: 'busId', label: 'Bus', kind: 'select', required: true, lookup: '/admin/buses', lookupLabel: ['fleetNumber', 'registrationNumber'] },
-      { name: 'driverId', label: 'Driver', kind: 'select', required: true, lookup: '/admin/users?role=driver', lookupLabel: ['name', 'email'] },
+      { name: 'driverId', label: 'Driver', kind: 'select', required: true, lookup: '/admin/users?role=driver&status=active', lookupLabel: ['name', 'email'] },
       { name: 'scheduledStart', label: 'Scheduled departure', kind: 'datetime-local', required: true },
       { name: 'scheduledEnd', label: 'Scheduled arrival', kind: 'datetime-local', required: true },
       { name: 'fare', label: 'Fare', kind: 'number', required: true, min: 0, step: 0.01 },
@@ -337,8 +342,8 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { name: 'phone', label: 'Phone number (optional)', kind: 'tel' },
       { name: 'role', label: 'Role', kind: 'select', required: true, options: [{ label: 'Student', value: 'student' }, { label: 'Teacher', value: 'teacher' }, { label: 'Driver', value: 'driver' }, { label: 'Conductor', value: 'conductor' }, { label: 'Administrator', value: 'admin' }] },
       { name: 'identifier', label: 'Student / staff / employee ID', kind: 'text', required: true },
-      { name: 'licenseNumber', label: 'Driver license number', kind: 'text', required: true, createOnly: true, visibleWhen: { field: 'role', value: 'driver' } },
-      { name: 'licenseExpiresAt', label: 'Driver license expiry', kind: 'date', required: true, createOnly: true, visibleWhen: { field: 'role', value: 'driver' } },
+      { name: 'licenseNumber', label: 'Driver license number', kind: 'text', required: true, visibleWhen: { field: 'role', value: 'driver' } },
+      { name: 'licenseExpiresAt', label: 'Driver license expiry', kind: 'date', required: true, visibleWhen: { field: 'role', value: 'driver' } },
       { name: 'status', label: 'Account status', kind: 'select', required: true, options: USER_STATUS_OPTIONS },
       { name: 'temporaryPassword', label: 'Temporary password', kind: 'password', required: true, createOnly: true, min: 12, help: 'Use at least 12 characters. The user must change it at first sign-in.' },
     ],

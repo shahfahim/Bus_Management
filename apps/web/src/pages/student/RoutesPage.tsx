@@ -5,7 +5,7 @@ import { RouteMap } from '../../components/LiveMap';
 import { Button, Card, EmptyState, InlineAlert, PageHeader, Pill, SelectField, Skeleton, cx } from '../../components/ui';
 import { useSocket } from '../../contexts/SocketContext';
 import { api, asItems, errorMessage, withQuery } from '../../lib/api';
-import { formatMoney, formatTime } from '../../lib/format';
+import { formatMoney, formatTime, localDateInputValue } from '../../lib/format';
 import type { RoadAlert, Stop, Trip } from '../../types';
 
 export function RoutesPage() {
@@ -16,7 +16,7 @@ export function RoutesPage() {
   const [error, setError] = useState('');
   const [origin, setOrigin] = useState('');
   const [destination, setDestination] = useState('');
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 10));
+  const [date, setDate] = useState(localDateInputValue());
   const [view, setView] = useState<'list' | 'map'>('list');
   const [expandedTrip, setExpandedTrip] = useState<string>();
   const { socket } = useSocket();
@@ -63,7 +63,7 @@ export function RoutesPage() {
     void searchTrips();
   };
   const selectedTrip = trips.find((trip) => trip.id === expandedTrip) ?? trips[0];
-  const relevantAlerts = useMemo(() => alerts.filter((alert) => !selectedTrip || alert.routeId === selectedTrip.routeId), [alerts, selectedTrip]);
+  const relevantAlerts = useMemo(() => alerts.filter((alert) => !selectedTrip || alertAffectsRoute(alert, selectedTrip.routeId)), [alerts, selectedTrip]);
 
   return (
     <div className="page-stack">
@@ -72,7 +72,7 @@ export function RoutesPage() {
         <form className="trip-search" onSubmit={submitSearch}>
           <SelectField label="From" onChange={(event) => setOrigin(event.target.value)} options={[{ value: '', label: 'Any boarding stop' }, ...stops.map((stop) => ({ value: stop.id, label: stop.name }))]} value={origin} />
           <SelectField label="To" onChange={(event) => setDestination(event.target.value)} options={[{ value: '', label: 'Any destination' }, ...stops.filter((stop) => stop.id !== origin).map((stop) => ({ value: stop.id, label: stop.name }))]} value={destination} />
-          <label className="field"><span className="field__label">Travel date</span><input min={new Date().toISOString().slice(0, 10)} onChange={(event) => setDate(event.target.value)} type="date" value={date} /></label>
+          <label className="field"><span className="field__label">Travel date</span><input min={localDateInputValue()} onChange={(event) => setDate(event.target.value)} type="date" value={date} /></label>
           <Button icon={<Search aria-hidden="true" size={17} />} type="submit">Search trips</Button>
         </form>
       </Card>
@@ -89,10 +89,14 @@ export function RoutesPage() {
           <RouteMap alerts={relevantAlerts} busLocation={selectedTrip?.currentLocation ?? selectedTrip?.bus?.currentLocation} route={selectedTrip?.route} />
         </section>
       ) : (
-        <div className="trip-list">{trips.map((trip) => <TripResult alerts={alerts.filter((alert) => alert.routeId === trip.routeId)} expanded={expandedTrip === trip.id} key={trip.id} onExpand={() => setExpandedTrip((current) => current === trip.id ? undefined : trip.id)} trip={trip} />)}</div>
+        <div className="trip-list">{trips.map((trip) => <TripResult alerts={alerts.filter((alert) => alertAffectsRoute(alert, trip.routeId))} expanded={expandedTrip === trip.id} key={trip.id} onExpand={() => setExpandedTrip((current) => current === trip.id ? undefined : trip.id)} trip={trip} />)}</div>
       )}
     </div>
   );
+}
+
+function alertAffectsRoute(alert: RoadAlert, routeId: string) {
+  return alert.routeId === routeId || alert.affectedRoutes?.some((route) => route.id === routeId) === true;
 }
 
 function TripResult({ trip, alerts, expanded, onExpand }: { trip: Trip; alerts: RoadAlert[]; expanded: boolean; onExpand: () => void }) {

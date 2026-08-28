@@ -5,6 +5,7 @@ import { Brand } from '../components/Brand';
 import { Button, Field, InlineAlert } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { errorMessage } from '../lib/api';
+import { localDateInputValue } from '../lib/format';
 
 interface LocationState {
   from?: { pathname?: string };
@@ -143,7 +144,7 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
                       <Field autoComplete="off" label="Employee ID" name="employeeNumber" placeholder="e.g. DRV-104" required />
                       <Field autoComplete="off" label="License number" name="licenseNumber" placeholder="Driver license number" required />
                     </div>
-                    <Field label="License expiry date" min={new Date(Date.now() + 86_400_000).toISOString().slice(0, 10)} name="licenseExpiresAt" required type="date" />
+                    <Field label="License expiry date" min={localDateInputValue(new Date(Date.now() + 86_400_000))} name="licenseExpiresAt" required type="date" />
                   </>
                 )}
                 <Field autoComplete="tel" label="Phone (optional)" name="phone" placeholder="+880 …" type="tel" />

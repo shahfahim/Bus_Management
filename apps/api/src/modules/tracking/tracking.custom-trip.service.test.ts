@@ -101,7 +101,12 @@ describe('driver custom trip creation', () => {
     const tripStopsInput = mocks.createTripStops.mock.calls[0]?.[0] as unknown as { data: Array<{ sequence: number }> };
     expect(tripStopsInput.data.map(({ sequence }) => sequence)).toEqual([1, 2]);
     expect(mocks.createAudit).toHaveBeenCalledOnce();
-    expect(result).toMatchObject({ id: tripId, route: { origin: 'Pickup', destination: 'University Campus' } });
+    expect(result).toMatchObject({
+      id: tripId,
+      route: { origin: 'Pickup', destination: 'University Campus' },
+      totalSeats: 32,
+      availableSeats: 32,
+    });
     expect(mocks.emitToRole).toHaveBeenCalledWith(Role.ADMIN, 'trip:updated', expect.objectContaining({ id: tripId }));
   });
 

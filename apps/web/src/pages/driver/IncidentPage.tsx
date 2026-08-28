@@ -13,8 +13,13 @@ export function IncidentPage() {
   const [submitting, setSubmitting] = useState(false);
   const [sentAt, setSentAt] = useState('');
   const [locationStatus, setLocationStatus] = useState('A current GPS snapshot will be requested when you submit.');
+  const [tripLoadError, setTripLoadError] = useState('');
   const { notify } = useToast();
-  useEffect(() => { api.get<unknown>('/driver/trips?active=true&pageSize=30').then((value) => setTrips(asItems<Trip>(value))).catch(() => undefined); }, []);
+  useEffect(() => {
+    api.get<unknown>('/driver/trips?active=true&pageSize=30')
+      .then((value) => setTrips(asItems<Trip>(value)))
+      .catch((reason) => setTripLoadError(errorMessage(reason, 'Active trips could not be loaded. You can still submit a general report.')));
+  }, []);
 
   const submit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault(); setSubmitting(true); setSentAt('');
@@ -40,6 +45,7 @@ export function IncidentPage() {
     <div className="page-stack narrow-page">
       <PageHeader description="Send verified route problems or emergencies to transport control." eyebrow="Driver safety" title="Report an incident" />
       <InlineAlert tone="warning"><strong>Immediate danger?</strong> Contact local emergency services first, then send this report when safe. Never use this form while driving.</InlineAlert>
+      {tripLoadError && <InlineAlert>{tripLoadError}</InlineAlert>}
       {sentAt && <InlineAlert tone="success"><strong>Report received at {formatDateTime(sentAt)}.</strong> Transport control has the incident details.</InlineAlert>}
       <Card className="incident-card">
         <div className="incident-card__heading"><span><AlertOctagon aria-hidden="true" /></span><div><h2>Route or safety report</h2><p>Fields marked required are sent through the secured driver API.</p></div></div>

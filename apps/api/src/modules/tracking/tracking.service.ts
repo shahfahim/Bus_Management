@@ -27,19 +27,38 @@ import { logger } from '../../lib/logger.js';
 import { prisma } from '../../lib/prisma.js';
 import { emitToRole, emitToTrip } from '../../realtime/hub.js';
 import { notifyUser, notifyUsers } from '../notifications/notification.service.js';
-import type { createDriverTripSchema, incidentSchema, locationUpdateSchema } from './tracking.schemas.js';
+import type { createDriverTripSchema, driverTripQuerySchema, incidentSchema, locationUpdateSchema } from './tracking.schemas.js';
 import type { StoredIncidentImage } from './tracking.upload.js';
 
 type LocationInput = z.infer<typeof locationUpdateSchema>;
 type IncidentInput = z.infer<typeof incidentSchema>;
 type CreateDriverTripInput = z.infer<typeof createDriverTripSchema>;
+type DriverTripQuery = z.infer<typeof driverTripQuerySchema>;
+
+const activePassengerStatuses: BookingStatus[] = [
+  BookingStatus.HELD,
+  BookingStatus.PENDING_PAYMENT,
+  BookingStatus.CONFIRMED,
+  BookingStatus.CHECKED_IN,
+];
 
 const driverTripInclude = {
   route: { include: { stops: { include: { stop: true }, orderBy: { sequence: 'asc' as const } } } },
   bus: true,
   stops: { include: { routeStop: { include: { stop: true } } }, orderBy: { sequence: 'asc' as const } },
   locations: { orderBy: { recordedAt: 'desc' as const }, take: 1 },
-  _count: { select: { bookings: true, checkIns: true } },
+  _count: {
+    select: {
+      bookings: {
+        where: {
+          status: {
+            in: activePassengerStatuses,
+          },
+        },
+      },
+      checkIns: true,
+    },
+  },
 } as const;
 
 type DriverTripRecord = Prisma.TripGetPayload<{ include: typeof driverTripInclude }>;
@@ -94,6 +113,8 @@ const driverTripDto = (trip: DriverTripRecord) => {
     locationIntervalSeconds: trip.locationIntervalSeconds,
     delayMinutes: trip.delayMinutes,
     passengerCount: trip._count?.bookings,
+    totalSeats: trip.bus.capacity,
+    availableSeats: Math.max(0, trip.bus.capacity - trip._count.bookings),
     checkedInCount: trip._count?.checkIns,
     currentLocation: lastLocation
       ? {
@@ -326,15 +347,22 @@ export const createDriverTrip = async (driverId: string, input: CreateDriverTrip
 
 export const listDriverTrips = async (
   actor: { userId: string; role: Role },
-  query: { page: number; pageSize: number; status?: TripStatus },
+  query: DriverTripQuery,
 ) => {
-  const where = {
+  const dayStart = query.date ? new Date(`${query.date}T00:00:00.000Z`) : undefined;
+  const dayEnd = dayStart ? new Date(dayStart.getTime() + 24 * 60 * 60_000) : undefined;
+  const where: Prisma.TripWhereInput = {
     ...(actor.role === Role.DRIVER
       ? { driverId: actor.userId }
       : actor.role === Role.CONDUCTOR
         ? { conductorId: actor.userId }
         : {}),
-    ...(query.status ? { status: query.status } : {}),
+    ...(query.status
+      ? { status: query.status }
+      : query.active
+        ? { status: { in: activeTripStatuses } }
+        : {}),
+    ...(dayStart && dayEnd ? { scheduledStartAt: { gte: dayStart, lt: dayEnd } } : {}),
   };
   const [items, total] = await prisma.$transaction([
     prisma.trip.findMany({ where, include: driverTripInclude, ...toPagination(query), orderBy: { scheduledStartAt: 'desc' } }),

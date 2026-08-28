@@ -2,7 +2,7 @@ import { Camera, Filter, HandHeart, ImagePlus, MapPin, PackageOpen, Plus, Search
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
 import { Button, Card, EmptyState, Field, InlineAlert, Modal, PageHeader, Pill, SelectField, Skeleton, TextAreaField, useToast } from '../../components/ui';
 import { api, asItems, errorMessage, unwrap, withQuery } from '../../lib/api';
-import { formatDateTime, titleCase } from '../../lib/format';
+import { formatDateTime, localDateTimeInputValue, titleCase } from '../../lib/format';
 import type { LostFoundReport } from '../../types';
 
 const categories = ['Electronics', 'Bag', 'ID / documents', 'Clothing', 'Keys', 'Books', 'Bottle', 'Other'];
@@ -19,6 +19,10 @@ export function LostFoundPage() {
   const [submitting, setSubmitting] = useState(false);
   const [preview, setPreview] = useState('');
   const { notify } = useToast();
+
+  useEffect(() => () => {
+    if (preview.startsWith('blob:')) URL.revokeObjectURL(preview);
+  }, [preview]);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -64,7 +68,7 @@ export function LostFoundPage() {
           <div className="form-grid"><SelectField label="Report type" name="type" options={[{ value: 'LOST', label: 'I lost an item' }, { value: 'FOUND', label: 'I found an item' }]} required /><SelectField label="Category" name="category" options={categories.map((item) => ({ value: item, label: item }))} required /></div>
           <Field label="Short title" maxLength={100} name="title" placeholder="e.g. Black water bottle" required />
           <TextAreaField label="Description" maxLength={1000} name="description" placeholder="Color, brand and identifying details that are safe to share" required rows={4} />
-          <div className="form-grid"><Field label="Location" name="location" placeholder="Bus, route or stop" required /><Field label="Date and time" max={new Date().toISOString().slice(0, 16)} name="occurredAt" required type="datetime-local" /></div>
+          <div className="form-grid"><Field label="Location" name="location" placeholder="Bus, route or stop" required /><Field label="Date and time" max={localDateTimeInputValue()} name="occurredAt" required type="datetime-local" /></div>
           <label className="image-upload"><span className="field__label">Photo (optional)</span><input accept="image/jpeg,image/png,image/webp" name="image" onChange={(event) => { const file = event.target.files?.[0]; setPreview(file ? URL.createObjectURL(file) : ''); }} type="file" />{preview ? <img alt="Selected item preview" src={preview} /> : <span><ImagePlus aria-hidden="true" /> Add a clear photo · JPG, PNG or WebP · up to 10 MB</span>}</label>
           <Button loading={submitting} type="submit">Publish report</Button>
         </form>

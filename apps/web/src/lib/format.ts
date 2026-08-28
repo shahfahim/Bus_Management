@@ -22,6 +22,16 @@ export function formatTime(value?: string | Date) {
   return new Intl.DateTimeFormat(undefined, { hour: 'numeric', minute: '2-digit' }).format(date);
 }
 
+export function localDateInputValue(value = new Date()) {
+  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 10);
+}
+
+export function localDateTimeInputValue(value = new Date()) {
+  const local = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
+  return local.toISOString().slice(0, 16);
+}
+
 export function formatMoney(amount = 0, currency = 'BDT') {
   return new Intl.NumberFormat(undefined, {
     style: 'currency',

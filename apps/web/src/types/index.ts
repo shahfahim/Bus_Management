@@ -167,10 +167,11 @@ export interface RoadAlert {
   id: string;
   routeId: string;
   route?: Pick<Route, 'id' | 'name' | 'code'>;
+  affectedRoutes?: Array<Pick<Route, 'id' | 'name' | 'code'>>;
   category: RoadAlertCategory;
   title: string;
   description: string;
-  severity: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+  severity: 'INFO' | 'MINOR' | 'MODERATE' | 'MAJOR' | 'CRITICAL' | 'LOW' | 'MEDIUM' | 'HIGH';
   coordinates?: Coordinates;
   activeFrom: string;
   activeUntil?: string;

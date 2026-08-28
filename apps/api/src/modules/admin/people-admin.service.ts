@@ -83,6 +83,8 @@ const userDto = (user: UserRecord) => ({
   role: user.role.toLowerCase(),
   status: userStatusDto(user.status),
   identifier: user.studentProfile?.studentNumber ?? user.driverProfile?.employeeNumber ?? null,
+  licenseNumber: user.driverProfile?.licenseNumber ?? null,
+  licenseExpiresAt: user.driverProfile?.licenseExpiresAt ?? null,
   lastLoginAt: user.lastLoginAt,
   emailVerifiedAt: user.emailVerifiedAt,
   createdAt: user.createdAt,

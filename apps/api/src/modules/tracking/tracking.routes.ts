@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { Role, TripStatus } from '@prisma/client';
+import { Role } from '@prisma/client';
 import { z } from 'zod';
 import { asyncRoute } from '../../lib/async-route.js';
 import { uploadRateLimit } from '../../lib/upload-rate-limit.js';
 import { requireAuth, requireRole } from '../auth/auth.middleware.js';
-import { createDriverTripSchema, incidentSchema, locationUpdateSchema } from './tracking.schemas.js';
+import { createDriverTripSchema, driverTripQuerySchema, incidentSchema, locationUpdateSchema } from './tracking.schemas.js';
 import {
   createDriverTrip,
   endTrip,
@@ -34,13 +34,7 @@ driverRouter.get(
 driverRouter.get(
   '/trips',
   asyncRoute(async (request, response) => {
-    const query = z
-      .object({
-        page: z.coerce.number().int().positive().default(1),
-        pageSize: z.coerce.number().int().min(1).max(100).default(20),
-        status: z.nativeEnum(TripStatus).optional(),
-      })
-      .parse(request.query);
+    const query = driverTripQuerySchema.parse(request.query);
     response.json(await listDriverTrips(request.auth!, query));
   }),
 );

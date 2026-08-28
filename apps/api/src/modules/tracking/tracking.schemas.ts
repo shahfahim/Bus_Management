@@ -1,4 +1,16 @@
+import { TripStatus } from '@prisma/client';
 import { z } from 'zod';
+
+export const driverTripQuerySchema = z.object({
+  page: z.coerce.number().int().positive().default(1),
+  pageSize: z.coerce.number().int().min(1).max(100).default(20),
+  status: z.nativeEnum(TripStatus).optional(),
+  date: z.string().date().optional(),
+  active: z
+    .enum(['true', 'false'])
+    .transform((value) => value === 'true')
+    .optional(),
+});
 
 const tripLocationSchema = z.object({
   name: z.string().trim().min(2).max(100),
