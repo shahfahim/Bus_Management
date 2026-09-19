@@ -7,12 +7,12 @@ import {
   CalendarClock,
   CircleDollarSign,
   Clock3,
-  MapPin,
   Navigation,
   QrCode,
   Route as RouteIcon,
   Star,
   UsersRound,
+  WalletCards,
 } from 'lucide-react';
 import { useCallback } from 'react';
 import { Link } from 'react-router-dom';
@@ -147,20 +147,20 @@ function AdminDashboard({ summary }: { summary: DashboardSummary }) {
 function QuickActions({ role }: { role: 'STUDENT' | 'DRIVER' | 'ADMIN' }) {
   const actions = role === 'STUDENT'
     ? [
-        { to: '/student/routes', icon: RouteIcon, title: 'Find a route', copy: 'Compare trips and seats' },
-        { to: '/student/bookings', icon: QrCode, title: 'Boarding passes', copy: 'Open secure entry QR' },
-        { to: '/lost-found', icon: MapPin, title: 'Lost & found', copy: 'Report or search an item' },
+        { to: '/student/routes', icon: RouteIcon, title: 'Book a Ride', copy: 'Find trips and reserve seats' },
+        { to: '/student/bookings', icon: QrCode, title: 'My Passes', copy: 'Open your secure entry QR' },
+        { to: '/student/subscriptions', icon: WalletCards, title: 'Payments', copy: 'Manage your subscriptions' },
       ]
     : role === 'DRIVER'
       ? [
-          { to: '/driver/trips', icon: Navigation, title: 'Trip controls', copy: 'Start, track or end a trip' },
-          { to: '/driver/check-in', icon: QrCode, title: 'Scan passenger', copy: 'Validate a boarding QR' },
-          { to: '/driver/incidents', icon: AlertTriangle, title: 'Report road issue', copy: 'Alert transport control' },
+          { to: '/driver/trips', icon: Navigation, title: 'My Trips', copy: 'Start, track or end a trip' },
+          { to: '/driver/check-in', icon: QrCode, title: 'Scanner', copy: 'Validate boarding passes' },
+          { to: '/driver/incidents', icon: AlertTriangle, title: 'Report Issue', copy: 'Log maintenance or delays' },
         ]
       : [
-          { to: '/admin/trips', icon: Navigation, title: 'Dispatch trips', copy: 'Schedule and assign vehicles' },
-          { to: '/admin/maintenance', icon: BusFront, title: 'Fleet status', copy: 'Manage maintenance impact' },
-          { to: '/admin/road-alerts', icon: AlertTriangle, title: 'Road alerts', copy: 'Notify affected routes' },
+          { to: '/admin/overview', icon: Navigation, title: 'Workspace', copy: 'Manage the entire fleet' },
+          { to: '/admin/users', icon: UsersRound, title: 'People', copy: 'Verify students and drivers' },
+          { to: '/admin/trips', icon: BusFront, title: 'Dispatch', copy: 'Monitor live operations' },
         ];
   return (
     <section><div className="section-heading"><div><p className="eyebrow">Shortcuts</p><h2>Move quickly</h2></div></div><div className="quick-grid">{actions.map((action) => { const Icon = action.icon; return <Link className="quick-link" key={action.to} to={action.to}><span><Icon aria-hidden="true" /></span><div><strong>{action.title}</strong><small>{action.copy}</small></div><ArrowRight aria-hidden="true" size={18} /></Link>; })}</div></section>

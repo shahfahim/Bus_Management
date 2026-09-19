@@ -1,24 +1,15 @@
 import {
   Bell,
   BookOpenCheck,
-  BusFront,
   ChevronDown,
   CircleUserRound,
-  ClipboardCheck,
   Gauge,
-  History,
   LayoutDashboard,
   LifeBuoy,
-  Map,
-  MapPinned,
   Menu,
   QrCode,
   Route as RouteIcon,
-  ShieldCheck,
-  Star,
-  UsersRound,
   WalletCards,
-  Wrench,
   X,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
@@ -46,33 +37,20 @@ const commonNavigation: NavItem[] = [
 
 const roleNavigation: Record<Role, NavItem[]> = {
   STUDENT: [
-    { label: 'Find a bus', to: '/student/routes', icon: RouteIcon },
-    { label: 'My bookings', to: '/student/bookings', icon: BookOpenCheck },
-    { label: 'Payments', to: '/student/payments', icon: WalletCards },
-    { label: 'Bus passes', to: '/student/subscriptions', icon: ShieldCheck },
-    { label: 'Driver ratings', to: '/student/ratings', icon: Star },
+    { label: 'Book a Ride', to: '/student/routes', icon: RouteIcon },
+    { label: 'My Bookings', to: '/student/bookings', icon: BookOpenCheck },
+    { label: 'Passes & Payments', to: '/student/subscriptions', icon: WalletCards },
   ],
   DRIVER: [
-    { label: 'Assigned trips', to: '/driver/trips', icon: BusFront },
-    { label: 'Set up a trip', to: '/driver/trips/new', icon: MapPinned },
-    { label: 'Scan entry QR', to: '/driver/check-in', icon: QrCode },
-    { label: 'Report an issue', to: '/driver/incidents', icon: ShieldCheck },
+    { label: 'My Trips & Scanner', to: '/driver/trips', icon: QrCode },
+    { label: 'Report Issue', to: '/driver/incidents', icon: LifeBuoy },
   ],
   CONDUCTOR: [
-    { label: 'Assigned trips', to: '/driver/trips', icon: BusFront },
-    { label: 'Scan entry QR', to: '/driver/check-in', icon: QrCode },
+    { label: 'My Trips & Scanner', to: '/driver/trips', icon: QrCode },
+    { label: 'Report Issue', to: '/driver/incidents', icon: LifeBuoy },
   ],
   ADMIN: [
-    { label: 'Operations', to: '/admin/overview', icon: Gauge },
-    { label: 'Buses', to: '/admin/buses', icon: BusFront },
-    { label: 'Routes & stops', to: '/admin/routes', icon: MapPinned },
-    { label: 'Trips', to: '/admin/trips', icon: Map },
-    { label: 'People', to: '/admin/users', icon: UsersRound },
-    { label: 'Bookings', to: '/admin/bookings', icon: BookOpenCheck },
-    { label: 'Payments', to: '/admin/payments', icon: WalletCards },
-    { label: 'Check-ins', to: '/admin/checkins', icon: ClipboardCheck },
-    { label: 'Maintenance', to: '/admin/maintenance', icon: Wrench },
-    { label: 'Reports', to: '/admin/reports', icon: History },
+    { label: 'Workspace', to: '/admin/overview', icon: Gauge },
   ],
 };
 
