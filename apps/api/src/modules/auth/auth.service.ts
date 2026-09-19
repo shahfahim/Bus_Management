@@ -92,7 +92,7 @@ export const clearAuthCookies = (response: Response): void => {
   response.clearCookie('refresh_token', { path: '/api' });
 };
 
-export const registerAccount = async (input: RegisterInput, _request: Request) => {
+export const registerAccount = async (input: RegisterInput, request: Request, documentUrl?: string) => {
   const email = normalizeEmail(input.email);
   const passwordHash = await bcrypt.hash(input.password, 12);
 
@@ -115,17 +115,8 @@ export const registerAccount = async (input: RegisterInput, _request: Request) =
               create: {
                 studentNumber: input.studentId,
                 department: input.department,
+                verificationDocumentUrl: documentUrl,
                 emergencyContact: input.emergencyContact,
-              },
-            }
-          : undefined,
-        driverProfile: input.role === Role.DRIVER
-          ? {
-              create: {
-                employeeNumber: input.employeeNumber,
-                licenseNumber: input.licenseNumber,
-                licenseExpiresAt: input.licenseExpiresAt,
-                status: DriverStatus.INACTIVE,
               },
             }
           : undefined,
@@ -156,6 +147,9 @@ export const login = async (input: LoginInput, request: Request) => {
   }
   if (user.lockedUntil && user.lockedUntil > new Date()) {
     throw new AppError(429, 'ACCOUNT_LOCKED', 'Too many failed login attempts. Please try again later.');
+  }
+  if (user.status === UserStatus.PENDING_VERIFICATION) {
+    throw new AppError(403, 'ACCOUNT_PENDING_VERIFICATION', 'Your account is pending verification by an administrator');
   }
   if (user.status !== UserStatus.ACTIVE) {
     throw new AppError(403, 'ACCOUNT_DISABLED', 'This account is not active');

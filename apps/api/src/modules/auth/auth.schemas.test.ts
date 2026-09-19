@@ -18,16 +18,4 @@ describe('role-aware registration validation', () => {
       department: 'Computer Science',
     }).role).toBe(Role.STUDENT);
   });
-
-  it('requires driver credentials instead of a student ID', () => {
-    const result = registerSchema.parse({
-      ...common,
-      role: Role.DRIVER,
-      employeeNumber: 'DRV-100',
-      licenseNumber: 'LIC-100',
-      licenseExpiresAt: '2035-01-01',
-    });
-    expect(result.role).toBe(Role.DRIVER);
-    expect(result).not.toHaveProperty('studentId');
-  });
 });

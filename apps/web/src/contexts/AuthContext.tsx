@@ -14,8 +14,6 @@ type RegisterInput = {
   phone?: string;
 } & (
   | { role: 'STUDENT'; studentId: string; department: string }
-
-  | { role: 'DRIVER'; employeeNumber: string; licenseNumber: string; licenseExpiresAt: string }
 );
 
 interface AuthContextValue {

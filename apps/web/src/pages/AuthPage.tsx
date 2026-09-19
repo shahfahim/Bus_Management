@@ -5,7 +5,6 @@ import { Brand } from '../components/Brand';
 import { Button, Field, InlineAlert } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { errorMessage } from '../lib/api';
-import { localDateInputValue } from '../lib/format';
 
 interface LocationState {
   from?: { pathname?: string };
@@ -13,12 +12,12 @@ interface LocationState {
 
 export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'register' }) {
   const [mode, setMode] = useState(initialMode);
-  const [registrationRole, setRegistrationRole] = useState<'STUDENT' | 'DRIVER'>('STUDENT');
+  const [registrationRole] = useState<'student' | 'teacher'>('student');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
-  const { user, loading, login, register } = useAuth();
+  const { user, loading, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -39,28 +38,36 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
         if (password.length < 10 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
           throw new Error('Use at least 10 characters, including lowercase, uppercase and a number.');
         }
-        const common = {
+        const formData = new FormData();
+        const commonData = {
           name: String(form.get('name')),
           email: String(form.get('email')),
           password,
           phone: String(form.get('phone') || '') || undefined,
+          role: 'STUDENT',
+          studentId: String(form.get('studentId')),
+          department: String(form.get('department')),
         };
-        const registration = await register(
-          registrationRole === 'STUDENT'
-            ? {
-                ...common,
-                role: 'STUDENT',
-                studentId: String(form.get('studentId')),
-                department: String(form.get('department')),
-              }
-            : {
-                ...common,
-                role: 'DRIVER',
-                employeeNumber: String(form.get('employeeNumber')),
-                licenseNumber: String(form.get('licenseNumber')),
-                licenseExpiresAt: String(form.get('licenseExpiresAt')),
-              },
-        );
+        for (const [key, value] of Object.entries(commonData)) {
+          if (value !== undefined) formData.append(key, value);
+        }
+        
+        const documentFile = form.get('document');
+        if (documentFile instanceof File && documentFile.size > 0) {
+          formData.append('document', documentFile);
+        }
+
+        const response = await fetch('/api/auth/register', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error?.message || 'Registration failed');
+        }
+        
+        const registration = await response.json();
         if (registration.approvalRequired) {
           setMode('login');
           setNotice('Account submitted. A transport administrator must verify and activate it before you can sign in.');
@@ -100,23 +107,6 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
           <form className="auth-form" onSubmit={handleSubmit}>
             {mode === 'register' && (
               <>
-                <fieldset className="role-picker">
-                  <legend>Register as</legend>
-                  <div aria-label="Account role" className="segmented-control segmented-control--roles" role="radiogroup">
-                    {(['STUDENT', 'DRIVER'] as const).map((role) => (
-                      <button
-                        aria-checked={registrationRole === role}
-                        aria-selected={registrationRole === role}
-                        key={role}
-                        onClick={() => { setRegistrationRole(role); setError(''); }}
-                        role="radio"
-                        type="button"
-                      >
-                        {role[0]}{role.slice(1).toLowerCase()}
-                      </button>
-                    ))}
-                  </div>
-                </fieldset>
                 <Field autoComplete="name" icon={<UserRound aria-hidden="true" size={18} />} label="Full name" name="name" placeholder="Your full name" required />
               </>
             )}
@@ -125,20 +115,16 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
               <>
                 {registrationRole === 'STUDENT' && (
                   <div className="form-grid">
-                    <Field autoComplete="off" label="Student ID" name="studentId" placeholder="e.g. 2026-00123" required />
+                    <Field autoComplete="off" label="Student ID" name="studentId" placeholder="e.g. 2024-100" required />
                     <Field label="Department" name="department" placeholder="Computer Science" required />
                   </div>
                 )}
-                {registrationRole === 'DRIVER' && (
-                  <>
-                    <div className="form-grid">
-                      <Field autoComplete="off" label="Employee ID" name="employeeNumber" placeholder="e.g. DRV-104" required />
-                      <Field autoComplete="off" label="License number" name="licenseNumber" placeholder="Driver license number" required />
-                    </div>
-                    <Field label="License expiry date" min={localDateInputValue(new Date(Date.now() + 86_400_000))} name="licenseExpiresAt" required type="date" />
-                  </>
-                )}
                 <Field autoComplete="tel" label="Phone (optional)" name="phone" placeholder="+880 …" type="tel" />
+                <div className="form-group">
+                  <label htmlFor="document">Verification Document (ID card or Payment slip)</label>
+                  <input accept="image/jpeg,image/png,image/webp,application/pdf" id="document" name="document" required type="file" />
+                  <p className="help-text">Max 5MB. Must be clear and readable.</p>
+                </div>
               </>
             )}
             <div className="password-field">

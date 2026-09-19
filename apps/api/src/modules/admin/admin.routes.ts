@@ -78,6 +78,7 @@ import {
   updateUserSchema,
   userQuerySchema,
 } from './admin.schemas.js';
+import * as Schemas from './admin.schemas.js';
 import {
   createAdminAssignment,
   deleteAdminAssignment,
@@ -145,6 +146,7 @@ import {
   listAdminTrips,
   updateAdminTrip,
 } from './trip-admin.service.js';
+import * as ScheduleAdmin from './schedule-admin.service.js';
 
 export const adminRouter = Router();
 
@@ -282,6 +284,16 @@ adminRouter.delete('/assignments/:id', asyncRoute(async (request, response) => {
   await deleteAdminAssignment(idSchema.parse(request.params.id), auditContext(request));
   response.status(204).end();
 }));
+
+adminRouter.get('/schedules', asyncRoute(async (request, response) => response.json(await ScheduleAdmin.listSchedules(Schemas.scheduleQuerySchema.parse(request.query)))));
+adminRouter.get('/schedules/:id', asyncRoute(async (request, response) => response.json(await ScheduleAdmin.getSchedule(idSchema.parse(request.params.id)))));
+adminRouter.post('/schedules', asyncRoute(async (request, response) => response.status(201).json(await ScheduleAdmin.createSchedule(Schemas.createScheduleSchema.parse(request.body)))));
+adminRouter.patch('/schedules/:id', asyncRoute(async (request, response) => response.json(await ScheduleAdmin.updateSchedule(idSchema.parse(request.params.id), Schemas.updateScheduleSchema.parse(request.body)))));
+adminRouter.delete('/schedules/:id', asyncRoute(async (request, response) => {
+  await ScheduleAdmin.deleteSchedule(idSchema.parse(request.params.id));
+  response.status(204).end();
+}));
+
 
 adminRouter.get('/users', asyncRoute(async (request, response) => response.json(await listAdminUsers(userQuerySchema.parse(request.query)))));
 adminRouter.get('/users/:id', asyncRoute(async (request, response) => response.json(await getAdminUser(idSchema.parse(request.params.id)))));

@@ -7,6 +7,7 @@ import { startBookingHoldMonitor } from './modules/bookings/booking.monitor.js';
 import { startMaintenanceMonitor } from './modules/maintenance/maintenance.monitor.js';
 import { startNotificationRetryMonitor } from './modules/notifications/notification.monitor.js';
 import { startTrackingMonitor } from './modules/tracking/tracking.monitor.js';
+import { startTripGeneratorWorker } from './modules/trips/trip-generator.worker.js';
 import { initializeRealtime } from './realtime/hub.js';
 
 let shuttingDown = false;
@@ -52,6 +53,7 @@ const bootstrap = async (): Promise<void> => {
     startMaintenanceMonitor(),
     startNotificationRetryMonitor(),
     startTrackingMonitor(),
+    startTripGeneratorWorker(),
   ];
   await new Promise<void>((resolve, reject) => {
     const onError = (error: Error) => reject(error);

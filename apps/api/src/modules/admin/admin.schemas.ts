@@ -219,6 +219,28 @@ export const updateTripSchema = z
   })
   .refine((value) => Object.keys(value).length > 0, 'At least one field is required');
 
+export const scheduleQuerySchema = adminListQuerySchema.extend({
+  status: z.preprocess((value) => (typeof value === 'string' ? value.toLowerCase() : value), z.enum(['active', 'inactive']).optional()),
+  routeId: idSchema.optional(),
+});
+
+const scheduleBaseSchema = z.object({
+  routeId: idSchema,
+  busId: idSchema,
+  driverId: idSchema,
+  departureTime: z.string().regex(/^([0-1][0-9]|2[0-3]):[0-5][0-9]$/, 'Must be in HH:mm format'),
+  isActive: z.boolean().default(true),
+  validFrom: z.coerce.date(),
+  validTo: nullableDate,
+  daysOfWeek: z.array(z.coerce.number().int().min(0).max(6)).min(1, 'Select at least one day'),
+});
+
+export const createScheduleSchema = scheduleBaseSchema
+  .refine((data) => !data.validTo || data.validTo >= data.validFrom, 'validTo must be after validFrom');
+
+export const updateScheduleSchema = scheduleBaseSchema.partial();
+
+
 export const userQuerySchema = adminListQuerySchema.extend({
   role: enumValue(Role).optional(),
   status: enumValue(UserStatus, { INACTIVE: UserStatus.DEACTIVATED }).optional(),

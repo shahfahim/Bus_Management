@@ -146,13 +146,11 @@ describe('role-aware self-registration approval controls', () => {
   });
 
   it.each([
-
     {
-      role: Role.DRIVER,
-      email: 'driver@example.com',
-      employeeNumber: 'DRV-100',
-      licenseNumber: 'LIC-100',
-      licenseExpiresAt: new Date('2035-01-01'),
+      role: Role.STUDENT,
+      email: 'student@example.com',
+      studentId: '12345',
+      department: 'Math',
     },
   ])('creates a pending $role account without requiring a student ID', async (registration) => {
     mocks.findUser.mockResolvedValue(null);
@@ -178,6 +176,5 @@ describe('role-aware self-registration approval controls', () => {
     expect(result.approvalRequired).toBe(true);
     expect(result.user.role).toBe(registration.role);
     const createInput = mocks.createUser.mock.calls[0]?.[0] as { data: Record<string, unknown> };
-    expect(createInput.data).not.toHaveProperty('studentId');
   });
 });

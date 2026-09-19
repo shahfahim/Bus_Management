@@ -15,6 +15,7 @@ import {
   rotateRefreshToken,
   setAuthCookies,
 } from './auth.service.js';
+import { persistVerificationUpload, sendVerificationDocument, verificationUpload } from './auth.upload.js';
 
 export const authRouter = Router();
 
@@ -53,11 +54,33 @@ const credentialLimiter = rateLimit({
 authRouter.post(
   '/register',
   authenticationLimiter,
+  verificationUpload,
   asyncRoute(async (request, response) => {
-    const result = await registerAccount(registerSchema.parse(request.body), request);
+    const documentUrl = await persistVerificationUpload(request);
+    
+    let bodyData;
+    if (request.is('multipart/form-data')) {
+      bodyData = {
+        email: request.body.email,
+        password: request.body.password,
+        name: request.body.name,
+        phone: request.body.phone,
+        role: request.body.role,
+        studentId: request.body.studentId,
+        department: request.body.department,
+        emergencyContact: request.body.emergencyContact,
+      };
+    } else {
+      bodyData = request.body;
+    }
+    
+    const parsedData = registerSchema.parse(bodyData);
+    const result = await registerAccount(parsedData, request, documentUrl);
     response.status(202).json(result);
   }),
 );
+
+authRouter.get('/verifications/:filename', sendVerificationDocument);
 
 authRouter.post(
   '/login',

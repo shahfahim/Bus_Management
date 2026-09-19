@@ -345,19 +345,20 @@ model User {
 }
 
 model StudentProfile {
-  userId           String                @id @db.Uuid
-  studentNumber    String                @unique @db.VarChar(64)
-  department       String?               @db.VarChar(160)
-  faculty          String?               @db.VarChar(160)
-  program          String?               @db.VarChar(160)
-  academicYear     Int?
-  emergencyContact String?               @db.VarChar(32)
-  createdAt        DateTime              @default(now()) @db.Timestamptz(3)
-  updatedAt        DateTime              @updatedAt @db.Timestamptz(3)
-  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bookings         Booking[]
-  subscriptions    StudentSubscription[]
-  ratingsGiven     DriverRating[]
+  userId                  String                @id @db.Uuid
+  studentNumber           String                @unique @db.VarChar(64)
+  department              String?               @db.VarChar(160)
+  verificationDocumentUrl String?               @db.Text
+  faculty                 String?               @db.VarChar(160)
+  program                 String?               @db.VarChar(160)
+  academicYear            Int?
+  emergencyContact        String?               @db.VarChar(32)
+  createdAt               DateTime              @default(now()) @db.Timestamptz(3)
+  updatedAt               DateTime              @updatedAt @db.Timestamptz(3)
+  user                    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookings                Booking[]
+  subscriptions           StudentSubscription[]
+  ratingsGiven            DriverRating[]
 
   @@index([department])
   @@map("student_profiles")
@@ -377,6 +378,7 @@ model DriverProfile {
   user             User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   assignments      DriverAssignment[]
   trips            Trip[]
+  tripSchedules    TripSchedule[]
   ratings          DriverRating[]
   incidents        DriverIncident[]
 
@@ -420,26 +422,27 @@ model AccountToken {
 }
 
 model Bus {
-  id                 String              @id @default(uuid()) @db.Uuid
-  fleetNumber        String              @unique @db.VarChar(32)
-  registrationNumber String              @unique @db.VarChar(64)
-  make               String?             @db.VarChar(80)
-  model              String?             @db.VarChar(80)
-  modelYear          Int?
-  capacity           Int
-  status             BusStatus           @default(ACTIVE)
+  id                   String              @id @default(uuid()) @db.Uuid
+  fleetNumber          String              @unique @db.VarChar(32)
+  registrationNumber   String              @unique @db.VarChar(64)
+  make                 String?             @db.VarChar(80)
+  model                String?             @db.VarChar(80)
+  modelYear            Int?
+  capacity             Int
+  status               BusStatus           @default(ACTIVE)
   preMaintenanceStatus BusStatus?
-  amenities          Json?
-  trackingDeviceId   String?             @unique @db.VarChar(128)
-  lastInspectionAt   DateTime?           @db.Timestamptz(3)
-  createdAt          DateTime            @default(now()) @db.Timestamptz(3)
-  updatedAt          DateTime            @updatedAt @db.Timestamptz(3)
-  retiredAt          DateTime?           @db.Timestamptz(3)
-  seats              BusSeat[]
-  assignments        DriverAssignment[]
-  trips              Trip[]
-  maintenanceRecords MaintenanceRecord[]
-  checkIns           CheckIn[]
+  amenities            Json?
+  trackingDeviceId     String?             @unique @db.VarChar(128)
+  lastInspectionAt     DateTime?           @db.Timestamptz(3)
+  createdAt            DateTime            @default(now()) @db.Timestamptz(3)
+  updatedAt            DateTime            @updatedAt @db.Timestamptz(3)
+  retiredAt            DateTime?           @db.Timestamptz(3)
+  seats                BusSeat[]
+  assignments          DriverAssignment[]
+  trips                Trip[]
+  tripSchedules        TripSchedule[]
+  maintenanceRecords   MaintenanceRecord[]
+  checkIns             CheckIn[]
 
   @@index([status])
   @@map("buses")
@@ -477,6 +480,7 @@ model Route {
   stops                    RouteStop[]
   assignments              DriverAssignment[]
   trips                    Trip[]
+  tripSchedules            TripSchedule[]
   planRoutes               SubscriptionPlanRoute[]
   alertRoutes              RoadAlertRoute[]
 
@@ -576,6 +580,8 @@ model Trip {
   createdAt               DateTime          @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime          @updatedAt @db.Timestamptz(3)
   assignment              DriverAssignment? @relation(fields: [assignmentId], references: [id], onDelete: SetNull)
+  scheduleId              String?           @db.Uuid
+  schedule                TripSchedule?     @relation(fields: [scheduleId], references: [id], onDelete: SetNull)
   route                   Route             @relation(fields: [routeId], references: [id], onDelete: Restrict)
   bus                     Bus               @relation(fields: [busId], references: [id], onDelete: Restrict)
   driver                  DriverProfile     @relation(fields: [driverId], references: [userId], onDelete: Restrict)
@@ -637,6 +643,28 @@ model TripLocation {
   @@index([tripId, recordedAt(sort: Desc)])
   @@index([receivedAt])
   @@map("trip_locations")
+}
+
+model TripSchedule {
+  id            String        @id @default(uuid()) @db.Uuid
+  routeId       String        @db.Uuid
+  busId         String        @db.Uuid
+  driverId      String        @db.Uuid
+  departureTime String        @db.VarChar(5) // e.g., "08:00"
+  isActive      Boolean       @default(true)
+  validFrom     DateTime      @db.Date
+  validTo       DateTime?     @db.Date
+  daysOfWeek    Int[] // e.g., [1, 2, 3, 4, 5] for Mon-Fri
+  createdAt     DateTime      @default(now()) @db.Timestamptz(3)
+  updatedAt     DateTime      @updatedAt @db.Timestamptz(3)
+  route         Route         @relation(fields: [routeId], references: [id], onDelete: Restrict)
+  bus           Bus           @relation(fields: [busId], references: [id], onDelete: Restrict)
+  driver        DriverProfile @relation(fields: [driverId], references: [userId], onDelete: Restrict)
+  trips         Trip[]
+
+  @@index([isActive])
+  @@index([routeId])
+  @@map("trip_schedules")
 }
 
 model Booking {

@@ -26,6 +26,7 @@ type AdminSectionId =
   | 'lost-found'
   | 'incidents'
   | 'ratings'
+  | 'schedules'
   | 'notifications'
 
 type FieldKind =
@@ -40,7 +41,7 @@ type FieldKind =
   | 'select'
   | 'checkbox'
 
-type CellKind = 'text' | 'date' | 'datetime' | 'currency' | 'status' | 'boolean' | 'number' | 'rating'
+type CellKind = 'text' | 'date' | 'datetime' | 'currency' | 'status' | 'boolean' | 'number' | 'rating' | 'link'
 type FormValue = string | boolean
 type AdminRecord = Record<string, unknown> & { id: string }
 
@@ -289,6 +290,44 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { id: 'cancel', label: 'Cancel trip', tone: 'danger', visible: (row) => !valueMatches(row.status, 'completed', 'cancelled') },
     ],
   },
+  schedules: {
+    id: 'schedules',
+    title: 'Schedules',
+    singular: 'schedule',
+    description: 'Set up recurring daily bus trips that automatically generate future schedules.',
+    endpoint: '/admin/schedules',
+    searchPlaceholder: 'Search schedules…',
+    canCreate: true,
+    canEdit: true,
+    canDelete: true,
+    columns: [
+      { key: 'route.name', label: 'Route', sortable: true },
+      { key: 'bus.fleetNumber', label: 'Bus' },
+      { key: 'driver.name|driver.user.name', label: 'Driver' },
+      { key: 'departureTime', label: 'Time' },
+      { key: 'isActive', label: 'Active', kind: 'boolean', sortable: true },
+    ],
+    fields: [
+      { name: 'routeId', label: 'Route', kind: 'select', required: true, lookup: '/admin/routes', lookupLabel: ['code', 'name'] },
+      { name: 'busId', label: 'Bus', kind: 'select', required: true, lookup: '/admin/buses', lookupLabel: ['fleetNumber', 'registrationNumber'] },
+      { name: 'driverId', label: 'Driver', kind: 'select', required: true, lookup: '/admin/users?role=driver&status=active', lookupLabel: ['name', 'email'] },
+      { name: 'departureTime', label: 'Departure time (HH:mm)', kind: 'text', required: true, placeholder: '08:30' },
+      { name: 'validFrom', label: 'Valid from', kind: 'date', required: true },
+      { name: 'validTo', label: 'Valid until (optional)', kind: 'date' },
+      { name: 'isActive', label: 'Schedule active', kind: 'checkbox' },
+      {
+        name: 'daysOfWeek',
+        label: 'Days of week (0=Sun, 1=Mon, ...)',
+        kind: 'text',
+        required: true,
+        placeholder: '0,1,2,3,4,5,6',
+        help: 'Enter numbers separated by commas for the days this trip runs.'
+      },
+    ],
+    filters: [
+      { name: 'status', label: 'Status', options: [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }] },
+    ],
+  },
   assignments: {
     id: 'assignments',
     title: 'Driver assignments',
@@ -333,6 +372,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { key: 'email', label: 'Email', sortable: true },
       { key: 'role', label: 'Role', kind: 'status' },
       { key: 'identifier', label: 'ID', mobileHidden: true },
+      { key: 'studentProfile.verificationDocumentUrl', label: 'Document', kind: 'link' },
       { key: 'status', label: 'Status', kind: 'status' },
       { key: 'lastLoginAt', label: 'Last sign-in', kind: 'datetime', mobileHidden: true },
     ],
@@ -610,7 +650,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
 }
 
 const SECTION_GROUPS: Array<{ label: string; items: Array<{ id: 'overview' | 'reports' | AdminSectionId; label: string }> }> = [
-  { label: 'Monitor', items: [{ id: 'overview', label: 'Overview' }, { id: 'reports', label: 'Reports' }, { id: 'trips', label: 'Trips' }, { id: 'assignments', label: 'Driver assignments' }, { id: 'incidents', label: 'Incidents' }] },
+  { label: 'Monitor', items: [{ id: 'overview', label: 'Overview' }, { id: 'reports', label: 'Reports' }, { id: 'trips', label: 'Trips' }, { id: 'schedules', label: 'Trip schedules' }, { id: 'assignments', label: 'Driver assignments' }, { id: 'incidents', label: 'Incidents' }] },
   { label: 'Network', items: [{ id: 'buses', label: 'Buses' }, { id: 'routes', label: 'Routes' }, { id: 'stops', label: 'Stops' }, { id: 'maintenance', label: 'Maintenance' }, { id: 'road-alerts', label: 'Road alerts' }] },
   { label: 'People & service', items: [{ id: 'users', label: 'Users' }, { id: 'bookings', label: 'Bookings' }, { id: 'payments', label: 'Payments' }, { id: 'checkins', label: 'QR check-ins' }] },
   { label: 'Community', items: [{ id: 'lost-found', label: 'Lost & found' }, { id: 'ratings', label: 'Driver ratings' }, { id: 'notifications', label: 'Notifications' }] },
@@ -721,6 +761,9 @@ function formatCell(value: unknown, kind: CellKind = 'text'): ReactNode {
   if (kind === 'rating') {
     const rating = Math.max(0, Math.min(5, Number(value) || 0))
     return <span className="admin-rating" aria-label={`${rating} out of 5 stars`}><span aria-hidden="true">{'★'.repeat(Math.round(rating))}{'☆'.repeat(5 - Math.round(rating))}</span><span>{rating.toFixed(1)}</span></span>
+  }
+  if (kind === 'link') {
+    return <a className="admin-link" href={String(value)} rel="noreferrer" target="_blank">View Document</a>
   }
   if (Array.isArray(value)) return value.map((item) => (isObject(item) ? String(item.name ?? item.label ?? item.id ?? '') : String(item))).filter(Boolean).join(', ') || '—'
   if (isObject(value)) return String(value.name ?? value.label ?? value.reference ?? value.id ?? '—')
