@@ -17,6 +17,7 @@ import {
 } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import type { z } from 'zod';
+import { env } from '../../config/env.js';
 import { AppError } from '../../lib/errors.js';
 import { lockBookings } from '../../lib/booking-lock.js';
 import { lockBusSchedule } from '../../lib/bus-schedule-lock.js';
@@ -314,7 +315,7 @@ export const createDriverTrip = async (driverId: string, input: CreateDriverTrip
         boardingOpensAt: new Date(Math.max(Date.now(), input.scheduledStart.getTime() - 30 * 60_000)),
         bookingClosesAt: input.scheduledStart,
         fareAmount: input.fare,
-        currency: 'BDT',
+        currency: env.STRIPE_CURRENCY.toUpperCase(),
       },
     });
     await tx.tripStop.createMany({

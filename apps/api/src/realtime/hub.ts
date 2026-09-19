@@ -65,7 +65,7 @@ export const initializeRealtime = (httpServer: HttpServer) => {
         },
         select: { user: { select: { role: true, passwordChangedAt: true } } },
       });
-      if (!session || session.user.role !== claims.role || session.user.passwordChangedAt === null) {
+      if (!session || session.user.role !== claims.role) {
         throw new Error('SESSION_REVOKED');
       }
       socket.data = {

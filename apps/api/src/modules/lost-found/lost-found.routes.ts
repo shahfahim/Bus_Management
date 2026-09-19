@@ -58,7 +58,7 @@ lostFoundRouter.get(
 lostFoundRouter.post(
   '/',
   requireAuth,
-  requireRole(Role.STUDENT, Role.TEACHER, Role.ADMIN),
+  requireRole(Role.STUDENT, Role.ADMIN),
   uploadRateLimit,
   lostFoundUpload,
   asyncRoute(async (request, response) => {
@@ -103,7 +103,7 @@ lostFoundRouter.delete(
 lostFoundRouter.post(
   '/:id/claims',
   requireAuth,
-  requireRole(Role.STUDENT, Role.TEACHER),
+  requireRole(Role.STUDENT),
   asyncRoute(async (request, response) => {
     response.status(201).json(
       await createLostFoundClaim(

@@ -78,7 +78,7 @@ dashboardRouter.get(
     const role = request.auth!.role;
     const today = startOfDay();
     const tomorrow = endOfDay();
-    if (role === Role.STUDENT || role === Role.TEACHER) {
+    if (role === Role.STUDENT) {
       const [upcomingBookings, unreadNotifications, completedTrips] = await prisma.$transaction([
         prisma.booking.count({
           where: {
@@ -126,7 +126,7 @@ dashboardRouter.get(
         where: { status: PaymentStatus.SUCCEEDED, paidAt: { gte: today, lt: tomorrow } },
         _sum: { amount: true },
       }),
-      prisma.user.count({ where: { role: { in: [Role.STUDENT, Role.TEACHER] }, deletedAt: null } }),
+      prisma.user.count({ where: { role: Role.STUDENT, deletedAt: null } }),
       prisma.trip.count({
         where: { status: { in: [TripStatus.BOARDING, TripStatus.IN_PROGRESS, TripStatus.DELAYED] }, driver: { status: 'ACTIVE' } },
       }),

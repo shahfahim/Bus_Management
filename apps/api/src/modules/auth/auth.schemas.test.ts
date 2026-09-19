@@ -19,12 +19,6 @@ describe('role-aware registration validation', () => {
     }).role).toBe(Role.STUDENT);
   });
 
-  it('does not require a student ID for teachers', () => {
-    const result = registerSchema.parse({ ...common, role: Role.TEACHER, department: 'Engineering' });
-    expect(result.role).toBe(Role.TEACHER);
-    expect(result).not.toHaveProperty('studentId');
-  });
-
   it('requires driver credentials instead of a student ID', () => {
     const result = registerSchema.parse({
       ...common,

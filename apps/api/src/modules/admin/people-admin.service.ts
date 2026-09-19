@@ -158,7 +158,7 @@ export const createAdminUser = async (input: CreateUser, context: AuditContext) 
         passwordHash,
         emailVerifiedAt: input.status === UserStatus.ACTIVE ? new Date() : undefined,
         studentProfile:
-          input.role === Role.STUDENT || input.role === Role.TEACHER
+          input.role === Role.STUDENT
             ? { create: { studentNumber: input.identifier } }
             : undefined,
         driverProfile:
@@ -219,7 +219,7 @@ export const updateAdminUser = async (id: string, input: UpdateUser, context: Au
       throw new AppError(409, 'USER_ROLE_IMMUTABLE', 'Role changes require a dedicated identity migration and are not supported by this endpoint');
     }
     await protectAdminMutation(tx, before, context, { role: input.role, status: input.status });
-    if (input.identifier && (before.role === Role.STUDENT || before.role === Role.TEACHER)) {
+    if (input.identifier && before.role === Role.STUDENT) {
       await tx.studentProfile.update({ where: { userId: id }, data: { studentNumber: input.identifier } });
     } else if (before.role === Role.DRIVER && (input.identifier || input.licenseNumber || input.licenseExpiresAt || input.driverStatus || input.status)) {
       await tx.driverProfile.update({

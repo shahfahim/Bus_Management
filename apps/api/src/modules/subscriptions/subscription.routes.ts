@@ -6,7 +6,7 @@ import { requireAuth, requireRole } from '../auth/auth.middleware.js';
 import { listStudentSubscriptions } from './subscription.service.js';
 
 export const subscriptionRouter = Router();
-subscriptionRouter.use(requireAuth, requireRole(Role.STUDENT, Role.TEACHER));
+subscriptionRouter.use(requireAuth, requireRole(Role.STUDENT));
 
 subscriptionRouter.get(
   '/',

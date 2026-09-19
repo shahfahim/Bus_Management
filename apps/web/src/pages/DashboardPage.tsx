@@ -35,7 +35,7 @@ export function DashboardPage() {
   const loadDashboard = useCallback(async (signal: AbortSignal): Promise<DashboardData> => {
     const [summaryResult, bookingsResult, alertsResult] = await Promise.allSettled([
       api.get<DashboardSummary | { data: DashboardSummary }>('/dashboard/summary', signal),
-      user?.role === 'STUDENT' || user?.role === 'TEACHER'
+      user?.role === 'STUDENT'
         ? api.get<unknown>('/bookings?upcoming=true&limit=2', signal)
         : Promise.resolve([]),
       api.get<unknown>('/road-alerts?active=true&limit=4', signal),
@@ -61,7 +61,7 @@ export function DashboardPage() {
       {Boolean(error) && <InlineAlert tone="warning">Some dashboard data is temporarily unavailable. <button className="text-button" onClick={reload} type="button">Try again</button></InlineAlert>}
       {loading ? <DashboardSkeleton /> : (
         <>
-          {(user.role === 'STUDENT' || user.role === 'TEACHER') && <StudentDashboard bookings={data?.bookings ?? []} summary={data?.summary ?? {}} />}
+          {user.role === 'STUDENT' && <StudentDashboard bookings={data?.bookings ?? []} summary={data?.summary ?? {}} />}
           {(user.role === 'DRIVER' || user.role === 'CONDUCTOR') && <DriverDashboard summary={data?.summary ?? {}} />}
           {user.role === 'ADMIN' && <AdminDashboard summary={data?.summary ?? {}} />}
           <AlertsPanel alerts={data?.alerts ?? []} />
@@ -188,7 +188,7 @@ function dayPart() {
 }
 
 function dashboardDescription(role: string) {
-  if (role === 'STUDENT' || role === 'TEACHER') return 'Here’s what is happening with your campus travel.';
+  if (role === 'STUDENT') return 'Here’s what is happening with your campus travel.';
   if (role === 'ADMIN') return 'A live pulse of the university transport network.';
   return 'Your assignments, passenger load and road conditions at a glance.';
 }

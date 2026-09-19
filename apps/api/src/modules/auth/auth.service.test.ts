@@ -146,11 +146,7 @@ describe('role-aware self-registration approval controls', () => {
   });
 
   it.each([
-    {
-      role: Role.TEACHER,
-      email: 'teacher@outlook.com',
-      department: 'Computer Science',
-    },
+
     {
       role: Role.DRIVER,
       email: 'driver@example.com',

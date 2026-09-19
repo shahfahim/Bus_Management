@@ -21,11 +21,6 @@ export const registerSchema = z.discriminatedUnion('role', [
   }),
   z.object({
     ...registrationBase,
-    role: z.literal(Role.TEACHER),
-    department: z.string().trim().min(2).max(100).optional(),
-  }),
-  z.object({
-    ...registrationBase,
     role: z.literal(Role.DRIVER),
     employeeNumber: z.string().trim().min(2).max(64),
     licenseNumber: z.string().trim().min(2).max(96),

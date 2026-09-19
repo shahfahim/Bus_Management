@@ -14,7 +14,7 @@ type RegisterInput = {
   phone?: string;
 } & (
   | { role: 'STUDENT'; studentId: string; department: string }
-  | { role: 'TEACHER'; department?: string }
+
   | { role: 'DRIVER'; employeeNumber: string; licenseNumber: string; licenseExpiresAt: string }
 );
 

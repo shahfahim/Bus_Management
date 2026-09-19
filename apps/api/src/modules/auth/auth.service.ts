@@ -118,14 +118,7 @@ export const registerAccount = async (input: RegisterInput, _request: Request) =
                 emergencyContact: input.emergencyContact,
               },
             }
-          : input.role === Role.TEACHER
-            ? {
-                create: {
-                  studentNumber: `TEACHER-${randomToken(12)}`,
-                  department: input.department,
-                },
-              }
-            : undefined,
+          : undefined,
         driverProfile: input.role === Role.DRIVER
           ? {
               create: {
@@ -160,6 +153,9 @@ export const login = async (input: LoginInput, request: Request) => {
       });
     }
     throw new AppError(401, 'INVALID_CREDENTIALS', 'Email or password is incorrect');
+  }
+  if (user.lockedUntil && user.lockedUntil > new Date()) {
+    throw new AppError(429, 'ACCOUNT_LOCKED', 'Too many failed login attempts. Please try again later.');
   }
   if (user.status !== UserStatus.ACTIVE) {
     throw new AppError(403, 'ACCOUNT_DISABLED', 'This account is not active');

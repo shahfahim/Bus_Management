@@ -37,7 +37,7 @@ paymentRouter.get(
 
 paymentRouter.post(
   '/checkout',
-  requireRole(Role.STUDENT, Role.TEACHER),
+  requireRole(Role.STUDENT),
   asyncRoute(async (request, response) => {
     const input = checkoutSchema.parse(request.body);
     response.status(201).json(

@@ -134,8 +134,9 @@ export const createApp = () => {
     }
   });
 
-  app.use('/api', buildApiRouter());
-  app.use('/api/v1', buildApiRouter());
+  const apiRouter = buildApiRouter();
+  app.use('/api', apiRouter);
+  app.use('/api/v1', apiRouter);
   attachProductionWebAssets(app);
   app.use(notFoundHandler);
   app.use(errorHandler);

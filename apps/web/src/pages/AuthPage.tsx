@@ -13,7 +13,7 @@ interface LocationState {
 
 export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'register' }) {
   const [mode, setMode] = useState(initialMode);
-  const [registrationRole, setRegistrationRole] = useState<'STUDENT' | 'TEACHER' | 'DRIVER'>('STUDENT');
+  const [registrationRole, setRegistrationRole] = useState<'STUDENT' | 'DRIVER'>('STUDENT');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -53,19 +53,13 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
                 studentId: String(form.get('studentId')),
                 department: String(form.get('department')),
               }
-            : registrationRole === 'TEACHER'
-              ? {
-                  ...common,
-                  role: 'TEACHER',
-                  department: String(form.get('department') || '') || undefined,
-                }
-              : {
-                  ...common,
-                  role: 'DRIVER',
-                  employeeNumber: String(form.get('employeeNumber')),
-                  licenseNumber: String(form.get('licenseNumber')),
-                  licenseExpiresAt: String(form.get('licenseExpiresAt')),
-                },
+            : {
+                ...common,
+                role: 'DRIVER',
+                employeeNumber: String(form.get('employeeNumber')),
+                licenseNumber: String(form.get('licenseNumber')),
+                licenseExpiresAt: String(form.get('licenseExpiresAt')),
+              },
         );
         if (registration.approvalRequired) {
           setMode('login');
@@ -109,7 +103,7 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
                 <fieldset className="role-picker">
                   <legend>Register as</legend>
                   <div aria-label="Account role" className="segmented-control segmented-control--roles" role="radiogroup">
-                    {(['STUDENT', 'TEACHER', 'DRIVER'] as const).map((role) => (
+                    {(['STUDENT', 'DRIVER'] as const).map((role) => (
                       <button
                         aria-checked={registrationRole === role}
                         aria-selected={registrationRole === role}
@@ -134,9 +128,6 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
                     <Field autoComplete="off" label="Student ID" name="studentId" placeholder="e.g. 2026-00123" required />
                     <Field label="Department" name="department" placeholder="Computer Science" required />
                   </div>
-                )}
-                {registrationRole === 'TEACHER' && (
-                  <Field label="Department (optional)" name="department" placeholder="Computer Science" />
                 )}
                 {registrationRole === 'DRIVER' && (
                   <>
