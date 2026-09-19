@@ -12,7 +12,6 @@ interface LocationState {
 
 export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'register' }) {
   const [mode, setMode] = useState(initialMode);
-  const [registrationRole] = useState<'student' | 'teacher'>('student');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -113,12 +112,10 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
             <Field autoComplete="email" icon={<Mail aria-hidden="true" size={18} />} label="Email address" name="email" placeholder="name@example.com" required type="email" />
             {mode === 'register' && (
               <>
-                {registrationRole === 'STUDENT' && (
                   <div className="form-grid">
                     <Field autoComplete="off" label="Student ID" name="studentId" placeholder="e.g. 2024-100" required />
                     <Field label="Department" name="department" placeholder="Computer Science" required />
                   </div>
-                )}
                 <Field autoComplete="tel" label="Phone (optional)" name="phone" placeholder="+880 …" type="tel" />
                 <div className="form-group">
                   <label htmlFor="document">Verification Document (ID card or Payment slip)</label>
@@ -143,7 +140,7 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
               </button>
             </div>
             <Button className="auth-submit" loading={submitting} size="lg" type="submit">
-              {mode === 'login' ? 'Sign in securely' : `Create ${registrationRole.toLowerCase()} account`}
+              {mode === 'login' ? 'Sign in securely' : `Create student account`}
             </Button>
           </form>
           <p className="auth-security"><ShieldCheck aria-hidden="true" size={16} /> Protected by encrypted authentication and role-based access.</p>
