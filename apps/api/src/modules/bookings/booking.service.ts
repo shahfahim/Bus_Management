@@ -681,7 +681,7 @@ export const cancelBooking = async ({ bookingId, studentId, reason, isAdmin = fa
   );
 
   await notifyUser({
-    userId: studentId,
+    userId: cancelled.studentId,
     type: NotificationType.BOOKING_CANCELLED,
     title: 'Booking cancelled',
     body: `Booking ${cancelled.bookingNumber} was cancelled${cancelled.status === BookingStatus.REFUND_PENDING ? '; its refund is being processed' : ''}.`,
