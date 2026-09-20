@@ -116,7 +116,7 @@ const bookingDto = (booking: BookingRecord) => ({
   currency: booking.currency,
   paymentStatus:
     paymentStatusDto(booking.payments[0]?.status) ??
-    (booking.subscriptionId && booking.status === BookingStatus.CONFIRMED ? 'SUCCESS' : undefined),
+    (booking.status === BookingStatus.CONFIRMED ? 'SUCCESS' : undefined),
   checkedInAt: booking.checkIns[0]?.checkedInAt ?? booking.checkedInAt,
   holdExpiresAt: booking.holdExpiresAt,
   createdAt: booking.createdAt,
