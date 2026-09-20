@@ -16,6 +16,15 @@
 .nav-link--active { background: #1b5148; color: white; box-shadow: inset 3px 0 #67c8b6; }
 .nav-link svg { flex: 0 0 auto; }
 .nav-badge { margin-left: auto; min-width: 20px; padding: 3px 6px; border-radius: 20px; background: var(--accent); color: #432d0b; font-size: .67rem; text-align: center; }
+
+/* ACCORDION NAV */
+.nav-group { display: flex; flex-direction: column; }
+.nav-link--group { width: 100%; border: none; text-align: left; cursor: pointer; }
+.nav-chevron { margin-left: auto; transition: transform 0.2s ease; color: #8eb0aa; }
+.nav-chevron--open { transform: rotate(180deg); }
+.nav-sub { display: flex; flex-direction: column; gap: 3px; max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease; padding-left: 20px; }
+.nav-sub--open { max-height: 300px; opacity: 1; padding-top: 3px; }
+.nav-link--sub { min-height: 38px; padding: 8px 12px; font-size: .82rem; }
 .sidebar__help { display: flex; align-items: flex-start; gap: 10px; margin-top: 16px; padding: 13px; border-radius: 12px; background: #173a35; overflow: hidden; transition: padding 0.3s ease; }
 .sidebar__help strong, .sidebar__help a { display: block; white-space: nowrap; }
 .sidebar__help strong { font-size: .76rem; }

@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
 import { ApiError, api } from '../../lib/api'
 import './AdminWorkspacePage.css'
 
@@ -1052,13 +1052,21 @@ function TableSkeleton({ columns }: { columns: number }) {
 }
 
 function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (toast: ToastState) => void }) {
+  const [searchParams] = useSearchParams()
   const [items, setItems] = useState<AdminRecord[]>([])
   const [meta, setMeta] = useState<PageMeta>({ page: 1, pageSize: 20, total: 0, totalPages: 1 })
   const [page, setPage] = useState(1)
   const [pageSize, setPageSize] = useState(20)
   const [searchDraft, setSearchDraft] = useState('')
   const [search, setSearch] = useState('')
-  const [filters, setFilters] = useState<Record<string, string>>({})
+  const [filters, setFilters] = useState<Record<string, string>>(() => {
+    const initial: Record<string, string> = {}
+    config.filters.forEach(f => {
+      const val = searchParams.get(f.name)
+      if (val) initial[f.name] = val
+    })
+    return initial
+  })
   const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1071,11 +1079,16 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
     setPage(1)
     setSearchDraft('')
     setSearch('')
-    setFilters({})
+    const nextFilters: Record<string, string> = {}
+    config.filters.forEach(f => {
+      const val = searchParams.get(f.name)
+      if (val) nextFilters[f.name] = val
+    })
+    setFilters(nextFilters)
     setSort(null)
     setFormRecord(null)
     setDetailRecord(null)
-  }, [config.id])
+  }, [config.id, searchParams])
 
   const load = useCallback(async () => {
     const currentRequest = ++requestId.current

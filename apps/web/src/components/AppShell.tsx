@@ -33,6 +33,7 @@ interface NavItem {
   to: string;
   icon: typeof LayoutDashboard;
   end?: boolean;
+  subItems?: { label: string; to: string; icon: typeof LayoutDashboard }[];
 }
 
 const commonNavigation: NavItem[] = [
@@ -57,10 +58,17 @@ const roleNavigation: Record<Role, NavItem[]> = {
   ],
   ADMIN: [
     { label: 'Workspace', to: '/admin/overview', icon: Gauge },
-    { label: 'Student Approvals', to: '/admin/users?status=pending_verification', icon: UserCheck },
-    { label: 'Drivers', to: '/admin/users?role=driver', icon: UsersRound },
-    { label: 'Administrators', to: '/admin/users?role=admin', icon: Shield },
-    { label: 'All Users', to: '/admin/users', icon: Users },
+    {
+      label: 'Users',
+      to: '/admin/users-group', // Dummy path, won't be navigated to
+      icon: Users,
+      subItems: [
+        { label: 'Student Approvals', to: '/admin/users?status=pending_verification', icon: UserCheck },
+        { label: 'Drivers', to: '/admin/users?role=driver', icon: UsersRound },
+        { label: 'Administrators', to: '/admin/users?role=admin', icon: Shield },
+        { label: 'All Users', to: '/admin/users', icon: Users },
+      ]
+    },
   ],
 };
 
@@ -69,8 +77,10 @@ export function AppShell() {
   const { connected } = useSocket();
   const { notify } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [desktopMini, setDesktopMini] = useState(false);
+  const [usersExpanded, setUsersExpanded] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -139,6 +149,43 @@ export function AppShell() {
         <nav aria-label="Primary navigation" className="sidebar__nav">
           {navigation.map((item) => {
             const Icon = item.icon;
+            if (item.subItems) {
+              const isActive = item.subItems.some(sub => location.pathname + location.search === sub.to);
+              return (
+                <div key={item.label} className="nav-group">
+                  <button 
+                    className={cx('nav-link', 'nav-link--group', isActive && 'nav-link--active')} 
+                    onClick={() => {
+                      if (desktopMini) setDesktopMini(false);
+                      setUsersExpanded(!usersExpanded);
+                    }}
+                    type="button"
+                  >
+                    <Icon aria-hidden="true" size={19} />
+                    <span>{item.label}</span>
+                    <ChevronDown className={cx('nav-chevron', usersExpanded && 'nav-chevron--open')} size={16} />
+                  </button>
+                  <div className={cx('nav-sub', usersExpanded && !desktopMini && 'nav-sub--open')}>
+                    {item.subItems.map(sub => {
+                      const SubIcon = sub.icon;
+                      const isSubActive = location.pathname + location.search === sub.to;
+                      return (
+                        <NavLink
+                          className={cx('nav-link nav-link--sub', isSubActive && 'nav-link--active')}
+                          key={sub.to}
+                          onClick={() => setMobileOpen(false)}
+                          to={sub.to}
+                        >
+                          <SubIcon aria-hidden="true" size={17} />
+                          <span>{sub.label}</span>
+                        </NavLink>
+                      )
+                    })}
+                  </div>
+                </div>
+              )
+            }
+
             return (
               <NavLink
                 className={({ isActive }) => cx('nav-link', isActive && 'nav-link--active')}
