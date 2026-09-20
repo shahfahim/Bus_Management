@@ -234,6 +234,7 @@ const scheduleBaseSchema = z.object({
   validFrom: z.coerce.date(),
   validTo: nullableDate,
   daysOfWeek: z.array(z.coerce.number().int().min(0).max(6)).min(1, 'Select at least one day'),
+  fareAmount: z.coerce.number().int().min(0).default(0),
 });
 
 export const createScheduleSchema = scheduleBaseSchema

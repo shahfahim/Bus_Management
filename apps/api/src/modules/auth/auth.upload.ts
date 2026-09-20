@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { extname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';

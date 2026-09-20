@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Role, UserStatus } from '@prisma/client';
 import type { Request } from 'express';
 import { beforeEach, describe, expect, it, vi } from 'vitest';

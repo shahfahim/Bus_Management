@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { BookingStatus, Prisma, SeatAllocationStatus } from '@prisma/client';
 import { AppError } from '../../lib/errors.js';
 

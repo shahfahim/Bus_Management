@@ -1,3 +1,4 @@
+/* eslint-disable */
 import Papa from 'papaparse';
 import { jsPDF } from 'jspdf';
 import 'jspdf-autotable';

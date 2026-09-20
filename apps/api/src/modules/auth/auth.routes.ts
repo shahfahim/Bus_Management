@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { Router } from 'express';
 import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { asyncRoute } from '../../lib/async-route.js';

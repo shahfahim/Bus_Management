@@ -17,6 +17,7 @@ interface Schedule {
   validFrom: string;
   validTo: string | null;
   daysOfWeek: number[];
+  fareAmount: number;
   route: { name: string; code: string };
   bus: { fleetNumber: string; registrationNumber: string };
   driver: { name?: string; user?: { name: string } };
@@ -41,6 +42,7 @@ export function AdminSchedulesPage() {
     validFrom: new Date().toISOString().split('T')[0],
     validTo: '',
     daysOfWeek: [1, 2, 3, 4, 5],
+    fareAmount: 0,
     routeType: 'existing' as 'existing' | 'custom',
     routeId: '',
     busId: '',
@@ -62,6 +64,7 @@ export function AdminSchedulesPage() {
 
   useEffect(() => {
     loadSchedules();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadSchedules = () => {
@@ -144,6 +147,7 @@ export function AdminSchedulesPage() {
         validFrom: wizardState.validFrom + 'T00:00:00.000Z',
         validTo: wizardState.validTo ? wizardState.validTo + 'T00:00:00.000Z' : null,
         daysOfWeek: wizardState.daysOfWeek,
+        fareAmount: wizardState.fareAmount,
       };
 
       if (editingScheduleId) {
@@ -158,6 +162,7 @@ export function AdminSchedulesPage() {
       setEditingScheduleId(null);
       setWizardState(initialWizardState);
       loadSchedules();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       notify({ title: 'Error', description: err.message || 'Failed to save schedule', tone: 'error' });
     } finally {
@@ -176,6 +181,7 @@ export function AdminSchedulesPage() {
       driverId: schedule.driverId,
       departureTime: schedule.departureTime,
       daysOfWeek: schedule.daysOfWeek,
+      fareAmount: schedule.fareAmount ?? 0,
       validFrom: schedule.validFrom ? new Date(schedule.validFrom).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
       validTo: schedule.validTo ? new Date(schedule.validTo).toISOString().split('T')[0] : ''
     });
@@ -189,6 +195,7 @@ export function AdminSchedulesPage() {
       await api.delete(`/admin/schedules/${id}`);
       notify({ title: 'Success', description: 'Schedule deleted', tone: 'success' });
       loadSchedules();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       notify({ title: 'Error', description: err.message || 'Failed to delete', tone: 'error' });
     }
@@ -199,6 +206,7 @@ export function AdminSchedulesPage() {
       await api.patch(`/admin/schedules/${schedule.id}`, { isActive: !schedule.isActive });
       notify({ title: 'Success', description: `Schedule ${!schedule.isActive ? 'activated' : 'deactivated'}`, tone: 'success' });
       loadSchedules();
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       notify({ title: 'Error', description: err.message || 'Failed to update status', tone: 'error' });
     }
@@ -263,6 +271,14 @@ export function AdminSchedulesPage() {
                   type="date"
                   value={wizardState.validTo}
                   onChange={(e) => setWizardState({...wizardState, validTo: e.target.value})}
+                />
+                <Field 
+                  label="Fare Amount (৳)" 
+                  required 
+                  type="number"
+                  min="0"
+                  value={wizardState.fareAmount.toString()}
+                  onChange={(e) => setWizardState({...wizardState, fareAmount: parseInt(e.target.value) || 0})}
                 />
               </div>
             </div>

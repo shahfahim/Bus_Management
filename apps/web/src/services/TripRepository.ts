@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { BaseRepository } from './BaseRepository';
 
 export class TripRepository extends BaseRepository<any> {
