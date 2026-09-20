@@ -33,8 +33,7 @@ export function AdminSchedulesPage() {
   const [isCreating, setIsCreating] = useState(false);
   const { notify } = useToast();
 
-  // Wizard Form State
-  const [wizardState, setWizardState] = useState({
+  const initialWizardState = {
     departureTime: '08:00',
     validFrom: new Date().toISOString().split('T')[0],
     validTo: '',
@@ -44,7 +43,10 @@ export function AdminSchedulesPage() {
     busId: '',
     driverId: '',
     customStops: [] as string[],
-  });
+  };
+  
+  // Wizard Form State
+  const [wizardState, setWizardState] = useState(initialWizardState);
 
   // Lookups
   const [routes, setRoutes] = useState<Route[]>([]);
@@ -174,7 +176,7 @@ export function AdminSchedulesPage() {
   const handleEdit = (schedule: Schedule) => {
     loadLookups();
     setWizardState({
-      routeType: (schedule.route?.type as any) || 'existing',
+      routeType: 'existing',
       routeId: schedule.routeId,
       customStops: [],
       busId: schedule.busId,
