@@ -3,7 +3,6 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Card, EmptyState, InlineAlert, PageHeader, Pill, SelectField, Skeleton } from '../../components/ui';
 import { useSocket } from '../../contexts/SocketContext';
-import { useAuth } from '../../contexts/AuthContext';
 import { api, asItems, errorMessage, withQuery } from '../../lib/api';
 import { formatDateTime, formatTime, localDateInputValue } from '../../lib/format';
 import type { Trip } from '../../types';
@@ -15,7 +14,6 @@ export function DriverTripsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const { socket } = useSocket();
-  const { user } = useAuth();
   const load = useCallback(async () => {
     setLoading(true); setError('');
     try { setTrips(asItems<Trip>(await api.get<unknown>(withQuery('/driver/trips', { date, status, pageSize: 50 })))); }
