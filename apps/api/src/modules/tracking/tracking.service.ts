@@ -350,8 +350,8 @@ export const listDriverTrips = async (
   actor: { userId: string; role: Role },
   query: DriverTripQuery,
 ) => {
-  const dayStart = query.date ? new Date(`${query.date}T00:00:00.000Z`) : undefined;
-  const dayEnd = dayStart ? new Date(dayStart.getTime() + 24 * 60 * 60_000) : undefined;
+  const dayStart = query.date ? new Date(`${query.date}T00:00:00+06:00`) : undefined;
+  const dayEnd = query.date ? new Date(`${query.date}T23:59:59.999+06:00`) : undefined;
   const where: Prisma.TripWhereInput = {
     ...(actor.role === Role.DRIVER
       ? { driverId: actor.userId }

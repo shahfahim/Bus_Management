@@ -88,7 +88,7 @@ export const generateTrips = async () => {
               status: TripStatus.SCHEDULED,
               bookingClosesAt: scheduledStart,
               fareAmount: 0,
-              publicCode: `TRIP-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+              publicCode: `TRIP-${isoDate.replace(/-/g, '')}-${schedule.id.slice(0, 8).toUpperCase()}`,
             }
           });
           

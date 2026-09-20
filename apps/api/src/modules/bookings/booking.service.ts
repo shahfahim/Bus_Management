@@ -307,11 +307,8 @@ export const finalizeSeatHold = async (studentId: string, input: FinalizeSeatHol
     const finalizedId = await prisma.$transaction(
       async (tx) => {
       const now = new Date();
-      const st = Date.now();
       await expireStaleHolds(tx, input.tripId);
-      console.log('expireStaleHolds:', Date.now() - st);
       await lockBooking(tx, input.seatHoldId);
-      console.log('lockBooking:', Date.now() - st);
       const booking = await tx.booking.findFirst({
         where: {
           id: input.seatHoldId,
@@ -376,7 +373,6 @@ export const finalizeSeatHold = async (studentId: string, input: FinalizeSeatHol
         });
         if (!subscription) throw new AppError(409, 'SUBSCRIPTION_INVALID', 'The selected subscription is not valid for this route');
       }
-      console.log('checks done:', Date.now() - st);
       const requiresPayment = !subscription && Number(booking.fareAmount) > 0;
       await tx.booking.update({
         where: { id: booking.id },
@@ -405,7 +401,6 @@ export const finalizeSeatHold = async (studentId: string, input: FinalizeSeatHol
         });
         if (used.count !== 1) throw new AppError(409, 'SUBSCRIPTION_EXHAUSTED', 'The subscription has no trips remaining');
       }
-      console.log('update done:', Date.now() - st);
       return booking.id;
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 },

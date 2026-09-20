@@ -159,7 +159,10 @@ export function BookTripPage() {
 
   const orderedStops = trip?.route?.stops ?? [];
   const boardingIndex = orderedStops.findIndex((stop) => stop.id === boardingStopId);
-  const destinationOptions = orderedStops.filter((_, index) => index > Math.max(boardingIndex, -1));
+  // Only show stops AFTER the boarding stop as valid destinations
+  const destinationOptions = boardingIndex >= 0
+    ? orderedStops.filter((_, index) => index > boardingIndex)
+    : [];
   const selectedSeatNumber = pendingSeatNumber ?? hold?.seatNumber;
   const eligibleSubscriptions = subscriptions.filter((subscription) => {
     if (!trip || subscription.status !== 'ACTIVE') return false;

@@ -40,7 +40,8 @@ export function DriverTripDetailPage() {
 
   useEffect(() => {
     if (!socket) return undefined;
-    socket.emit('trip:join', { tripId });
+    const joinTrip = () => socket.emit('trip:join', { tripId });
+    joinTrip(); // join on mount
     const checkin = (payload: { tripId: string }) => {
       if (payload.tripId !== tripId) return;
       void api
@@ -52,9 +53,10 @@ export function DriverTripDetailPage() {
       if ((payload.id ?? payload.tripId) !== tripId) return;
       setTrip((current) => (current ? { ...current, ...payload, id: current.id } : current));
     };
+    socket.on('connect', joinTrip); // re-join after reconnect
     socket.on('checkin:created', checkin);
     socket.on('trip:updated', update);
-    return () => { socket.emit('trip:leave', { tripId }); socket.off('checkin:created', checkin); socket.off('trip:updated', update); };
+    return () => { socket.emit('trip:leave', { tripId }); socket.off('connect', joinTrip); socket.off('checkin:created', checkin); socket.off('trip:updated', update); };
   }, [socket, tripId]);
 
   const performAction = async () => {

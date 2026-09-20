@@ -349,10 +349,6 @@ adminRouter.delete('/users/:id', asyncRoute(async (request, response) => {
 }));
 
 adminRouter.get('/bookings', asyncRoute(async (request, response) => response.json(await listAdminBookings(bookingQuerySchema.parse(request.query)))));
-adminRouter.post('/bookings/:id/cancel', asyncRoute(async (request, response) => {
-  const { reason } = z.object({ reason: z.string().trim().min(3).max(500).default('Cancelled by administrator') }).parse(request.body ?? {});
-  response.json(await cancelBooking({ bookingId: idSchema.parse(request.params.id), reason, isAdmin: true }));
-}));
 adminRouter.get('/bookings/:id', asyncRoute(async (request, response) => response.json(await getAdminBooking(idSchema.parse(request.params.id)))));
 adminRouter.post('/bookings', asyncRoute(async (request, response) => response.status(201).json(await createAdminBooking(createAdminBookingSchema.parse(request.body), auditContext(request)))));
 adminRouter.patch('/bookings/:id', asyncRoute(async (request, response) => response.json(await updateAdminBooking(idSchema.parse(request.params.id), updateAdminBookingSchema.parse(request.body), auditContext(request)))));

@@ -118,7 +118,26 @@ export const updateSchedule = async (id: string, input: UpdateScheduleInput) => 
     select: scheduleSelect,
   });
 
-  // Regenerate trips in case days/times changed
+  // Cancel all future SCHEDULED trips from the old config before regenerating
+  // so students cannot book trips that will never depart as configured.
+  const timeChanging = input.departureTime !== undefined || input.daysOfWeek !== undefined
+    || input.validFrom !== undefined || input.validTo !== undefined;
+  if (timeChanging) {
+    await prisma.trip.updateMany({
+      where: {
+        scheduleId: id,
+        status: TripStatus.SCHEDULED,
+        scheduledStartAt: { gte: new Date() },
+      },
+      data: {
+        status: TripStatus.CANCELLED,
+        cancellationReason: 'Schedule configuration changed by administrator',
+      },
+    });
+    logger.info({ scheduleId: id }, 'Cancelled future trips due to schedule config change');
+  }
+
+  // Regenerate trips for the new config
   generateTrips().catch((err) => logger.error({ err, scheduleId: id }, 'Failed to generate trips for updated schedule'));
 
   return updatedSchedule;
