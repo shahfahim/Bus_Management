@@ -380,7 +380,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { name: 'name', label: 'Full name', kind: 'text', required: true },
       { name: 'email', label: 'Email address', kind: 'email', required: true },
       { name: 'phone', label: 'Phone number (optional)', kind: 'tel' },
-      { name: 'role', label: 'Role', kind: 'select', required: true, options: [{ label: 'Student', value: 'student' }, { label: 'Teacher', value: 'teacher' }, { label: 'Driver', value: 'driver' }, { label: 'Conductor', value: 'conductor' }, { label: 'Administrator', value: 'admin' }] },
+      { name: 'role', label: 'Role', kind: 'select', required: true, options: [{ label: 'Student', value: 'student' }, { label: 'Driver', value: 'driver' }, { label: 'Administrator', value: 'admin' }] },
       { name: 'identifier', label: 'Student / staff / employee ID', kind: 'text', required: true },
       { name: 'licenseNumber', label: 'Driver license number', kind: 'text', required: true, visibleWhen: { field: 'role', value: 'driver' } },
       { name: 'licenseExpiresAt', label: 'Driver license expiry', kind: 'date', required: true, visibleWhen: { field: 'role', value: 'driver' } },
@@ -388,7 +388,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { name: 'temporaryPassword', label: 'Temporary password', kind: 'password', required: true, createOnly: true, min: 12, help: 'Use at least 12 characters. The user must change it at first sign-in.' },
     ],
     filters: [
-      { name: 'role', label: 'All roles', options: [{ label: 'Students', value: 'student' }, { label: 'Teachers', value: 'teacher' }, { label: 'Drivers', value: 'driver' }, { label: 'Conductors', value: 'conductor' }, { label: 'Administrators', value: 'admin' }] },
+      { name: 'role', label: 'All roles', options: [{ label: 'Students', value: 'student' }, { label: 'Drivers', value: 'driver' }, { label: 'Administrators', value: 'admin' }] },
       { name: 'status', label: 'All statuses', options: USER_STATUS_OPTIONS },
     ],
     actions: [
