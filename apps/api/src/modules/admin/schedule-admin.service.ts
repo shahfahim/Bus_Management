@@ -129,10 +129,14 @@ export const deleteSchedule = async (id: string) => {
   if (!schedule) throw new AppError(404, 'NOT_FOUND', 'Schedule not found');
 
   await prisma.$transaction([
-    prisma.trip.deleteMany({
+    prisma.trip.updateMany({
       where: {
         scheduleId: id,
         status: TripStatus.SCHEDULED,
+      },
+      data: {
+        status: TripStatus.CANCELLED,
+        cancellationReason: 'Schedule was deleted by administrator',
       },
     }),
     prisma.tripSchedule.delete({ where: { id } }),
