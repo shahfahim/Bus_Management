@@ -42,10 +42,10 @@
   left: 0;
   width: 4px;
   height: 100%;
-  background: var(--color-success);
+  background: var(--primary);
 }
 .schedule-card--inactive .schedule-card__status {
-  background: var(--color-danger);
+  background: var(--danger);
 }
 
 .schedule-card__header {
@@ -57,14 +57,41 @@
 .schedule-card__route {
   font-size: 1.1rem;
   font-weight: 700;
-  color: var(--color-text);
+  color: var(--ink);
   margin: 0;
+}
+
+.schedule-card__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.schedule-card__actions button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: none;
+  background: transparent;
+  color: var(--ink-soft);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.schedule-card__actions button:hover {
+  background: var(--canvas);
+  color: var(--primary);
+}
+.schedule-card__actions .delete-btn:hover {
+  background: var(--danger-soft);
+  color: var(--danger);
 }
 
 .schedule-card__time {
   font-size: 1.2rem;
   font-weight: 800;
-  color: var(--color-primary);
+  color: var(--primary);
 }
 
 .schedule-card__days {
@@ -85,7 +112,7 @@
   font-weight: 600;
 }
 .day-badge.active {
-  background: var(--color-primary);
+  background: var(--primary);
   color: white;
 }
 
@@ -94,7 +121,7 @@
   flex-direction: column;
   gap: 8px;
   font-size: 0.9rem;
-  color: var(--color-text-muted);
+  color: var(--ink-soft);
 }
 .schedule-card__details p {
   margin: 0;
@@ -126,7 +153,7 @@
 .wizard-section h3 {
   font-size: 1.2rem;
   margin-bottom: 20px;
-  color: var(--color-primary);
+  color: var(--primary);
   display: flex;
   align-items: center;
   gap: 10px;
@@ -161,12 +188,12 @@
   border: 2px solid transparent;
 }
 .day-checkbox input:checked ~ span {
-  background: var(--color-primary);
+  background: var(--primary);
   color: white;
   box-shadow: 0 4px 12px rgba(27, 81, 72, 0.2);
 }
 .day-checkbox input:focus ~ span {
-  border-color: var(--color-primary);
+  border-color: var(--primary);
 }
 
 .route-type-toggle {
@@ -181,7 +208,7 @@
   border: 2px solid #eef2f1;
   border-radius: 12px;
   background: white;
-  color: var(--color-text-muted);
+  color: var(--ink-soft);
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
@@ -191,9 +218,9 @@
   gap: 8px;
 }
 .route-type-btn.active {
-  border-color: var(--color-primary);
+  border-color: var(--primary);
   background: #f5f9f8;
-  color: var(--color-primary);
+  color: var(--primary);
 }
 
 .custom-stops-selector {
@@ -216,7 +243,7 @@
 }
 .stop-item button {
   margin-left: auto;
-  color: var(--color-danger);
+  color: var(--danger);
 }
 
 .add-stop-control {

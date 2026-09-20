@@ -1,4 +1,4 @@
-import { Clock, Plus, Bus, User, MapPin, Calendar, Route as RouteIcon, Save, X, Settings2 } from 'lucide-react';
+import { Clock, Plus, Bus, User, MapPin, Calendar, Route as RouteIcon, Save, X, Settings2, Trash2, Edit, Power } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api, asItems } from '../../lib/api';
 import { PageHeader, Button, Card, SelectField, Field, cx, useToast, Skeleton } from '../../components/ui';
@@ -28,6 +28,7 @@ const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
 export function AdminSchedulesPage() {
   const [schedules, setSchedules] = useState<Schedule[]>([]);
+  const [editingScheduleId, setEditingScheduleId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const { notify } = useToast();
@@ -149,15 +150,62 @@ export function AdminSchedulesPage() {
         validFrom: wizardState.validFrom + 'T00:00:00.000Z',
         validTo: wizardState.validTo ? wizardState.validTo + 'T00:00:00.000Z' : null,
         daysOfWeek: wizardState.daysOfWeek,
-      });
+      };
 
-      notify({ title: 'Success', description: 'Schedule created successfully', tone: 'success' });
+      if (editingScheduleId) {
+        await api.patch(`/admin/schedules/${editingScheduleId}`, payload);
+        notify({ title: 'Success', description: 'Schedule updated successfully', tone: 'success' });
+      } else {
+        await api.post('/admin/schedules', payload);
+        notify({ title: 'Success', description: 'Schedule created successfully', tone: 'success' });
+      }
+
       setIsCreating(false);
+      setEditingScheduleId(null);
+      setWizardState(initialWizardState);
       loadSchedules();
-    } catch (err) {
-      notify({ title: 'Error', description: 'Failed to create schedule', tone: 'error' });
+    } catch (err: any) {
+      notify({ title: 'Error', description: err.message || 'Failed to save schedule', tone: 'error' });
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleEdit = (schedule: Schedule) => {
+    loadLookups();
+    setWizardState({
+      routeType: (schedule.route?.type as any) || 'existing',
+      routeId: schedule.routeId,
+      customStops: [],
+      busId: schedule.busId,
+      driverId: schedule.driverId,
+      departureTime: schedule.departureTime,
+      daysOfWeek: schedule.daysOfWeek,
+      validFrom: schedule.validFrom ? new Date(schedule.validFrom).toISOString().split('T')[0] : new Date().toISOString().split('T')[0],
+      validTo: schedule.validTo ? new Date(schedule.validTo).toISOString().split('T')[0] : ''
+    });
+    setEditingScheduleId(schedule.id);
+    setIsCreating(true);
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this schedule?')) return;
+    try {
+      await api.delete(`/admin/schedules/${id}`);
+      notify({ title: 'Success', description: 'Schedule deleted', tone: 'success' });
+      loadSchedules();
+    } catch (err: any) {
+      notify({ title: 'Error', description: err.message || 'Failed to delete', tone: 'error' });
+    }
+  };
+
+  const handleToggleActive = async (schedule: Schedule) => {
+    try {
+      await api.patch(`/admin/schedules/${schedule.id}`, { isActive: !schedule.isActive });
+      notify({ title: 'Success', description: `Schedule ${!schedule.isActive ? 'activated' : 'deactivated'}`, tone: 'success' });
+      loadSchedules();
+    } catch (err: any) {
+      notify({ title: 'Error', description: err.message || 'Failed to update status', tone: 'error' });
     }
   };
 
@@ -181,17 +229,21 @@ export function AdminSchedulesPage() {
     <div className="admin-schedules-container">
       <PageHeader
         actions={!isCreating && (
-          <Button icon={<Plus size={18} />} onClick={startCreate}>
+          <Button variant="primary" icon={<Plus size={18} />} onClick={startCreate}>
             New Schedule
           </Button>
         )}
         description="Manage recurring trips, custom assignments, and operational timetables."
         eyebrow="Fleet Operations"
-        title={isCreating ? 'Create Schedule' : 'Trip Schedules'}
+        title={isCreating ? (editingScheduleId ? 'Edit Schedule' : 'Create Schedule') : 'Trip Schedules'}
       />
 
       {isCreating ? (
         <form className="schedule-wizard" onSubmit={handleCreate}>
+          <div className="wizard-header">
+            <h2>{editingScheduleId ? 'Edit Schedule' : 'Create New Schedule'}</h2>
+            <button type="button" className="close-wizard" onClick={() => { setIsCreating(false); setEditingScheduleId(null); }}><X size={24} /></button>
+          </div>
           
           <div className="wizard-section">
             <h3><Calendar size={20} /> Schedule Days & Timing</h3>
@@ -266,7 +318,7 @@ export function AdminSchedulesPage() {
                 <label className="field__label">Define Custom Route Stops</label>
                 {wizardState.customStops.map((stopId, idx) => (
                   <div key={idx} className="stop-item">
-                    <span style={{fontWeight: 'bold', color: 'var(--color-primary)'}}>{idx + 1}.</span>
+                    <span style={{fontWeight: 'bold', color: 'var(--primary)'}}>{idx + 1}.</span>
                     {stops.find(s => s.id === stopId)?.name}
                     <button type="button" onClick={() => removeCustomStop(idx)}><X size={16} /></button>
                   </div>
@@ -305,7 +357,7 @@ export function AdminSchedulesPage() {
           </div>
 
           <div className="wizard-actions">
-            <Button variant="secondary" onClick={() => setIsCreating(false)} type="button">Cancel</Button>
+            <Button variant="secondary" onClick={() => { setIsCreating(false); setEditingScheduleId(null); }} type="button">Cancel</Button>
             <Button type="submit" loading={submitting} icon={<Save size={18} />}>Save Schedule</Button>
           </div>
 
@@ -316,8 +368,21 @@ export function AdminSchedulesPage() {
             <div key={schedule.id} className={cx('schedule-card', !schedule.isActive && 'schedule-card--inactive')}>
               <div className="schedule-card__status" />
               <div className="schedule-card__header">
-                <h4 className="schedule-card__route">{schedule.route?.name || 'Unknown Route'}</h4>
-                <span className="schedule-card__time">{schedule.departureTime}</span>
+                <div>
+                  <h3 className="schedule-card__route">{schedule.route?.name || 'Custom Route'}</h3>
+                  <span className="schedule-card__time">{schedule.departureTime}</span>
+                </div>
+                <div className="schedule-card__actions">
+                  <button type="button" title={schedule.isActive ? "Deactivate" : "Activate"} onClick={() => handleToggleActive(schedule)}>
+                    <Power size={18} style={{ color: schedule.isActive ? 'var(--ink-soft)' : 'var(--primary)' }} />
+                  </button>
+                  <button type="button" title="Edit" onClick={() => handleEdit(schedule)}>
+                    <Edit size={18} />
+                  </button>
+                  <button type="button" title="Delete" onClick={() => handleDelete(schedule.id)} className="delete-btn">
+                    <Trash2 size={18} />
+                  </button>
+                </div>
               </div>
               
               <div className="schedule-card__days">
@@ -334,9 +399,9 @@ export function AdminSchedulesPage() {
           ))}
           {schedules.length === 0 && (
              <Card style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40 }}>
-                <Clock size={40} style={{ color: 'var(--color-primary)', margin: '0 auto 16px' }} />
+                <Clock size={40} style={{ color: 'var(--primary)', margin: '0 auto 16px' }} />
                 <h3 style={{ marginBottom: 8 }}>No Schedules Yet</h3>
-                <p style={{ color: 'var(--color-text-muted)' }}>Create your first schedule to start automating bus trips.</p>
+                <p style={{ color: 'var(--ink-soft)' }}>Create your first schedule to start automating bus trips.</p>
              </Card>
           )}
         </div>
