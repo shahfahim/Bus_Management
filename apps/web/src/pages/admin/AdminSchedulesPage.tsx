@@ -1,6 +1,6 @@
 import { Clock, Plus, Bus, User, MapPin, Calendar, Route as RouteIcon, Save, X, Settings2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { api } from '../../lib/api';
+import { api, asItems } from '../../lib/api';
 import { PageHeader, Button, Card, SelectField, Field, cx, useToast } from '../../components/ui';
 import './AdminSchedulesPage.css';
 
@@ -62,7 +62,7 @@ export function AdminSchedulesPage() {
   const loadSchedules = () => {
     setLoading(true);
     api.get<Schedule[]>('/admin/schedules')
-      .then((data) => setSchedules(data || []))
+      .then((data) => setSchedules(asItems<Schedule>(data)))
       .catch(() => notify({ title: 'Error', description: 'Failed to load schedules', tone: 'error' }))
       .finally(() => setLoading(false));
   };
@@ -74,10 +74,10 @@ export function AdminSchedulesPage() {
       api.get<{data: UserData[]}>('/admin/users?role=driver&status=active'),
       api.get<{data: Stop[]}>('/admin/stops')
     ]).then(([rRes, bRes, dRes, sRes]) => {
-      setRoutes(rRes?.data || []);
-      setBuses(bRes?.data || []);
-      setDrivers(dRes?.data || []);
-      setStops(sRes?.data || []);
+      setRoutes(asItems<Route>(rRes));
+      setBuses(asItems<BusData>(bRes));
+      setDrivers(asItems<UserData>(dRes));
+      setStops(asItems<Stop>(sRes));
     });
   };
 
