@@ -13,6 +13,20 @@
 
 **UniRide** is a full-stack, real-time application built with TypeScript, React, Express, and PostgreSQL, designed specifically for university transport operations. It offers a comprehensive solution for managing fleets, scheduling trips, tracking buses, and handling student bookings.
 
+## 📸 Screenshots
+
+<p align="center">
+  <img src="docs/assets/01-signin.png" width="800" alt="Sign In Page">
+  <br><br>
+  <img src="docs/assets/05-command-centre.png" width="800" alt="Command Centre Dashboard">
+  <br><br>
+  <img src="docs/assets/02-workspace.png" width="800" alt="Admin Workspace Overview">
+  <br><br>
+  <img src="docs/assets/03-trip-schedules.png" width="800" alt="Trip Schedules">
+  <br><br>
+  <img src="docs/assets/04-users.png" width="800" alt="User Management">
+</p>
+
 ## ✨ Features
 
 - **🎓 Student Portal:** Seat booking, digital bus passes, and QR code boarding.
