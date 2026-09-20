@@ -29,7 +29,7 @@ export const generateTrips = async () => {
   logger.info({ module: 'TripGenerator' }, 'Generating trips for active schedules...');
   const schedules = await prisma.tripSchedule.findMany({
     where: { isActive: true },
-    include: { route: true }
+    include: { route: { include: { stops: { orderBy: { sequence: 'asc' } } } } }
   });
 
   let createdCount = 0;
@@ -70,18 +70,40 @@ export const generateTrips = async () => {
       });
 
       if (!existingTrip) {
-        await prisma.trip.create({
-          data: {
-            scheduleId: schedule.id,
-            routeId: schedule.routeId,
-            busId: schedule.busId,
-            driverId: schedule.driverId,
-            scheduledStartAt: scheduledStart,
-            scheduledEndAt: scheduledEnd,
-            status: TripStatus.SCHEDULED,
-            fareAmount: 0,
-            publicCode: `TRIP-${Date.now()}-${Math.floor(Math.random()*1000)}`,
-          }
+        await prisma.$transaction(async (tx) => {
+          const trip = await tx.trip.create({
+            data: {
+              scheduleId: schedule.id,
+              routeId: schedule.routeId,
+              busId: schedule.busId,
+              driverId: schedule.driverId,
+              scheduledStartAt: scheduledStart,
+              scheduledEndAt: scheduledEnd,
+              status: TripStatus.SCHEDULED,
+              fareAmount: 0,
+              publicCode: `TRIP-${Date.now()}-${Math.floor(Math.random()*1000)}`,
+            }
+          });
+          
+          const duration = scheduledEnd.getTime() - scheduledStart.getTime();
+          const routeDistance = schedule.route.distanceMeters ?? schedule.route.stops.at(-1)?.distanceFromStartMeters ?? 0;
+          
+          await tx.tripStop.createMany({
+            data: schedule.route.stops.map((routeStop, index) => {
+              const ratio =
+                routeStop.plannedOffsetMinutes !== null
+                  ? Math.min(1, Math.max(0, (routeStop.plannedOffsetMinutes * 60_000) / duration))
+                  : routeDistance > 0 && routeStop.distanceFromStartMeters !== null
+                    ? Math.min(1, Math.max(0, routeStop.distanceFromStartMeters / routeDistance))
+                    : index / Math.max(1, schedule.route.stops.length - 1);
+              return {
+                tripId: trip.id,
+                routeStopId: routeStop.id,
+                sequence: routeStop.sequence,
+                scheduledArrivalAt: new Date(scheduledStart.getTime() + duration * ratio),
+              };
+            })
+          });
         });
         createdCount++;
       }
