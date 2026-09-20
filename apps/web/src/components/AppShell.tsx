@@ -246,7 +246,7 @@ export function AppShell() {
             </div>
           </div>
         </header>
-        <main className="main-content" id="main-content">
+        <main className="main-content" id="main-content" key={location.pathname + location.search}>
           <Outlet />
         </main>
       </div>
