@@ -199,7 +199,7 @@ export const createDriverTrip = async (driverId: string, input: CreateDriverTrip
   }
 
   const tripId = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'driver-schedule:' + driverId}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'driver-schedule:' + driverId}))`;
     await lockBusSchedule(tx, input.busId);
     const [profile, assignment, conflict, activeCustomTrips] = await Promise.all([
       tx.driverProfile.findUnique({ where: { userId: driverId }, include: { user: true } }),

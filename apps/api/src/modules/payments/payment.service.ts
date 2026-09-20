@@ -73,7 +73,7 @@ export const createCheckout = async ({
   const prepared = await prisma.$transaction(async (tx) => {
     // Serializes attempts for the same payable resource, including clients that omit
     // an idempotency header. Stripe receives a second deterministic key below.
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${resourceKey}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${resourceKey}))`;
 
     if (requestedKey) {
       const keyedPayment = await tx.payment.findUnique({
@@ -502,7 +502,7 @@ const reconcileStripeRefunds = async (paymentId: string, refunds: Stripe.Refund[
   const now = new Date();
   const result = await prisma.$transaction(async (tx) => {
     if (scope.bookingId) await lockBooking(tx, scope.bookingId);
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'refund:' + paymentId}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'refund:' + paymentId}))`;
     const payment = await tx.payment.findUnique({
       where: { id: paymentId },
       include: { booking: { select: { tripId: true } }, subscription: { select: { id: true } } },
@@ -857,7 +857,7 @@ export const getReceipt = async (paymentId: string, requester: { userId: string;
 export const refundPayment = async (paymentId: string, reason: string) => {
   const gateway = requireStripe();
   const prepared = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'refund:' + paymentId}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'refund:' + paymentId}))`;
     const payment = await tx.payment.findUnique({ where: { id: paymentId } });
     if (!payment) throw new AppError(404, 'PAYMENT_NOT_FOUND', 'Payment not found');
     if (

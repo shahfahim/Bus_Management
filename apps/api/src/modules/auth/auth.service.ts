@@ -233,7 +233,7 @@ export const changePassword = async (
 ) => {
   const nextPasswordHash = await bcrypt.hash(input.newPassword, 12);
   const revokedSessionIds = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'password:' + userId}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'password:' + userId}))`;
     const user = await tx.user.findUnique({ where: { id: userId }, select: { passwordHash: true } });
     if (!user || !(await bcrypt.compare(input.currentPassword, user.passwordHash))) {
       throw new AppError(401, 'INVALID_CURRENT_PASSWORD', 'The current password is incorrect');

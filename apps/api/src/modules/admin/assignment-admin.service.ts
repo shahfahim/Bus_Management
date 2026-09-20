@@ -92,7 +92,7 @@ const validateResources = async (
   excludeId?: string,
 ) => {
   await lockBusSchedule(tx, input.busId);
-  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'driver-schedule:' + input.driverId}))`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'driver-schedule:' + input.driverId}))`;
   const overlap = {
     startsAt: { lt: input.endsAt ?? new Date('9999-12-31T23:59:59.999Z') },
     OR: [{ endsAt: null }, { endsAt: { gt: input.startsAt } }],

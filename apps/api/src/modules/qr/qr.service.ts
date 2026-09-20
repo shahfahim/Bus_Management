@@ -40,7 +40,7 @@ const issueCredential = async (bookingId: string, userId: string, rotate: boolea
     throw new AppError(409, 'TRIP_EXPIRED', 'A QR code cannot be issued for an expired trip');
   }
   const result = await prisma.$transaction(async (tx) => {
-    await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'qr:' + bookingId}))`;
+    await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'qr:' + bookingId}))`;
     const existing = await tx.bookingQrCode.findFirst({
       where: { bookingId, status: QrCodeStatus.ACTIVE },
       orderBy: { issuedAt: 'desc' },
