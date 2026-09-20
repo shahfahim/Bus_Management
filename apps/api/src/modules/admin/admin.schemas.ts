@@ -89,6 +89,7 @@ export const createRouteSchema = z.object({
   estimatedDurationMinutes: z.coerce.number().int().positive().max(10_080),
   status: enumValue(RouteStatus).default(RouteStatus.ACTIVE),
   description: optionalText(5_000),
+  stopIds: z.array(idSchema).optional(),
 });
 
 export const updateRouteSchema = z

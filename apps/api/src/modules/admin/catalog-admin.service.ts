@@ -310,6 +310,11 @@ export const getAdminRoute = async (id: string) => {
 
 export const createAdminRoute = async (input: CreateRoute, context: AuditContext) => {
   const route = await prisma.$transaction(async (tx) => {
+    const routeStopsToCreate = input.stopIds?.map((stopId, index) => ({
+      stopId,
+      sequence: index + 1,
+    })) || [];
+
     const created = await tx.route.create({
       data: {
         code: input.code,
@@ -318,6 +323,9 @@ export const createAdminRoute = async (input: CreateRoute, context: AuditContext
         distanceMeters: Math.round(input.distanceKm * 1_000),
         estimatedDurationMinutes: input.estimatedDurationMinutes,
         status: input.status,
+        stops: {
+          create: routeStopsToCreate
+        }
       },
       include: routeInclude,
     });

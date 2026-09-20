@@ -45,7 +45,8 @@ export function AdminSchedulesPage() {
     routeId: '',
     busId: '',
     driverId: '',
-    customStops: [] as string[],
+    customFromStopId: '',
+    customToStopId: '',
   };
   
   // Wizard Form State
@@ -57,8 +58,6 @@ export function AdminSchedulesPage() {
   const [drivers, setDrivers] = useState<UserData[]>([]);
   const [stops, setStops] = useState<Stop[]>([]);
   
-  // Custom stops selector state
-  const [selectedStopToAdd, setSelectedStopToAdd] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -102,16 +101,7 @@ export function AdminSchedulesPage() {
     setIsCreating(true);
   };
 
-  const addCustomStop = () => {
-    if (selectedStopToAdd && !wizardState.customStops.includes(selectedStopToAdd)) {
-      setWizardState(prev => ({ ...prev, customStops: [...prev.customStops, selectedStopToAdd] }));
-      setSelectedStopToAdd('');
-    }
-  };
 
-  const removeCustomStop = (index: number) => {
-    setWizardState(prev => ({ ...prev, customStops: prev.customStops.filter((_, i) => i !== index) }));
-  };
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -125,8 +115,8 @@ export function AdminSchedulesPage() {
       let finalRouteId = wizardState.routeId;
       
       if (wizardState.routeType === 'custom') {
-        if (wizardState.customStops.length < 2) {
-           notify({ title: 'Validation', description: 'Custom routes need at least 2 stops', tone: 'error' });
+        if (!wizardState.customFromStopId || !wizardState.customToStopId) {
+           notify({ title: 'Validation', description: 'Please select both From and To locations', tone: 'error' });
            setSubmitting(false);
            return;
         }
@@ -138,11 +128,10 @@ export function AdminSchedulesPage() {
           name: `Custom Route ${code}`,
           distanceKm: 5,
           estimatedDurationMinutes: 30,
+          stopIds: [wizardState.customFromStopId, wizardState.customToStopId]
         };
         const newRoute = await api.post<Route>('/admin/routes', routePayload);
         
-        // We'd ideally add stops to the route here if the backend had a simple endpoint
-        // For now, we link the schedule to this newly generated Route ID.
         finalRouteId = newRoute.id;
       }
 
@@ -181,7 +170,8 @@ export function AdminSchedulesPage() {
     setWizardState({
       routeType: 'existing',
       routeId: schedule.routeId,
-      customStops: [],
+      customFromStopId: '',
+      customToStopId: '',
       busId: schedule.busId,
       driverId: schedule.driverId,
       departureTime: schedule.departureTime,
@@ -297,7 +287,7 @@ export function AdminSchedulesPage() {
               <button 
                 type="button" 
                 className={cx('route-type-btn', wizardState.routeType === 'existing' && 'active')}
-                onClick={() => setWizardState({...wizardState, routeType: 'existing', customStops: []})}
+                onClick={() => setWizardState({...wizardState, routeType: 'existing', customFromStopId: '', customToStopId: ''})}
               >
                 <RouteIcon /> Existing Route
               </button>
@@ -320,22 +310,22 @@ export function AdminSchedulesPage() {
               />
             ) : (
               <div className="custom-stops-selector">
-                <label className="field__label">Define Custom Route Stops</label>
-                {wizardState.customStops.map((stopId, idx) => (
-                  <div key={idx} className="stop-item">
-                    <span style={{fontWeight: 'bold', color: 'var(--primary)'}}>{idx + 1}.</span>
-                    {stops.find(s => s.id === stopId)?.name}
-                    <button type="button" onClick={() => removeCustomStop(idx)}><X size={16} /></button>
-                  </div>
-                ))}
-                <div className="add-stop-control">
+                <label className="field__label">Define Custom Route Locations</label>
+                <div className="form-grid" style={{ marginTop: 8 }}>
                   <SelectField 
-                    label=""
-                    value={selectedStopToAdd}
-                    onChange={e => setSelectedStopToAdd(e.target.value)}
-                    options={[{value: '', label: 'Select a stop to add', disabled: true}, ...stops.map(s => ({ value: s.id, label: s.name }))]}
+                    label="From (Origin)"
+                    required
+                    value={wizardState.customFromStopId}
+                    onChange={e => setWizardState({...wizardState, customFromStopId: e.target.value})}
+                    options={[{value: '', label: 'Select origin location', disabled: true}, ...stops.map(s => ({ value: s.stopId || s.id, label: s.name }))]}
                   />
-                  <Button type="button" onClick={addCustomStop} variant="secondary">Add Stop</Button>
+                  <SelectField 
+                    label="To (Destination)"
+                    required
+                    value={wizardState.customToStopId}
+                    onChange={e => setWizardState({...wizardState, customToStopId: e.target.value})}
+                    options={[{value: '', label: 'Select destination location', disabled: true}, ...stops.map(s => ({ value: s.stopId || s.id, label: s.name }))]}
+                  />
                 </div>
               </div>
             )}
