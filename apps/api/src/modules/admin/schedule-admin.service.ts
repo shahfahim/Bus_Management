@@ -1,4 +1,4 @@
-import { Prisma } from '@prisma/client';
+import { Prisma, TripStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../lib/errors.js';
 import type { z } from 'zod';
@@ -128,5 +128,13 @@ export const deleteSchedule = async (id: string) => {
   const schedule = await prisma.tripSchedule.findUnique({ where: { id } });
   if (!schedule) throw new AppError(404, 'NOT_FOUND', 'Schedule not found');
 
-  await prisma.tripSchedule.delete({ where: { id } });
+  await prisma.$transaction([
+    prisma.trip.deleteMany({
+      where: {
+        scheduleId: id,
+        status: TripStatus.SCHEDULED,
+      },
+    }),
+    prisma.tripSchedule.delete({ where: { id } }),
+  ]);
 };
