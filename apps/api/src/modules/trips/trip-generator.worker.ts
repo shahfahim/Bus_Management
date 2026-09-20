@@ -33,27 +33,33 @@ export const generateTrips = async () => {
   });
 
   let createdCount = 0;
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const now = new Date();
+  const formatter = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Dhaka', year: 'numeric', month: '2-digit', day: '2-digit' });
+  const dhakaDateStr = formatter.format(now);
+  const baseDate = new Date(`${dhakaDateStr}T00:00:00+06:00`);
 
   for (const schedule of schedules) {
     // Generate for the next 7 days
     for (let i = 0; i < 7; i++) {
-      const targetDate = new Date(today);
-      targetDate.setDate(targetDate.getDate() + i);
+      const targetDate = new Date(baseDate.getTime() + i * 24 * 60 * 60 * 1000);
 
       // Check validFrom and validTo
       if (targetDate < schedule.validFrom) continue;
       if (schedule.validTo && targetDate > schedule.validTo) continue;
 
       // Check days of week (0 = Sunday, 1 = Monday, ...)
-      const dayOfWeek = targetDate.getDay();
-      if (!schedule.daysOfWeek.includes(dayOfWeek)) continue;
+      // We must get the day of the week in Dhaka time
+      // The easiest way is to use getUTCDay() since baseDate is Midnight UTC-6 (so 18:00 UTC previous day).
+      // Wait, 00:00+06:00 is 18:00 UTC previous day. So getUTCDay() would be wrong by 1 day!
+      // Since it's exactly midnight in Dhaka time, we can parse the isoDate:
+      const isoDate = formatter.format(targetDate);
+      const localDayOfWeek = new Date(`${isoDate}T12:00:00Z`).getUTCDay(); // safe noon UTC
+      
+      if (!schedule.daysOfWeek.includes(localDayOfWeek)) continue;
 
       // Parse departureTime "HH:mm"
-      const [hours, minutes] = schedule.departureTime.split(':').map(Number);
-      const scheduledStart = new Date(targetDate);
-      scheduledStart.setHours(hours ?? 0, minutes ?? 0, 0, 0);
+      const [hours, minutes] = schedule.departureTime.split(':');
+      const scheduledStart = new Date(`${isoDate}T${hours}:${minutes}:00+06:00`);
       
       const scheduledEnd = new Date(scheduledStart);
       scheduledEnd.setMinutes(scheduledEnd.getMinutes() + (schedule.route.estimatedDurationMinutes ?? 60));
