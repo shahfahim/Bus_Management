@@ -19,7 +19,7 @@
 
 /* ACCORDION NAV */
 .nav-group { display: flex; flex-direction: column; }
-.nav-link--group { width: 100%; border: none; text-align: left; cursor: pointer; }
+.nav-link--group { width: 100%; border: none; background: transparent; font-family: inherit; text-align: left; cursor: pointer; }
 .nav-chevron { margin-left: auto; transition: transform 0.2s ease; color: #8eb0aa; }
 .nav-chevron--open { transform: rotate(180deg); }
 .nav-sub { display: flex; flex-direction: column; gap: 3px; max-height: 0; overflow: hidden; opacity: 0; transition: max-height 0.3s ease, opacity 0.3s ease, padding 0.3s ease; padding-left: 20px; }
