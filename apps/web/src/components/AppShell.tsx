@@ -1,4 +1,6 @@
 import { useTheme } from '../contexts/ThemeContext';
+import { AnimatePresence } from 'framer-motion';
+import { AnimatedPage } from './animations/withAnimation';
 import {
   Bell,
   BookOpenCheck,
@@ -260,8 +262,12 @@ export function AppShell() {
             </div>
           </div>
         </header>
-        <main className="main-content" id="main-content" key={location.pathname + location.search}>
-          <Outlet />
+        <main className="main-content" id="main-content">
+          <AnimatePresence mode="wait">
+            <AnimatedPage key={location.pathname + location.search}>
+              <Outlet />
+            </AnimatedPage>
+          </AnimatePresence>
         </main>
       </div>
     </div>

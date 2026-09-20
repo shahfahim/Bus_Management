@@ -2,7 +2,10 @@ import { Clock, Plus, Bus, User, MapPin, Calendar, Route as RouteIcon, Save, X, 
 import { useEffect, useState } from 'react';
 import { api, asItems } from '../../lib/api';
 import { PageHeader, Button, Card, SelectField, Field, cx, useToast, Skeleton } from '../../components/ui';
+import { AnimatedList, AnimatedListItem, withHoverScale } from '../../components/animations/withAnimation';
 import './AdminSchedulesPage.css';
+
+const AnimatedButton = withHoverScale(Button);
 
 interface Schedule {
   id: string;
@@ -231,9 +234,9 @@ export function AdminSchedulesPage() {
     <div className="admin-schedules-container">
       <PageHeader
         actions={!isCreating && (
-          <Button variant="primary" icon={<Plus size={18} />} onClick={startCreate}>
+          <AnimatedButton variant="primary" icon={<Plus size={18} />} onClick={startCreate}>
             New Schedule
-          </Button>
+          </AnimatedButton>
         )}
         description="Manage recurring trips, custom assignments, and operational timetables."
         eyebrow="Fleet Operations"
@@ -365,9 +368,9 @@ export function AdminSchedulesPage() {
 
         </form>
       ) : (
-        <div className="schedules-grid">
+        <AnimatedList className="schedules-grid">
           {schedules.map(schedule => (
-            <div key={schedule.id} className={cx('schedule-card', !schedule.isActive && 'schedule-card--inactive')}>
+            <AnimatedListItem key={schedule.id} className={cx('schedule-card', !schedule.isActive && 'schedule-card--inactive')}>
               <div className="schedule-card__status" />
               <div className="schedule-card__header">
                 <div>
@@ -397,7 +400,7 @@ export function AdminSchedulesPage() {
                 <p><Bus size={16} /> {schedule.bus?.registrationNumber}</p>
                 <p><User size={16} /> {schedule.driver?.user?.name || schedule.driver?.name || 'Assigned Driver'}</p>
               </div>
-            </div>
+            </AnimatedListItem>
           ))}
           {schedules.length === 0 && (
              <Card style={{ gridColumn: '1 / -1', textAlign: 'center', padding: 40 }}>
@@ -406,7 +409,7 @@ export function AdminSchedulesPage() {
                 <p style={{ color: 'var(--ink-soft)' }}>Create your first schedule to start automating bus trips.</p>
              </Card>
           )}
-        </div>
+        </AnimatedList>
       )}
     </div>
   );
