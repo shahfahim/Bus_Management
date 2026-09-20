@@ -1,0 +1,248 @@
+.admin-schedules-container {
+  padding: 32px;
+  max-width: 1200px;
+  margin: 0 auto;
+  animation: fadeUp 0.4s ease forwards;
+}
+
+.schedules-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  margin-bottom: 32px;
+}
+
+.schedules-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.schedule-card {
+  background: white;
+  border-radius: 16px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  transition: transform 0.2s, box-shadow 0.2s;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  position: relative;
+  overflow: hidden;
+}
+
+.schedule-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.08);
+}
+
+.schedule-card__status {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  height: 100%;
+  background: var(--color-success);
+}
+.schedule-card--inactive .schedule-card__status {
+  background: var(--color-danger);
+}
+
+.schedule-card__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.schedule-card__route {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.schedule-card__time {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--color-primary);
+}
+
+.schedule-card__days {
+  display: flex;
+  gap: 4px;
+}
+
+.day-badge {
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: #f0f4f3;
+  color: #8eb0aa;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.day-badge.active {
+  background: var(--color-primary);
+  color: white;
+}
+
+.schedule-card__details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: var(--color-text-muted);
+}
+.schedule-card__details p {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Wizard */
+.schedule-wizard {
+  background: white;
+  border-radius: 20px;
+  padding: 32px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.08);
+  animation: slideUp 0.3s ease-out forwards;
+}
+
+.wizard-section {
+  margin-bottom: 32px;
+  padding-bottom: 32px;
+  border-bottom: 1px solid #eef2f1;
+}
+.wizard-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+  padding-bottom: 0;
+}
+
+.wizard-section h3 {
+  font-size: 1.2rem;
+  margin-bottom: 20px;
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.days-selector {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.day-checkbox {
+  position: relative;
+  cursor: pointer;
+}
+.day-checkbox input {
+  position: absolute;
+  opacity: 0;
+  cursor: pointer;
+}
+.day-checkbox span {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background: #f0f4f3;
+  color: #6a8c86;
+  font-weight: 700;
+  transition: all 0.2s ease;
+  border: 2px solid transparent;
+}
+.day-checkbox input:checked ~ span {
+  background: var(--color-primary);
+  color: white;
+  box-shadow: 0 4px 12px rgba(27, 81, 72, 0.2);
+}
+.day-checkbox input:focus ~ span {
+  border-color: var(--color-primary);
+}
+
+.route-type-toggle {
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.route-type-btn {
+  flex: 1;
+  padding: 16px;
+  border: 2px solid #eef2f1;
+  border-radius: 12px;
+  background: white;
+  color: var(--color-text-muted);
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.route-type-btn.active {
+  border-color: var(--color-primary);
+  background: #f5f9f8;
+  color: var(--color-primary);
+}
+
+.custom-stops-selector {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f8faf9;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.stop-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+.stop-item button {
+  margin-left: auto;
+  color: var(--color-danger);
+}
+
+.add-stop-control {
+  display: flex;
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.form-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.wizard-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(15px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

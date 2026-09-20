@@ -1,6 +1,7 @@
 import {
   Bell,
   BookOpenCheck,
+  CalendarDays,
   ChevronDown,
   CircleUserRound,
   Gauge,
@@ -58,6 +59,7 @@ const roleNavigation: Record<Role, NavItem[]> = {
   ],
   ADMIN: [
     { label: 'Workspace', to: '/admin/overview', icon: Gauge },
+    { label: 'Trip Schedules', to: '/admin/schedules', icon: CalendarDays },
     {
       label: 'Users',
       to: '/admin/users-group', // Dummy path, won't be navigated to
