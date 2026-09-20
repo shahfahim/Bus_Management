@@ -108,7 +108,7 @@ export function ExpensesPage() {
                 <Tooltip 
                   cursor={{ fill: 'var(--surface-sunken)' }}
                   contentStyle={{ backgroundColor: 'var(--surface)', borderColor: 'var(--border)', borderRadius: '8px', color: 'var(--text)' }}
-                  formatter={(value: number) => [`৳${value.toFixed(2)}`, 'Spent']}
+                  formatter={(value: any) => [`৳${Number(value).toFixed(2)}`, 'Spent']}
                   labelStyle={{ color: 'var(--text-muted)', marginBottom: '8px' }}
                 />
                 <Bar 
