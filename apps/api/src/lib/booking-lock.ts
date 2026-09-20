@@ -5,7 +5,7 @@ import type { Prisma } from '@prisma/client';
  * Call only from inside a database transaction.
  */
 export const lockBooking = async (tx: Prisma.TransactionClient, bookingId: string): Promise<void> => {
-  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${'booking:' + bookingId}))`;
+  await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'booking:' + bookingId})) IS NULL AS success`;
 };
 
 export const lockBookings = async (tx: Prisma.TransactionClient, bookingIds: string[]): Promise<void> => {

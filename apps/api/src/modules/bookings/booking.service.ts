@@ -179,7 +179,7 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
   const held = await withSerializableRetry(() =>
     prisma.$transaction(
       async (tx) => {
-        await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext('seat-hold'), hashtext(${studentId + ':' + tripId}))`;
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('seat-hold'), hashtext(${studentId + ':' + tripId})) IS NULL AS success`;
         await expireStaleHolds(tx, tripId);
         const trip = await tx.trip.findUnique({
           where: { id: tripId },
@@ -249,7 +249,7 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
         });
         return { id: booking.id, seatNumber: seat.seatNumber, expiresAt, previousSeatNumber };
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 },
     ),
   );
   if (held.previousSeatNumber && held.previousSeatNumber !== held.seatNumber) {
@@ -303,11 +303,14 @@ export const finalizeSeatHold = async (studentId: string, input: FinalizeSeatHol
 
   let finalized: BookingRecord;
   try {
-    finalized = await prisma.$transaction(
+    const finalizedId = await prisma.$transaction(
       async (tx) => {
       const now = new Date();
+      const st = Date.now();
       await expireStaleHolds(tx, input.tripId);
+      console.log('expireStaleHolds:', Date.now() - st);
       await lockBooking(tx, input.seatHoldId);
+      console.log('lockBooking:', Date.now() - st);
       const booking = await tx.booking.findFirst({
         where: {
           id: input.seatHoldId,
@@ -371,6 +374,7 @@ export const finalizeSeatHold = async (studentId: string, input: FinalizeSeatHol
         });
         if (!subscription) throw new AppError(409, 'SUBSCRIPTION_INVALID', 'The selected subscription is not valid for this route');
       }
+      console.log('checks done:', Date.now() - st);
       const requiresPayment = !subscription && Number(booking.fareAmount) > 0;
       await tx.booking.update({
         where: { id: booking.id },
@@ -399,10 +403,12 @@ export const finalizeSeatHold = async (studentId: string, input: FinalizeSeatHol
         });
         if (used.count !== 1) throw new AppError(409, 'SUBSCRIPTION_EXHAUSTED', 'The subscription has no trips remaining');
       }
-      return tx.booking.findUniqueOrThrow({ where: { id: booking.id }, include: bookingInclude });
+      console.log('update done:', Date.now() - st);
+      return booking.id;
       },
-      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 },
     );
+    finalized = await prisma.booking.findUniqueOrThrow({ where: { id: finalizedId }, include: bookingInclude });
   } catch (error: unknown) {
     if (idempotencyKey) {
       const existing = await prisma.booking.findUnique({ where: { idempotencyKey }, include: bookingInclude });
@@ -669,7 +675,7 @@ export const cancelBooking = async ({ bookingId, studentId, reason }: { bookingI
       }
       return updated;
     },
-    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 },
   );
 
   await notifyUser({
