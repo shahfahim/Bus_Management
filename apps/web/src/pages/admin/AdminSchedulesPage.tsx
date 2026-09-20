@@ -141,7 +141,7 @@ export function AdminSchedulesPage() {
         finalRouteId = newRoute.id;
       }
 
-      await api.post('/admin/schedules', {
+      const payload = {
         routeId: finalRouteId,
         busId: wizardState.busId,
         driverId: wizardState.driverId,
