@@ -19,6 +19,7 @@ interface SeatHold {
 interface SeatResponse {
   items: Seat[];
   currentHold?: SeatHold | null;
+  updatedAt?: string;
 }
 
 export function BookTripPage() {
@@ -40,10 +41,11 @@ export function BookTripPage() {
   const [error, setError] = useState('');
   const [secondsRemaining, setSecondsRemaining] = useState(0);
   const bookingAttemptKey = useRef(crypto.randomUUID());
+  const clockSkew = useRef(0);
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (preserveError = false) => {
     setLoading(true);
-    setError('');
+    if (!preserveError) setError('');
     try {
       const [tripResponse, seatsResponse, subscriptionResponse] = await Promise.all([
         api.get<Trip | { data: Trip }>(`/trips/${tripId}`),
@@ -51,7 +53,10 @@ export function BookTripPage() {
         api.get<unknown>('/subscriptions?status=ACTIVE'),
       ]);
       const nextTrip = unwrap(tripResponse);
-      const seatState = unwrap(seatsResponse);
+      const seatState = unwrap(seatsResponse) as SeatResponse;
+      if (seatState.updatedAt) {
+        clockSkew.current = new Date(seatState.updatedAt).getTime() - Date.now();
+      }
       setTrip(nextTrip);
       setSeats(asItems<Seat>(seatState));
       setHold(seatState.currentHold ?? undefined);
@@ -87,15 +92,13 @@ export function BookTripPage() {
     if (!hold) { setSecondsRemaining(0); return undefined; }
     const update = () => {
       if (!hold?.expiresAt) return;
-      const msRemaining = new Date(hold.expiresAt).getTime() - Date.now();
+      const realNow = Date.now() + clockSkew.current;
+      const msRemaining = new Date(hold.expiresAt).getTime() - realNow;
       let remaining = Math.max(0, Math.ceil(msRemaining / 1000));
-      if (remaining === 0 && msRemaining > -900000) {
-        remaining = 15 * 60;
-      }
       setSecondsRemaining(remaining);
       if (remaining === 0) {
         setHold(undefined);
-        void load();
+        void load(true);
       }
     };
     update();
@@ -115,8 +118,8 @@ export function BookTripPage() {
       setSeats((current) => current.map((item) => ({ ...item, heldByCurrentUser: item.number === seat.number })));
       notify({ title: `Seat ${seat.number} held`, description: 'Complete the booking before the timer expires.', tone: 'success' });
     } catch (reason) {
+      await load(true);
       setError(errorMessage(reason, 'That seat was just taken. Choose another seat.'));
-      await load();
     } finally {
       setHolding(false);
       setPendingSeatNumber(undefined);
