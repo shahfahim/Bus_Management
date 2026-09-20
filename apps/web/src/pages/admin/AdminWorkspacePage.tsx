@@ -652,11 +652,11 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
 const SECTION_GROUPS: Array<{ label: string; items: Array<{ id: 'overview' | 'reports' | AdminSectionId; label: string }> }> = [
   { label: 'Monitor', items: [{ id: 'overview', label: 'Overview' }, { id: 'reports', label: 'Reports' }, { id: 'trips', label: 'Trips' }, { id: 'schedules', label: 'Trip schedules' }, { id: 'assignments', label: 'Driver assignments' }, { id: 'incidents', label: 'Incidents' }] },
   { label: 'Network', items: [{ id: 'buses', label: 'Buses' }, { id: 'routes', label: 'Routes' }, { id: 'stops', label: 'Stops' }, { id: 'maintenance', label: 'Maintenance' }, { id: 'road-alerts', label: 'Road alerts' }] },
-  { label: 'People & service', items: [{ id: 'users', label: 'Users' }, { id: 'bookings', label: 'Bookings' }, { id: 'payments', label: 'Payments' }, { id: 'checkins', label: 'QR check-ins' }] },
+  { label: 'People & service', items: [{ id: 'bookings', label: 'Bookings' }, { id: 'payments', label: 'Payments' }, { id: 'checkins', label: 'QR check-ins' }] },
   { label: 'Community', items: [{ id: 'lost-found', label: 'Lost & found' }, { id: 'ratings', label: 'Driver ratings' }, { id: 'notifications', label: 'Notifications' }] },
 ]
 
-const KNOWN_SECTIONS: Set<string> = new Set(SECTION_GROUPS.flatMap((group) => group.items.map((item) => item.id)))
+const KNOWN_SECTIONS: Set<string> = new Set([...SECTION_GROUPS.flatMap((group) => group.items.map((item) => item.id)), 'users'])
 const CURRENCY = new Intl.NumberFormat('en-BD', { style: 'currency', currency: 'BDT', maximumFractionDigits: 2 })
 const NUMBER = new Intl.NumberFormat('en-BD')
 const DATE = new Intl.DateTimeFormat('en-BD', { day: '2-digit', month: 'short', year: 'numeric' })

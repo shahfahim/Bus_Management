@@ -7,8 +7,14 @@ import {
   LayoutDashboard,
   LifeBuoy,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   QrCode,
   Route as RouteIcon,
+  Shield,
+  UserCheck,
+  Users,
+  UsersRound,
   WalletCards,
   X,
 } from 'lucide-react';
@@ -51,6 +57,10 @@ const roleNavigation: Record<Role, NavItem[]> = {
   ],
   ADMIN: [
     { label: 'Workspace', to: '/admin/overview', icon: Gauge },
+    { label: 'Student Approvals', to: '/admin/users?status=pending_verification', icon: UserCheck },
+    { label: 'Drivers', to: '/admin/users?role=driver', icon: UsersRound },
+    { label: 'Administrators', to: '/admin/users?role=admin', icon: Shield },
+    { label: 'All Users', to: '/admin/users', icon: Users },
   ],
 };
 
@@ -60,6 +70,7 @@ export function AppShell() {
   const { notify } = useToast();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [desktopMini, setDesktopMini] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [unread, setUnread] = useState(0);
   const profileRef = useRef<HTMLDivElement>(null);
@@ -106,13 +117,16 @@ export function AppShell() {
   };
 
   return (
-    <div className="app-shell">
+    <div className={cx('app-shell', desktopMini && 'app-shell--mini')}>
       <a className="skip-link" href="#main-content">
         Skip to main content
       </a>
-      <aside className={cx('sidebar', mobileOpen && 'sidebar--open')}>
+      <aside className={cx('sidebar', mobileOpen && 'sidebar--open', desktopMini && 'sidebar--mini')}>
         <div className="sidebar__brand-row">
           <Brand />
+          <button aria-label="Toggle navigation" className="icon-button sidebar__toggle-desktop" onClick={() => setDesktopMini(!desktopMini)} type="button">
+            {desktopMini ? <PanelLeftOpen aria-hidden="true" size={20} /> : <PanelLeftClose aria-hidden="true" size={20} />}
+          </button>
           <button aria-label="Close navigation" className="icon-button sidebar__close" onClick={() => setMobileOpen(false)} type="button">
             <X aria-hidden="true" />
           </button>
@@ -142,7 +156,7 @@ export function AppShell() {
         </nav>
         <div className="sidebar__help">
           <LifeBuoy aria-hidden="true" size={20} />
-          <div>
+          <div className="sidebar__help-text">
             <strong>Need help?</strong>
             <a href="tel:+8809600000000">Transport control</a>
           </div>

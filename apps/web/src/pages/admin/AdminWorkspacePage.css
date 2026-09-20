@@ -769,14 +769,21 @@
 }
 
 .admin-modal-backdrop {
-  align-items: center;
-  background: rgba(10, 28, 18, 0.55);
-  display: flex;
-  inset: 0;
-  justify-content: center;
-  padding: 20px;
   position: fixed;
-  z-index: 1000;
+  inset: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: rgba(23, 35, 27, 0.4);
+  backdrop-filter: blur(4px);
+  animation: modalFadeIn 0.3s ease;
+}
+
+@keyframes modalFadeIn {
+  from { opacity: 0; backdrop-filter: blur(0); }
+  to { opacity: 1; backdrop-filter: blur(4px); }
 }
 
 .admin-modal {
@@ -790,6 +797,12 @@
   max-width: 760px;
   overflow: hidden;
   width: 100%;
+  animation: modalSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes modalSlideUp {
+  from { opacity: 0; transform: translateY(20px) scale(0.96); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .admin-modal__header {
