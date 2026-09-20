@@ -26,7 +26,7 @@
 .app-shell--mini .app-shell__body { margin-left: 74px; }
 .sidebar { transition: width 0.3s ease, transform 0.22s ease; overflow-x: hidden; }
 .sidebar--mini { width: 74px; padding: 24px 10px 18px; }
-.sidebar--mini .brand { opacity: 0; pointer-events: none; }
+.sidebar--mini .brand { display: none; }
 .sidebar--mini .sidebar__role { opacity: 0; padding: 0; margin-bottom: 5px; height: 0; overflow: hidden; border: none; }
 .sidebar--mini .nav-link span, .sidebar--mini .nav-link .nav-badge { opacity: 0; pointer-events: none; position: absolute; }
 .sidebar--mini .nav-link { padding: 10px 16px; justify-content: center; overflow: hidden; }
