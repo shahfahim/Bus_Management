@@ -20,6 +20,7 @@ import { prisma } from '../../lib/prisma.js';
 import { emitToTrip, emitToUser } from '../../realtime/hub.js';
 import { notifyUser } from '../notifications/notification.service.js';
 import { refundBookingPayments } from '../payments/payment.service.js';
+import { BookingStateFactory } from './booking.state.js';
 import type { z } from 'zod';
 import type { bookingListSchema, createBookingSchema, finalizeSeatHoldSchema } from './booking.schemas.js';
 
@@ -637,17 +638,15 @@ export const cancelBooking = async ({ bookingId, studentId, reason }: { bookingI
         include: { payments: { where: { status: PaymentStatus.SUCCEEDED } }, subscription: true },
       });
       if (!booking) throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
-      if (!([BookingStatus.HELD, BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED] as BookingStatus[]).includes(booking.status)) {
-        throw new AppError(409, 'BOOKING_NOT_CANCELLABLE', 'This booking can no longer be cancelled');
-      }
-      const nextStatus = booking.payments.length ? BookingStatus.REFUND_PENDING : BookingStatus.CANCELLED;
+      const currentState = BookingStateFactory.getState(booking.status);
+      const transition = currentState.cancel({ now, reason });
+      
+      const nextStatus = booking.payments.length ? BookingStatus.REFUND_PENDING : transition.status as BookingStatus;
       const updated = await tx.booking.update({
         where: { id: booking.id, version: booking.version },
         data: {
+          ...transition,
           status: nextStatus,
-          cancelledAt: now,
-          cancellationReason: reason,
-          version: { increment: 1 },
           qrCodes: {
             updateMany: {
               where: { status: 'ACTIVE' },
@@ -655,10 +654,6 @@ export const cancelBooking = async ({ bookingId, studentId, reason }: { bookingI
             },
           },
         },
-      });
-      await tx.seatAllocation.updateMany({
-        where: { bookingId: booking.id, status: { in: [SeatAllocationStatus.HELD, SeatAllocationStatus.CONFIRMED] } },
-        data: { status: SeatAllocationStatus.RELEASED, releasedAt: now, releaseReason: 'Booking cancelled' },
       });
       if (booking.subscriptionId && booking.subscription?.remainingTrips !== null) {
         await tx.studentSubscription.update({

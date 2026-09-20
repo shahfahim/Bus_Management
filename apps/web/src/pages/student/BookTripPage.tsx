@@ -7,7 +7,8 @@ import { Button, Card, InlineAlert, PageHeader, Pill, SelectField, Skeleton, use
 import { useSocket } from '../../contexts/SocketContext';
 import { api, asItems, errorMessage, unwrap } from '../../lib/api';
 import { formatDateTime, formatMoney } from '../../lib/format';
-import type { Booking, Seat, StudentSubscription, Trip } from '../../types';
+import { bookingRepository } from '../../services/BookingRepository';
+import type { Seat, StudentSubscription, Trip } from '../../types';
 
 interface SeatHold {
   id: string;
@@ -103,8 +104,7 @@ export function BookTripPage() {
     setPendingSeatNumber(seat.number);
     setError('');
     try {
-      const response = await api.post<SeatHold | { data: SeatHold }>(`/trips/${tripId}/seat-holds`, { seatNumber: seat.number });
-      const nextHold = unwrap(response);
+      const nextHold = await bookingRepository.holdSeat(tripId, seat.number) as SeatHold;
       bookingAttemptKey.current = crypto.randomUUID();
       setHold(nextHold);
       setSeats((current) => current.map((item) => ({ ...item, heldByCurrentUser: item.number === seat.number })));
@@ -125,19 +125,14 @@ export function BookTripPage() {
     setSubmitting(true);
     setError('');
     try {
-      const response = await api.post<Booking | { data: Booking }>(
-        '/bookings',
-        {
-          tripId,
-          seatNumber: hold.seatNumber,
-          seatHoldId: hold.id,
-          boardingStopId,
-          destinationStopId,
-          subscriptionId: subscriptionId || undefined,
-        },
-        { 'Idempotency-Key': bookingAttemptKey.current },
-      );
-      const booking = unwrap(response);
+      const booking = await bookingRepository.finalize({
+        tripId,
+        seatNumber: hold.seatNumber,
+        seatHoldId: hold.id,
+        boardingStopId,
+        destinationStopId,
+        ...(subscriptionId ? { subscriptionId } : {}),
+      }, bookingAttemptKey.current) as { status: string; reference: string; id: string };
       setHold(undefined);
       notify({
         title: 'Seat booked',

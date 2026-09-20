@@ -1,8 +1,8 @@
 const API_URL = (import.meta.env.VITE_API_URL || '/api').replace(/\/$/, '');
 const ACCESS_TOKEN_KEY = 'uniride.access-token';
 
-type Primitive = string | number | boolean | null | undefined;
-type QueryValue = Primitive | Primitive[];
+export type Primitive = string | number | boolean | null | undefined;
+export type QueryValue = Primitive | Primitive[];
 
 export class ApiError extends Error {
   readonly status: number;
