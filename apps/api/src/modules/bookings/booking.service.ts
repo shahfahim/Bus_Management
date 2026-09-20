@@ -200,7 +200,8 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
           startsAt: trip.scheduledStartAt,
           endsAt: trip.scheduledEndAt,
         });
-        if (trip.bookingClosesAt && trip.bookingClosesAt <= new Date()) {
+        const bookingClosesAt = trip.bookingClosesAt ?? trip.scheduledStartAt;
+        if (bookingClosesAt <= new Date()) {
           throw new AppError(409, 'BOOKING_CLOSED', 'Booking has closed for this trip');
         }
         if (trip.stops.length < 2) throw new AppError(409, 'TRIP_STOPS_MISSING', 'This trip does not have a valid stop sequence');
@@ -333,7 +334,8 @@ export const finalizeSeatHold = async (studentId: string, input: FinalizeSeatHol
       if (!([TripStatus.SCHEDULED, TripStatus.BOARDING, TripStatus.DELAYED] as TripStatus[]).includes(booking.trip.status)) {
         throw new AppError(409, 'TRIP_NOT_BOOKABLE', 'This trip is no longer accepting bookings');
       }
-      if (booking.trip.bookingClosesAt && booking.trip.bookingClosesAt <= now) {
+      const bookingClosesAt = booking.trip.bookingClosesAt ?? booking.trip.scheduledStartAt;
+      if (bookingClosesAt <= now) {
         throw new AppError(409, 'BOOKING_CLOSED', 'Booking has closed for this trip');
       }
       if (booking.trip.bus.status !== BusStatus.ACTIVE) {
