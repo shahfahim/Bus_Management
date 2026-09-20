@@ -7,7 +7,7 @@ import {
   useRef,
   useState,
 } from 'react'
-import { useNavigate, useParams, useSearchParams, useLocation } from 'react-router-dom'
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, api } from '../../lib/api'
 import './AdminWorkspacePage.css'
 
