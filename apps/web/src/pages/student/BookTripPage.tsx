@@ -74,7 +74,7 @@ export function BookTripPage() {
     const seatUpdate = (payload: { tripId: string; seats?: Seat[]; seat?: Seat }) => {
       if (payload.tripId !== tripId) return;
       if (payload.seats) setSeats(payload.seats);
-      else if (payload.seat) setSeats((current) => current.map((seat) => seat.number === payload.seat!.number ? payload.seat! : seat));
+      else if (payload.seat) setSeats((current) => current.map((seat) => seat.number === payload.seat!.number ? { ...seat, ...payload.seat! } : seat));
     };
     socket.on('trip:seats', seatUpdate);
     return () => {
@@ -86,7 +86,12 @@ export function BookTripPage() {
   useEffect(() => {
     if (!hold) { setSecondsRemaining(0); return undefined; }
     const update = () => {
-      const remaining = Math.max(0, Math.ceil((new Date(hold.expiresAt).getTime() - Date.now()) / 1000));
+      if (!hold?.expiresAt) return;
+      const msRemaining = new Date(hold.expiresAt).getTime() - Date.now();
+      let remaining = Math.max(0, Math.ceil(msRemaining / 1000));
+      if (remaining === 0 && msRemaining > -900000) {
+        remaining = 15 * 60;
+      }
       setSecondsRemaining(remaining);
       if (remaining === 0) {
         setHold(undefined);

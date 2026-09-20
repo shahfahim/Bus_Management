@@ -9,6 +9,8 @@ import {
 } from 'react'
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, api } from '../../lib/api'
+import { ChartFactory } from '../../components/charts/ChartFactory'
+import { ExportFacade } from '../../lib/ExportFacade'
 import './AdminWorkspacePage.css'
 
 type AdminSectionId =
@@ -769,29 +771,7 @@ function serializeForm(fields: FormFieldConfig[], values: Record<string, FormVal
   }, {})
 }
 
-function createCsv(rows: AdminRecord[], columns: ColumnConfig[]): string {
-  const escape = (value: unknown) => `"${String(value ?? '').replace(/"/g, '""')}"`
-  const header = columns.map((column) => escape(column.label)).join(',')
-  const lines = rows.map((row) => columns.map((column) => {
-    const value = getValue(row, column.key)
-    if (Array.isArray(value)) return escape(value.join('; '))
-    if (isObject(value)) return escape(value.name ?? value.label ?? value.reference ?? value.id ?? '')
-    return escape(value)
-  }).join(','))
-  return [header, ...lines].join('\r\n')
-}
-
-function downloadText(filename: string, content: string, mime = 'text/csv;charset=utf-8'): void {
-  const blob = new Blob([content], { type: mime })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  URL.revokeObjectURL(url)
-}
+// Replaced by ExportFacade
 
 function AdminIcon({ name }: { name: string }) {
   const paths: Record<string, ReactNode> = {
@@ -1179,10 +1159,16 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
     }
   }
 
-  const exportRows = () => {
+  const exportRowsCSV = () => {
     if (!items.length) return
-    downloadText(`${config.id}-${new Date().toISOString().slice(0, 10)}.csv`, createCsv(items, config.columns))
-    onToast({ tone: 'info', message: `Exported ${items.length} visible records.` })
+    ExportFacade.exportToCSV(items, config.columns, `${config.id}-${new Date().toISOString().slice(0, 10)}.csv`)
+    onToast({ tone: 'info', message: `Exported ${items.length} visible records as CSV.` })
+  }
+
+  const exportRowsPDF = () => {
+    if (!items.length) return
+    ExportFacade.exportToPDF(items, config.columns, `${config.id}-${new Date().toISOString().slice(0, 10)}.pdf`, `${config.title} Report`)
+    onToast({ tone: 'info', message: `Exported ${items.length} visible records as PDF.` })
   }
 
   const firstItem = meta.total === 0 ? 0 : (meta.page - 1) * meta.pageSize + 1
@@ -1197,7 +1183,13 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
           <p>{config.description}</p>
         </div>
         <div className="admin-page-header__actions">
-          <button className="admin-button admin-button--secondary" type="button" onClick={exportRows} disabled={!items.length || loading}><span aria-hidden="true">↓</span> Export current page</button>
+          <details className="admin-export-dropdown">
+            <summary className="admin-button admin-button--secondary" style={{ cursor: 'pointer', listStyle: 'none' }}><span aria-hidden="true">↓</span> Export</summary>
+            <div className="admin-action-menu" style={{ position: 'absolute', right: 0, marginTop: '8px', zIndex: 10 }}>
+              <button type="button" onClick={exportRowsCSV} disabled={!items.length || loading}>Export as CSV</button>
+              <button type="button" onClick={exportRowsPDF} disabled={!items.length || loading}>Export as PDF</button>
+            </div>
+          </details>
           {config.canCreate && <button className="admin-button admin-button--primary" type="button" onClick={() => setFormRecord('new')}><span aria-hidden="true">＋</span> {config.createLabel ?? `Add ${config.singular}`}</button>}
         </div>
       </header>
@@ -1300,7 +1292,20 @@ function OverviewPage({ navigate }: { navigate: (section: string) => void }) {
       <div className="admin-overview-grid">
         <article className="admin-panel admin-overview-grid__wide">
           <header className="admin-panel__header"><div><h2>Live operations</h2><p>Fleet distribution and items needing attention.</p></div><button className="admin-link-button" type="button" onClick={() => navigate('trips')}>View all trips →</button></header>
-          <div className="admin-fleet-summary"><div className="admin-donut" style={{ '--active': `${(fleetActive / fleetTotal) * 100}%`, '--maintenance': `${((fleetActive + fleetMaintenance) / fleetTotal) * 100}%` } as React.CSSProperties}><div><strong>{fleetActive + fleetMaintenance + fleetInactive}</strong><span>Total buses</span></div></div><dl><div><dt><i className="admin-dot admin-dot--active" />In service</dt><dd>{fleetActive}</dd></div><div><dt><i className="admin-dot admin-dot--maintenance" />Maintenance</dt><dd>{fleetMaintenance}</dd></div><div><dt><i className="admin-dot admin-dot--inactive" />Inactive</dt><dd>{fleetInactive}</dd></div></dl></div>
+          <div className="admin-fleet-summary">
+            <div style={{ width: 140, height: 140, marginRight: 24, position: 'relative' }}>
+              {ChartFactory.createChart('pie', [
+                { label: 'In service', value: fleetActive },
+                { label: 'Maintenance', value: fleetMaintenance },
+                { label: 'Inactive', value: fleetInactive }
+              ], { height: 140, primaryColor: '#2563EB' })}
+              <div style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                <strong style={{ fontSize: '1.25rem' }}>{fleetTotal}</strong>
+                <span style={{ fontSize: '0.75rem', color: 'var(--ink-soft)' }}>Buses</span>
+              </div>
+            </div>
+            <dl><div><dt><i className="admin-dot admin-dot--active" />In service</dt><dd>{fleetActive}</dd></div><div><dt><i className="admin-dot admin-dot--maintenance" />Maintenance</dt><dd>{fleetMaintenance}</dd></div><div><dt><i className="admin-dot admin-dot--inactive" />Inactive</dt><dd>{fleetInactive}</dd></div></dl>
+          </div>
           <div className="admin-attention-list">{loading ? <TableSkeleton columns={3} /> : alerts.length ? alerts.slice(0, 4).map((alert) => <button type="button" key={alert.id} onClick={() => navigate(String(alert.section ?? 'trips'))}><span className={`admin-attention-list__severity admin-attention-list__severity--${String(alert.severity ?? 'info')}`}>!</span><span><strong>{String(alert.title ?? alert.message ?? 'Operational alert')}</strong><small>{String(alert.description ?? alert.detail ?? '')}</small></span><span aria-hidden="true">›</span></button>) : <div className="admin-inline-empty"><span>✓</span><p><strong>No urgent items</strong><br />Operations are currently within expected thresholds.</p></div>}</div>
         </article>
         <article className="admin-panel">
@@ -1326,12 +1331,7 @@ function normalizeChart(value: unknown): ChartItem[] {
   return value.map((item, index) => isObject(item) ? { label: String(item.label ?? item.date ?? item.name ?? item.route ?? `Item ${index + 1}`), value: Number(item.value ?? item.total ?? item.amount ?? item.count ?? 0) } : { label: `Item ${index + 1}`, value: Number(item) || 0 })
 }
 
-function BarChart({ items, valueKind = 'number' }: { items: ChartItem[]; valueKind?: 'number' | 'currency' | 'percent' }) {
-  const max = Math.max(1, ...items.map((item) => item.value))
-  const format = (value: number) => valueKind === 'currency' ? CURRENCY.format(value) : valueKind === 'percent' ? `${value.toFixed(1)}%` : NUMBER.format(value)
-  if (!items.length) return <div className="admin-chart-empty">No data is available for this period.</div>
-  return <div className="admin-bar-chart">{items.map((item) => <div className="admin-bar-chart__item" key={item.label}><div className="admin-bar-chart__value">{format(item.value)}</div><div className="admin-bar-chart__track"><span style={{ height: `${Math.max(3, (item.value / max) * 100)}%` }} /></div><div className="admin-bar-chart__label" title={item.label}>{item.label}</div></div>)}</div>
-}
+// Replaced by ChartFactory
 
 function ReportsPage({ onToast }: { onToast: (toast: ToastState) => void }) {
   const [data, setData] = useState<Record<string, unknown>>({})
@@ -1363,30 +1363,39 @@ function ReportsPage({ onToast }: { onToast: (toast: ToastState) => void }) {
     { label: 'Average driver rating', value: metricValue(data, ['summary.averageRating', 'averageRating']), kind: 'rating' },
   ]
 
-  const exportReport = () => {
-    const rows = [
-      ['Metric', 'Value'],
-      ...kpis.map((kpi) => [kpi.label, String(kpi.value)]),
-      [],
-      ['Revenue period', 'Amount'],
-      ...revenue.map((item) => [item.label, String(item.value)]),
-      [],
-      ['Route', 'Utilization'],
-      ...utilization.map((item) => [item.label, String(item.value)]),
-    ]
-    downloadText(`transport-report-${range}-${new Date().toISOString().slice(0, 10)}.csv`, rows.map((row) => row.map((cell) => `"${cell.replace(/"/g, '""')}"`).join(',')).join('\r\n'))
-    onToast({ tone: 'success', message: 'Report exported as CSV.' })
+  const exportReport = (format: 'csv' | 'pdf') => {
+    const rawData = kpis.map(kpi => ({ Metric: kpi.label, Value: kpi.value }));
+    const columns = [{ key: 'Metric', label: 'Metric' }, { key: 'Value', label: 'Value' }];
+    
+    if (format === 'csv') {
+      ExportFacade.exportToCSV(rawData, columns, `transport-report-${range}-${new Date().toISOString().slice(0, 10)}.csv`)
+      onToast({ tone: 'success', message: 'Report exported as CSV.' })
+    } else {
+      ExportFacade.exportToPDF(rawData, columns, `transport-report-${range}-${new Date().toISOString().slice(0, 10)}.pdf`, `Transport Analytics Report`)
+      onToast({ tone: 'success', message: 'Report exported as PDF.' })
+    }
   }
 
   return (
     <section aria-labelledby="admin-reports-title">
-      <header className="admin-page-header"><div><div className="admin-eyebrow">Insights</div><h1 id="admin-reports-title">Reports & analytics</h1><p>Track demand, reliability, utilization, and service quality.</p></div><div className="admin-page-header__actions"><label className="admin-range-select"><span className="admin-sr-only">Report range</span><select value={range} onChange={(event) => setRange(event.target.value)}><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option><option value="90d">Last 90 days</option><option value="12m">Last 12 months</option></select></label><button className="admin-button admin-button--primary" type="button" onClick={exportReport} disabled={loading || Boolean(error)}>↓ Export report</button></div></header>
+      <header className="admin-page-header"><div><div className="admin-eyebrow">Insights</div><h1 id="admin-reports-title">Reports & analytics</h1><p>Track demand, reliability, utilization, and service quality.</p></div>
+        <div className="admin-page-header__actions">
+          <label className="admin-range-select"><span className="admin-sr-only">Report range</span><select value={range} onChange={(event) => setRange(event.target.value)}><option value="7d">Last 7 days</option><option value="30d">Last 30 days</option><option value="90d">Last 90 days</option><option value="12m">Last 12 months</option></select></label>
+          <details className="admin-export-dropdown">
+            <summary className="admin-button admin-button--primary" style={{ cursor: 'pointer', listStyle: 'none' }}>↓ Export report</summary>
+            <div className="admin-action-menu" style={{ position: 'absolute', right: 0, marginTop: '8px', zIndex: 10 }}>
+              <button type="button" onClick={() => exportReport('csv')} disabled={loading || Boolean(error)}>Export as CSV</button>
+              <button type="button" onClick={() => exportReport('pdf')} disabled={loading || Boolean(error)}>Export as PDF</button>
+            </div>
+          </details>
+        </div>
+      </header>
       {error && <div className="admin-alert admin-alert--error" role="alert">{error} <button type="button" onClick={() => void load()}>Try again</button></div>}
       <div className="admin-report-kpis">{kpis.map((kpi) => <article key={kpi.label}><span>{kpi.label}</span>{loading ? <span className="admin-skeleton admin-skeleton--metric" /> : <strong>{kpi.kind === 'currency' ? CURRENCY.format(kpi.value) : kpi.kind === 'percent' ? `${kpi.value.toFixed(1)}%` : `${kpi.value.toFixed(1)} / 5`}</strong>}</article>)}</div>
       <div className="admin-report-grid">
-        <article className="admin-panel admin-report-grid__wide"><header className="admin-panel__header"><div><h2>Revenue trend</h2><p>Server-verified successful payments.</p></div></header>{loading ? <TableSkeleton columns={6} /> : <BarChart items={revenue} valueKind="currency" />}</article>
-        <article className="admin-panel"><header className="admin-panel__header"><div><h2>Route utilization</h2><p>Booked seats as a share of available capacity.</p></div></header>{loading ? <TableSkeleton columns={4} /> : <BarChart items={utilization.slice(0, 8)} valueKind="percent" />}</article>
-        <article className="admin-panel admin-report-grid__full"><header className="admin-panel__header"><div><h2>On-time performance by route</h2><p>Trips departing within the configured service threshold.</p></div></header>{loading ? <TableSkeleton columns={6} /> : <div className="admin-horizontal-chart">{onTime.length ? onTime.map((item) => <div key={item.label}><span>{item.label}</span><div><i style={{ width: `${Math.min(100, Math.max(0, item.value))}%` }} /></div><strong>{item.value.toFixed(1)}%</strong></div>) : <div className="admin-chart-empty">No performance data is available for this period.</div>}</div>}</article>
+        <article className="admin-panel admin-report-grid__wide"><header className="admin-panel__header"><div><h2>Revenue trend</h2><p>Server-verified successful payments.</p></div></header>{loading ? <TableSkeleton columns={6} /> : ChartFactory.createChart('bar', revenue, { valueKind: 'currency', primaryColor: '#2563EB', height: 260 })}</article>
+        <article className="admin-panel"><header className="admin-panel__header"><div><h2>Route utilization</h2><p>Booked seats as a share of available capacity.</p></div></header>{loading ? <TableSkeleton columns={4} /> : ChartFactory.createChart('bar', utilization.slice(0, 8), { valueKind: 'percent', primaryColor: '#4F46E5', height: 260 })}</article>
+        <article className="admin-panel admin-report-grid__full"><header className="admin-panel__header"><div><h2>On-time performance by route</h2><p>Trips departing within the configured service threshold.</p></div></header>{loading ? <TableSkeleton columns={6} /> : ChartFactory.createChart('line', onTime, { valueKind: 'percent', primaryColor: '#2563EB', height: 260 })}</article>
       </div>
     </section>
   )

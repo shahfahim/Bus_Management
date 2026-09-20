@@ -11,15 +11,16 @@ export function SeatMap({ seats, selected, onSelect }: { seats: Seat[]; selected
       </div>
       <div aria-label="Choose a seat" className="seat-grid" role="group">
         {seats.map((seat, index) => {
-          const unavailable = seat.status !== 'AVAILABLE' && !seat.heldByCurrentUser;
+          const isTeacherSeat = index < 2;
+          const unavailable = isTeacherSeat || (seat.status !== 'AVAILABLE' && !seat.heldByCurrentUser);
           return (
             <button
-              aria-label={`Seat ${seat.label ?? seat.number}, ${seat.status.toLowerCase()}`}
+              aria-label={`Seat ${seat.label ?? seat.number}, ${isTeacherSeat ? 'teachers only' : seat.status.toLowerCase()}`}
               aria-pressed={selected === seat.number}
               className={cx(
                 'seat',
-                `seat--${seat.status.toLowerCase()}`,
-                selected === seat.number && 'seat--selected',
+                isTeacherSeat ? 'seat--blocked' : `seat--${seat.status.toLowerCase()}`,
+                !isTeacherSeat && selected === seat.number && 'seat--selected',
                 index % 4 === 2 && 'seat--aisle',
               )}
               disabled={unavailable}
