@@ -636,13 +636,13 @@ export const getBooking = async (bookingId: string, requester: { userId: string;
   return bookingDto(booking);
 };
 
-export const cancelBooking = async ({ bookingId, studentId, reason }: { bookingId: string; studentId: string; reason: string }) => {
+export const cancelBooking = async ({ bookingId, studentId, reason, isAdmin = false }: { bookingId: string; studentId?: string; reason: string; isAdmin?: boolean }) => {
   const now = new Date();
   const cancelled = await prisma.$transaction(
     async (tx) => {
       await lockBooking(tx, bookingId);
       const booking = await tx.booking.findFirst({
-        where: { id: bookingId, studentId },
+        where: { id: bookingId, ...(isAdmin ? {} : { studentId }) },
         include: { payments: { where: { status: PaymentStatus.SUCCEEDED } }, subscription: true },
       });
       if (!booking) throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
@@ -689,7 +689,7 @@ export const cancelBooking = async ({ bookingId, studentId, reason }: { bookingI
     dedupeKey: `booking-cancelled:${cancelled.id}`,
   });
   emitToTrip(cancelled.tripId, 'trip:seats', { tripId: cancelled.tripId, changedAt: now });
-  emitToUser(studentId, 'booking:updated', { id: cancelled.id, status: cancelled.status });
+  emitToUser(cancelled.studentId, 'booking:updated', { id: cancelled.id, status: cancelled.status });
   if (cancelled.status === BookingStatus.REFUND_PENDING) {
     try {
       await refundBookingPayments(cancelled.id, reason);
@@ -698,7 +698,7 @@ export const cancelBooking = async ({ bookingId, studentId, reason }: { bookingI
     }
   }
   return {
-    ...(await getBooking(cancelled.id, { userId: studentId, isAdmin: false })),
+    ...(await getBooking(cancelled.id, { userId: cancelled.studentId, isAdmin: true })),
     refundRequired: cancelled.status === BookingStatus.REFUND_PENDING,
   };
 };

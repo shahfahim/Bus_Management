@@ -125,17 +125,8 @@ export const updateSchedule = async (id: string, input: UpdateScheduleInput) => 
 };
 
 export const deleteSchedule = async (id: string) => {
-  const schedule = await prisma.tripSchedule.findUnique({ where: { id }, include: { _count: { select: { trips: true } } } });
+  const schedule = await prisma.tripSchedule.findUnique({ where: { id } });
   if (!schedule) throw new AppError(404, 'NOT_FOUND', 'Schedule not found');
-
-  if (schedule._count.trips > 0) {
-    // If there are trips generated, just deactivate it instead of deleting
-    return prisma.tripSchedule.update({
-      where: { id },
-      data: { isActive: false },
-      select: scheduleSelect,
-    });
-  }
 
   await prisma.tripSchedule.delete({ where: { id } });
 };
