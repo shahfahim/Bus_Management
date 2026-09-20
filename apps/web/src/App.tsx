@@ -10,11 +10,13 @@ const DashboardPage = lazy(() => import('./pages/DashboardPage').then((module) =
 const ProfilePage = lazy(() => import('./pages/ProfilePage').then((module) => ({ default: module.ProfilePage })));
 const ChangePasswordPage = lazy(() => import('./pages/ChangePasswordPage').then((module) => ({ default: module.ChangePasswordPage })));
 const NotFoundPage = lazy(() => import('./pages/NotFoundPage').then((module) => ({ default: module.NotFoundPage })));
+const LiveBusesPage = lazy(() => import('./pages/student/LiveBusesPage').then((module) => ({ default: module.LiveBusesPage })));
 const RoutesPage = lazy(() => import('./pages/student/RoutesPage').then((module) => ({ default: module.RoutesPage })));
 const BookTripPage = lazy(() => import('./pages/student/BookTripPage').then((module) => ({ default: module.BookTripPage })));
 const BookingsPage = lazy(() => import('./pages/student/BookingsPage').then((module) => ({ default: module.BookingsPage })));
 const BookingDetailPage = lazy(() => import('./pages/student/BookingDetailPage').then((module) => ({ default: module.BookingDetailPage })));
 const PaymentsPage = lazy(() => import('./pages/student/PaymentsPage').then((module) => ({ default: module.PaymentsPage })));
+const ExpensesPage = lazy(() => import('./pages/student/ExpensesPage').then((module) => ({ default: module.ExpensesPage })));
 const SubscriptionsPage = lazy(() => import('./pages/student/SubscriptionsPage').then((module) => ({ default: module.SubscriptionsPage })));
 const RatingsPage = lazy(() => import('./pages/student/RatingsPage').then((module) => ({ default: module.RatingsPage })));
 const NotificationsPage = lazy(() => import('./pages/shared/NotificationsPage').then((module) => ({ default: module.NotificationsPage })));
@@ -49,11 +51,13 @@ export default function App() {
           <Route element={<NotificationsPage />} path="notifications" />
           <Route element={<LostFoundPage />} path="lost-found" />
 
+          <Route element={<RoleGuard roles={['STUDENT']}><LiveBusesPage /></RoleGuard>} path="student/live-buses" />
           <Route element={<RoleGuard roles={['STUDENT']}><RoutesPage /></RoleGuard>} path="student/routes" />
           <Route element={<RoleGuard roles={['STUDENT']}><BookTripPage /></RoleGuard>} path="student/trips/:tripId/book" />
           <Route element={<RoleGuard roles={['STUDENT']}><BookingsPage /></RoleGuard>} path="student/bookings" />
           <Route element={<RoleGuard roles={['STUDENT']}><BookingDetailPage /></RoleGuard>} path="student/bookings/:bookingId" />
           <Route element={<RoleGuard roles={['STUDENT']}><PaymentsPage /></RoleGuard>} path="student/payments" />
+          <Route element={<RoleGuard roles={['STUDENT']}><ExpensesPage /></RoleGuard>} path="student/expenses" />
           <Route element={<RoleGuard roles={['STUDENT']}><SubscriptionsPage /></RoleGuard>} path="student/subscriptions" />
           <Route element={<RoleGuard roles={['STUDENT']}><RatingsPage /></RoleGuard>} path="student/ratings" />
 

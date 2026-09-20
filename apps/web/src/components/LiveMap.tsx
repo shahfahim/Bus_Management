@@ -12,6 +12,13 @@ const busIcon = L.divIcon({
   iconAnchor: [19, 19],
 });
 
+const userIcon = L.divIcon({
+  className: 'user-map-marker',
+  html: '<span aria-hidden="true" style="font-size: 24px;">📍</span>',
+  iconSize: [24, 24],
+  iconAnchor: [12, 12],
+});
+
 function FitMap({ positions }: { positions: LatLngExpression[] }) {
   const map = useMap();
   useEffect(() => {
@@ -24,11 +31,13 @@ function FitMap({ positions }: { positions: LatLngExpression[] }) {
 export function RouteMap({
   route,
   busLocation,
+  userLocation,
   alerts = [],
   className,
 }: {
   route?: Route;
   busLocation?: Coordinates;
+  userLocation?: Coordinates;
   alerts?: RoadAlert[];
   className?: string;
 }) {
@@ -37,8 +46,12 @@ export function RouteMap({
     return route?.stops?.map((stop) => [stop.latitude, stop.longitude] as LatLngExpression) ?? [];
   }, [route]);
   const positions = useMemo(
-    () => [...routePath, ...(busLocation ? ([[busLocation.latitude, busLocation.longitude]] as LatLngExpression[]) : [])],
-    [busLocation, routePath],
+    () => [
+      ...routePath,
+      ...(busLocation ? ([[busLocation.latitude, busLocation.longitude]] as LatLngExpression[]) : []),
+      ...(userLocation ? ([[userLocation.latitude, userLocation.longitude]] as LatLngExpression[]) : []),
+    ],
+    [busLocation, userLocation, routePath],
   );
   const center = positions[0] ?? DEFAULT_CENTER;
 
@@ -87,6 +100,13 @@ export function RouteMap({
             </Tooltip>
           </Marker>
         )}
+        {userLocation && (
+          <Marker icon={userIcon} position={[userLocation.latitude, userLocation.longitude]}>
+            <Tooltip direction="top" offset={[0, -12]} permanent>
+              You are here
+            </Tooltip>
+          </Marker>
+        )}
         <FitMap positions={positions} />
       </MapContainer>
     </div>
@@ -101,8 +121,19 @@ interface LiveLocationPayload extends Coordinates {
 
 export function LiveTripMap({ trip, alerts }: { trip: Trip; alerts?: RoadAlert[] }) {
   const [location, setLocation] = useState<Coordinates | undefined>(trip.currentLocation ?? trip.bus?.currentLocation);
+  const [userLocation, setUserLocation] = useState<Coordinates | undefined>();
   const [recordedAt, setRecordedAt] = useState(trip.currentLocation?.recordedAt ?? trip.bus?.currentLocation?.recordedAt);
   const { socket, connected } = useSocket();
+
+  useEffect(() => {
+    if (!('geolocation' in navigator)) return undefined;
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
+      () => undefined,
+      { enableHighAccuracy: true }
+    );
+    return () => navigator.geolocation.clearWatch(watchId);
+  }, []);
 
   useEffect(() => {
     if (!socket) return undefined;
@@ -126,7 +157,39 @@ export function LiveTripMap({ trip, alerts }: { trip: Trip; alerts?: RoadAlert[]
         <span>{connected ? 'Live location' : 'Connecting to live location'}</span>
         {recordedAt && <small>Updated {new Date(recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>}
       </div>
-      <RouteMap alerts={alerts} busLocation={location} route={trip.route} />
+      <RouteMap alerts={alerts} busLocation={location} userLocation={userLocation} route={trip.route} />
+    </div>
+  );
+}
+
+export function GlobalLiveMap({ trips }: { trips: Trip[] }) {
+  const activeTrips = trips.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'DELAYED');
+  const positions = useMemo(() => {
+    return activeTrips
+      .filter((t) => t.currentLocation)
+      .map((t) => [t.currentLocation!.latitude, t.currentLocation!.longitude] as LatLngExpression);
+  }, [activeTrips]);
+  const center = positions[0] ?? DEFAULT_CENTER;
+
+  return (
+    <div aria-label="Global live map" className="map-frame" role="region">
+      <MapContainer center={center} scrollWheelZoom={false} zoom={12}>
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        {activeTrips.map((trip) => {
+          if (!trip.currentLocation) return null;
+          return (
+            <Marker key={trip.id} icon={busIcon} position={[trip.currentLocation.latitude, trip.currentLocation.longitude]}>
+              <Tooltip direction="top" offset={[0, -18]} permanent>
+                {trip.route?.name ?? 'Live bus'}
+              </Tooltip>
+            </Marker>
+          );
+        })}
+        {positions.length > 0 && <FitMap positions={positions} />}
+      </MapContainer>
     </div>
   );
 }

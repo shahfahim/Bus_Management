@@ -155,6 +155,7 @@ export const createAdminUser = async (input: CreateUser, context: AuditContext) 
         phone: input.phone,
         role: input.role,
         status: input.status,
+        avatarUrl: input.avatarUrl,
         passwordHash,
         emailVerifiedAt: input.status === UserStatus.ACTIVE ? new Date() : undefined,
         studentProfile:
@@ -239,6 +240,7 @@ export const updateAdminUser = async (id: string, input: UpdateUser, context: Au
         email: input.email?.toLowerCase(),
         phone: input.phone,
         status: input.status,
+        avatarUrl: input.avatarUrl,
         emailVerifiedAt:
           input.status === UserStatus.ACTIVE && before.status !== UserStatus.ACTIVE ? new Date() : undefined,
         failedLoginAttempts: input.status === UserStatus.ACTIVE ? 0 : undefined,

@@ -344,6 +344,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { name: 'name', label: 'Full name', kind: 'text', required: true },
       { name: 'email', label: 'Email address', kind: 'email', required: true },
       { name: 'phone', label: 'Phone number (optional)', kind: 'tel' },
+      { name: 'avatarUrl', label: 'Profile picture URL', kind: 'text', help: 'Optional link to a public image.' },
       { name: 'role', label: 'Role', kind: 'select', required: true, options: [{ label: 'Student', value: 'student' }, { label: 'Driver', value: 'driver' }, { label: 'Administrator', value: 'admin' }] },
       { name: 'identifier', label: 'Student / staff / employee ID', kind: 'text', required: true },
       { name: 'licenseNumber', label: 'Driver license number', kind: 'text', required: true, visibleWhen: { field: 'role', value: 'driver' } },

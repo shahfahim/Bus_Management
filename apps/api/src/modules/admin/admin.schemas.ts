@@ -261,6 +261,7 @@ export const createUserSchema = z
     temporaryPassword: strongPassword(12),
     licenseNumber: optionalText(96),
     licenseExpiresAt: optionalDate,
+    avatarUrl: optionalText(500),
   })
   .superRefine((value, context) => {
     if (value.role === Role.DRIVER && (!value.licenseNumber || !value.licenseExpiresAt)) {
@@ -283,6 +284,7 @@ export const updateUserSchema = z
     licenseNumber: z.string().trim().min(2).max(96).optional(),
     licenseExpiresAt: optionalDate,
     driverStatus: enumValue(DriverStatus).optional(),
+    avatarUrl: nullableText(500),
   })
   .refine((value) => Object.keys(value).length > 0, 'At least one field is required');
 

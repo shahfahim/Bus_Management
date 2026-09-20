@@ -182,12 +182,14 @@ const tripInclude = (now: Date) => ({
   },
   driver: { include: { user: { select: { id: true, name: true, avatarUrl: true } } } },
   seatAllocations: { where: activeAllocationWhere(now), select: { id: true } },
+  locations: { orderBy: { recordedAt: 'desc' as const }, take: 1 },
 });
 
 type CatalogTripRecord = Prisma.TripGetPayload<{ include: ReturnType<typeof tripInclude> }>;
 
 const tripDto = (trip: CatalogTripRecord) => {
   const capacity = trip.bus.seats.length;
+  const lastLocation = trip.locations[0];
   return {
     id: trip.id,
     publicCode: trip.publicCode,
@@ -216,6 +218,15 @@ const tripDto = (trip: CatalogTripRecord) => {
     currency: trip.currency,
     status: trip.status,
     delayMinutes: trip.delayMinutes,
+    currentLocation: lastLocation
+      ? {
+          latitude: Number(lastLocation.latitude),
+          longitude: Number(lastLocation.longitude),
+          speedKph: lastLocation.speedKph === null ? null : Number(lastLocation.speedKph),
+          heading: lastLocation.headingDegrees === null ? null : Number(lastLocation.headingDegrees),
+          recordedAt: lastLocation.recordedAt,
+        }
+      : null,
   };
 };
 

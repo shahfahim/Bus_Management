@@ -10,6 +10,7 @@ import {
   Gauge,
   LayoutDashboard,
   LifeBuoy,
+  MapIcon,
   Menu,
   Moon,
   PanelLeftClose,
@@ -51,8 +52,10 @@ const commonNavigation: NavItem[] = [
 const roleNavigation: Record<Role, NavItem[]> = {
   STUDENT: [
     { label: 'Book a Ride', to: '/student/routes', icon: RouteIcon },
+    { label: 'Live Buses', to: '/student/live-buses', icon: MapIcon },
     { label: 'My Bookings', to: '/student/bookings', icon: BookOpenCheck },
     { label: 'Passes & Payments', to: '/student/subscriptions', icon: WalletCards },
+    { label: 'My Expenses', to: '/student/expenses', icon: WalletCards },
   ],
   DRIVER: [
     { label: 'My Trips & Scanner', to: '/driver/trips', icon: QrCode },
