@@ -249,8 +249,8 @@ export const getTripLocation = async (tripId: string) => {
 
 export const listTrips = async (query: TripQuery) => {
   const now = new Date();
-  const dayStart = query.date ? new Date(`${query.date}T00:00:00.000Z`) : undefined;
-  const dayEnd = dayStart ? new Date(dayStart.getTime() + 86_400_000) : undefined;
+  const dayStart = query.from ? query.from : query.date ? new Date(`${query.date}T00:00:00.000Z`) : undefined;
+  const dayEnd = query.to ? query.to : dayStart ? new Date(dayStart.getTime() + 86_400_000) : undefined;
   let corridorRouteIds: string[] | undefined;
   if (query.originStopId || query.destinationStopId) {
     const routes = await prisma.route.findMany({

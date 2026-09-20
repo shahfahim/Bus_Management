@@ -179,7 +179,7 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
   const held = await withSerializableRetry(() =>
     prisma.$transaction(
       async (tx) => {
-        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext(${'seat-hold:' + studentId + ':' + tripId}))`;
+        await tx.$queryRaw`SELECT pg_advisory_xact_lock(hashtext('seat-hold'), hashtext(${studentId + ':' + tripId}))`;
         await expireStaleHolds(tx, tripId);
         const trip = await tx.trip.findUnique({
           where: { id: tripId },

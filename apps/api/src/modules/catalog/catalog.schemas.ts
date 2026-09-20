@@ -8,6 +8,8 @@ export const tripQuerySchema = z.object({
   originStopId: z.string().uuid().optional(),
   destinationStopId: z.string().uuid().optional(),
   date: z.string().date().optional(),
+  from: z.coerce.date().optional(),
+  to: z.coerce.date().optional(),
   status: z
     .preprocess(
       (value) => (value === undefined ? undefined : Array.isArray(value) ? value : [value]),

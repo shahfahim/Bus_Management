@@ -25,7 +25,10 @@ export function RoutesPage() {
     setLoading(true);
     setError('');
     try {
-      const response = await api.get<unknown>(withQuery('/trips', { date, originStopId: origin, destinationStopId: destination, status: ['SCHEDULED', 'BOARDING', 'DELAYED'] }));
+      const [year, month, day] = date.split('-').map(Number);
+      const start = new Date(year, month - 1, day, 0, 0, 0);
+      const end = new Date(year, month - 1, day, 23, 59, 59, 999);
+      const response = await api.get<unknown>(withQuery('/trips', { from: start.toISOString(), to: end.toISOString(), originStopId: origin, destinationStopId: destination, status: ['SCHEDULED', 'BOARDING', 'DELAYED'] }));
       setTrips(asItems<Trip>(response));
     } catch (reason) {
       setError(errorMessage(reason, 'Could not load scheduled trips.'));
