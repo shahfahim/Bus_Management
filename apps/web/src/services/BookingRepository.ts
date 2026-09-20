@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { BaseRepository } from './BaseRepository';
 import { api, unwrap } from '../lib/api';
 

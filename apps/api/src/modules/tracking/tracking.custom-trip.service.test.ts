@@ -2,7 +2,7 @@ import { AssignmentStatus, BusStatus, DriverStatus, Role, TripStatus, UserStatus
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mocks = vi.hoisted(() => ({
-  transaction: vi.fn(), queryRaw: vi.fn(), findProfile: vi.fn(), findAssignment: vi.fn(), findConflict: vi.fn(),
+  transaction: vi.fn(), queryRaw: vi.fn(), $executeRaw: vi.fn(), findProfile: vi.fn(), findAssignment: vi.fn(), findConflict: vi.fn(),
   findMaintenance: vi.fn(), createStop: vi.fn(), createRoute: vi.fn(), createRouteStop: vi.fn(), createTrip: vi.fn(),
   createTripStops: vi.fn(), createAudit: vi.fn(), countTrips: vi.fn(), findTrip: vi.fn(), emitToRole: vi.fn(),
 }));
@@ -41,6 +41,7 @@ describe('driver custom trip creation', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     mocks.queryRaw.mockResolvedValue([]);
+    mocks.$executeRaw = vi.fn().mockResolvedValue(1);
     mocks.findProfile.mockResolvedValue(profile);
     mocks.findAssignment.mockResolvedValue({ id: 'assignment-1', busId, status: AssignmentStatus.ACTIVE, bus });
     mocks.findConflict.mockResolvedValue(null);
@@ -61,6 +62,7 @@ describe('driver custom trip creation', () => {
     mocks.createAudit.mockResolvedValue({});
     const tx = {
       $queryRaw: mocks.queryRaw,
+      $executeRaw: mocks.$executeRaw,
       driverProfile: { findUnique: mocks.findProfile },
       driverAssignment: { findFirst: mocks.findAssignment },
       trip: { findFirst: mocks.findConflict, count: mocks.countTrips, create: mocks.createTrip },

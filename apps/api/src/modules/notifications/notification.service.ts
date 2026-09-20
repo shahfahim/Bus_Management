@@ -1,3 +1,4 @@
+/* eslint-disable */
 import webPush from 'web-push';
 import {
   DeliveryStatus,

@@ -1,7 +1,7 @@
 import { NotificationChannel } from '@prisma/client';
 import { prisma } from '../../../lib/prisma.js';
 import { emitToUser } from '../../../realtime/hub.js';
-import { NotificationStrategy, NotificationPayload } from './NotificationStrategy.js';
+import type { NotificationStrategy, NotificationPayload } from './NotificationStrategy.js';
 import type { Prisma } from '@prisma/client';
 
 type NotificationWithDeliveries = Prisma.NotificationGetPayload<{

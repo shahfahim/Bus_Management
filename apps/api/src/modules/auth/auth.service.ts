@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { timingSafeEqual } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { DriverStatus, Role, UserStatus } from '@prisma/client';

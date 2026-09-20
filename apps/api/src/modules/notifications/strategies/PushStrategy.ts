@@ -2,7 +2,7 @@ import webPush from 'web-push';
 import { DeliveryStatus, NotificationChannel, NotificationType } from '@prisma/client';
 import { prisma } from '../../../lib/prisma.js';
 import { env } from '../../../config/env.js';
-import { NotificationStrategy, NotificationPayload } from './NotificationStrategy.js';
+import type { NotificationStrategy, NotificationPayload } from './NotificationStrategy.js';
 import type { Prisma } from '@prisma/client';
 
 type NotificationWithDeliveries = Prisma.NotificationGetPayload<{

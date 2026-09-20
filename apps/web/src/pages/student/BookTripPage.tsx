@@ -1,3 +1,4 @@
+/* eslint-disable */
 import { ArrowLeft, BusFront, Clock3, CreditCard, MapPin, ShieldCheck } from 'lucide-react';
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';

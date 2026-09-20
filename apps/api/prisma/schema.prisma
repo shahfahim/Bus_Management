@@ -12,6 +12,7 @@ enum Role {
   DRIVER
   CONDUCTOR
   ADMIN
+  TEACHER
 }
 
 enum UserStatus {
@@ -655,6 +656,7 @@ model TripSchedule {
   validFrom     DateTime      @db.Date
   validTo       DateTime?     @db.Date
   daysOfWeek    Int[] // e.g., [1, 2, 3, 4, 5] for Mon-Fri
+  fareAmount    Int           @default(0)
   createdAt     DateTime      @default(now()) @db.Timestamptz(3)
   updatedAt     DateTime      @updatedAt @db.Timestamptz(3)
   route         Route         @relation(fields: [routeId], references: [id], onDelete: Restrict)

@@ -1,4 +1,4 @@
-import { Prisma, TripStatus } from '@prisma/client';
+import { type Prisma, TripStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../lib/errors.js';
 import type { z } from 'zod';
@@ -20,6 +20,7 @@ const scheduleSelect = {
   validFrom: true,
   validTo: true,
   daysOfWeek: true,
+  fareAmount: true,
   createdAt: true,
   updatedAt: true,
   route: { select: { id: true, name: true, code: true } },
@@ -77,6 +78,7 @@ export const createSchedule = async (input: CreateScheduleInput) => {
       validFrom: input.validFrom,
       validTo: input.validTo,
       daysOfWeek: input.daysOfWeek,
+      fareAmount: input.fareAmount,
     },
     select: scheduleSelect,
   });
