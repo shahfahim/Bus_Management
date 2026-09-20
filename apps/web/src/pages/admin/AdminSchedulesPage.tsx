@@ -1,7 +1,7 @@
 import { Clock, Plus, Bus, User, MapPin, Calendar, Route as RouteIcon, Save, X, Settings2 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { api, asItems } from '../../lib/api';
-import { PageHeader, Button, Card, SelectField, Field, cx, useToast } from '../../components/ui';
+import { PageHeader, Button, Card, SelectField, Field, cx, useToast, Skeleton } from '../../components/ui';
 import './AdminSchedulesPage.css';
 
 interface Schedule {
@@ -162,7 +162,19 @@ export function AdminSchedulesPage() {
   };
 
   if (loading) {
-    return <div className="admin-schedules-container">Loading...</div>;
+    return (
+      <div className="admin-schedules-container">
+        <PageHeader title="Trip Schedules" description="Manage recurring trips, custom assignments, and operational timetables." eyebrow="Fleet Operations" />
+        <div className="schedules-grid">
+          <Card><Skeleton lines={4} /></Card>
+          <Card><Skeleton lines={4} /></Card>
+          <Card><Skeleton lines={4} /></Card>
+          <Card><Skeleton lines={4} /></Card>
+          <Card><Skeleton lines={4} /></Card>
+          <Card><Skeleton lines={4} /></Card>
+        </div>
+      </div>
+    );
   }
 
   return (
