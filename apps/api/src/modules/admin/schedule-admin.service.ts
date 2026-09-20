@@ -3,6 +3,8 @@ import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../lib/errors.js';
 import type { z } from 'zod';
 import type { createScheduleSchema, scheduleQuerySchema, updateScheduleSchema } from './admin.schemas.js';
+import { generateTrips } from '../trips/trip-generator.worker.js';
+import { logger } from '../../lib/logger.js';
 
 type ScheduleQuery = z.infer<typeof scheduleQuerySchema>;
 type CreateScheduleInput = z.infer<typeof createScheduleSchema>;
@@ -79,6 +81,9 @@ export const createSchedule = async (input: CreateScheduleInput) => {
     select: scheduleSelect,
   });
 
+  // Automatically generate trips for this new schedule in the background
+  generateTrips().catch((err) => logger.error({ err, scheduleId: schedule.id }, 'Failed to generate trips for new schedule'));
+
   return schedule;
 };
 
@@ -107,11 +112,16 @@ export const updateSchedule = async (id: string, input: UpdateScheduleInput) => 
     if (!driver) throw new AppError(404, 'NOT_FOUND', 'Driver not found');
   }
 
-  return prisma.tripSchedule.update({
+  const updatedSchedule = await prisma.tripSchedule.update({
     where: { id },
     data: input,
     select: scheduleSelect,
   });
+
+  // Regenerate trips in case days/times changed
+  generateTrips().catch((err) => logger.error({ err, scheduleId: id }, 'Failed to generate trips for updated schedule'));
+
+  return updatedSchedule;
 };
 
 export const deleteSchedule = async (id: string) => {
