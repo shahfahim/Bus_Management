@@ -25,7 +25,7 @@ interface Schedule {
 interface Route { id: string; name: string; code: string; }
 interface BusData { id: string; fleetNumber: string; registrationNumber: string; }
 interface UserData { id: string; name: string; email: string; }
-interface Stop { id: string; name: string; }
+interface Stop { id: string; stopId?: string; name: string; }
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
