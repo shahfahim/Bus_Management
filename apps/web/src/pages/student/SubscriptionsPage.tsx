@@ -85,11 +85,41 @@ export function SubscriptionsPage() {
             {plans.length === 0 ? <Card><EmptyState icon={<Ticket />} title="No passes available" description="Transport administrators have not published a subscription plan." /></Card> : <div className="booking-list">{plans.map((plan) => {
               const routes = planRoutes(plan);
               const active = activePlanIds.has(plan.id);
-              return <Card className="booking-card" key={plan.id}><div className="booking-card__main"><div className="booking-card__title"><div><h2>{plan.name}</h2><p>{plan.description ?? `${plan.durationDays}-day university transport pass`}</p></div><Pill tone={active ? 'positive' : undefined}>{active ? 'ACTIVE' : plan.code}</Pill></div><div className="booking-card__meta"><span><CalendarClock aria-hidden="true" /> {plan.durationDays} days</span><span><Ticket aria-hidden="true" /> {plan.tripLimit == null ? 'Unlimited trips' : `${plan.tripLimit} trips`}</span><span>{routes.length ? routes.map(({ code }) => code).join(', ') : 'No routes assigned'}</span><strong>{formatMoney(Number(plan.price), plan.currency)}</strong></div></div><div className="booking-card__actions"><Button disabled={active || routes.length === 0} loading={buying === plan.id} onClick={() => void buy(plan)}>{active ? 'Already active' : 'Buy pass'}</Button></div></Card>;
+              return <Card key={plan.id} style={{ display: 'flex', flexDirection: 'column', gap: '16px', padding: '20px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                  <div>
+                    <h2 style={{ fontSize: '1.1rem', marginBottom: '4px' }}>{plan.name}</h2>
+                    <p style={{ margin: 0, fontSize: '0.78rem' }}>{plan.description ?? `${plan.durationDays}-day university transport pass`}</p>
+                  </div>
+                  <Pill tone={active ? 'positive' : undefined}>{active ? 'ACTIVE' : plan.code}</Pill>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px 18px', color: 'var(--ink-soft)', fontSize: '0.72rem' }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><CalendarClock aria-hidden="true" size={14} style={{ color: 'var(--primary)' }} /> {plan.durationDays} days</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}><Ticket aria-hidden="true" size={14} style={{ color: 'var(--primary)' }} /> {plan.tripLimit == null ? 'Unlimited trips' : `${plan.tripLimit} trips`}</span>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: '4px', maxWidth: '100%' }}>{routes.length ? routes.map(({ code }) => code).join(', ') : 'No routes assigned'}</span>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', paddingTop: '16px', borderTop: '1px solid var(--line)' }}>
+                  <strong style={{ fontSize: '1.1rem', color: 'var(--ink)' }}>{formatMoney(Number(plan.price), plan.currency)}</strong>
+                  <Button disabled={active || routes.length === 0} loading={buying === plan.id} onClick={() => void buy(plan)}>{active ? 'Already active' : 'Buy pass'}</Button>
+                </div>
+              </Card>;
             })}</div>}
           </section>
           <section className="page-stack" aria-labelledby="pass-history"><div className="card-heading"><div><h2 id="pass-history">Pass history</h2><p>Active, pending, expired, and cancelled subscriptions.</p></div></div>
-            {subscriptions.length === 0 ? <Card><EmptyState icon={<BadgeCheck />} title="No pass history" description="Purchased bus passes will appear here." /></Card> : <div className="booking-list">{subscriptions.map((subscription) => <Card className="booking-card" key={subscription.id}><div className="booking-card__main"><div className="booking-card__title"><div><h2>{subscription.plan.name}</h2><p>{subscription.reference}</p></div><Pill tone={subscription.status === 'ACTIVE' ? 'positive' : undefined}>{subscription.status}</Pill></div><div className="booking-card__meta"><span>Starts {formatDateTime(subscription.startsAt)}</span><span>Ends {formatDateTime(subscription.endsAt)}</span><span>{subscription.remainingTrips == null ? 'Unlimited trips' : `${subscription.remainingTrips} trips remaining`}</span></div></div></Card>)}</div>}
+            {subscriptions.length === 0 ? <Card><EmptyState icon={<BadgeCheck />} title="No pass history" description="Purchased bus passes will appear here." /></Card> : <div className="booking-list">{subscriptions.map((subscription) => <Card key={subscription.id} style={{ display: 'flex', flexDirection: 'column', gap: '12px', padding: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: '12px' }}>
+                <div>
+                  <h2 style={{ fontSize: '0.95rem', marginBottom: '2px' }}>{subscription.plan.name}</h2>
+                  <p style={{ margin: 0, fontSize: '0.68rem', fontFamily: 'monospace' }}>{subscription.reference}</p>
+                </div>
+                <Pill tone={subscription.status === 'ACTIVE' ? 'positive' : undefined}>{subscription.status}</Pill>
+              </div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px 16px', color: 'var(--ink-soft)', fontSize: '0.7rem' }}>
+                <span>Starts {formatDateTime(subscription.startsAt)}</span>
+                <span>Ends {formatDateTime(subscription.endsAt)}</span>
+                <strong style={{ color: 'var(--ink)' }}>{subscription.remainingTrips == null ? 'Unlimited trips' : `${subscription.remainingTrips} trips remaining`}</strong>
+              </div>
+            </Card>)}</div>}
           </section>
         </>
       )}
