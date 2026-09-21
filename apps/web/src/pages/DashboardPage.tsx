@@ -128,7 +128,7 @@ function DriverDashboard({ summary, trips }: { summary: DashboardSummary; trips:
         </div>
         {trips.length > 0 ? (
           <div className="driver-trip-list">
-            {trips.filter(t => t.status !== 'COMPLETED').slice(0, 3).map((trip) => (
+            {trips.filter(t => t.status !== 'COMPLETED' && t.status !== 'CANCELLED').slice(0, 3).map((trip) => (
               <Card className="driver-trip-card" key={trip.id}>
                 <div className="driver-trip-card__time"><strong>{formatTime(trip.departureTime)}</strong><span>{new Date(trip.departureTime).toLocaleDateString(undefined, { weekday: 'short' })}</span></div>
                 <div className="driver-trip-card__main">
@@ -143,7 +143,7 @@ function DriverDashboard({ summary, trips }: { summary: DashboardSummary; trips:
                 <Link className="button button--primary button--md" to={`/driver/trips/${trip.id}`}>{trip.status === 'IN_PROGRESS' ? <Navigation aria-hidden="true" size={17} /> : null} Open controls <ArrowRight aria-hidden="true" size={16} /></Link>
               </Card>
             ))}
-            {trips.filter(t => t.status !== 'COMPLETED').length === 0 && (
+            {trips.filter(t => t.status !== 'COMPLETED' && t.status !== 'CANCELLED').length === 0 && (
               <Card><EmptyState description="You have completed all your assigned trips for today!" title="All caught up" /></Card>
             )}
           </div>
