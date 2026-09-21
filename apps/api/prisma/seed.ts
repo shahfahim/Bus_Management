@@ -249,6 +249,63 @@ const main = async () => {
   console.log(`Admin: ${env.SEED_ADMIN_EMAIL}`);
   console.log('Driver: driver@example.edu');
   console.log('Student: student@example.edu');
+
+  // --- DEMO PERMANENT TRIP ---
+  const demoStartsAt = new Date('2020-01-01T00:00:00.000Z');
+  const demoEndsAt = new Date('2030-12-31T23:59:59.000Z');
+  let demoAssignment = await prisma.driverAssignment.findFirst({
+    where: { driverId: driver.id, busId: bus.id, routeId: route.id, startsAt: demoStartsAt },
+  });
+  demoAssignment ??= await prisma.driverAssignment.create({
+    data: {
+      driverId: driver.id,
+      busId: bus.id,
+      routeId: route.id,
+      createdById: admin.id,
+      startsAt: demoStartsAt,
+      endsAt: demoEndsAt,
+      status: AssignmentStatus.IN_PROGRESS,
+    },
+  });
+  const demoTrip = await prisma.trip.upsert({
+    where: { publicCode: 'DEMO-PERMANENT' },
+    create: {
+      publicCode: 'DEMO-PERMANENT',
+      assignmentId: demoAssignment.id,
+      routeId: route.id,
+      busId: bus.id,
+      driverId: driver.id,
+      status: TripStatus.BOARDING,
+      scheduledStartAt: demoStartsAt,
+      scheduledEndAt: demoEndsAt,
+      boardingOpensAt: demoStartsAt,
+      bookingClosesAt: demoEndsAt,
+      fareAmount: 50,
+      currency: 'BDT',
+    },
+    update: { 
+      status: TripStatus.BOARDING,
+      scheduledStartAt: demoStartsAt,
+      scheduledEndAt: demoEndsAt,
+      boardingOpensAt: demoStartsAt,
+      bookingClosesAt: demoEndsAt,
+    },
+  });
+  for (const routeStop of routeStops) {
+    await prisma.tripStop.upsert({
+      where: { tripId_sequence: { tripId: demoTrip.id, sequence: routeStop.sequence } },
+      create: {
+        tripId: demoTrip.id,
+        routeStopId: routeStop.id,
+        sequence: routeStop.sequence,
+        scheduledArrivalAt: new Date(demoStartsAt.getTime() + (routeStop.plannedOffsetMinutes ?? 0) * 60_000),
+      },
+      update: {
+        routeStopId: routeStop.id,
+        scheduledArrivalAt: new Date(demoStartsAt.getTime() + (routeStop.plannedOffsetMinutes ?? 0) * 60_000),
+      },
+    });
+  }
 };
 
 main()
