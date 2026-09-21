@@ -46,7 +46,14 @@ const bookingInclude = {
   dropoffStop: { include: { routeStop: { include: { stop: true } } } },
   trip: {
     include: {
-      route: true,
+      route: {
+        include: {
+          stops: {
+            orderBy: { sequence: 'asc' as const },
+            include: { stop: true },
+          },
+        },
+      },
       bus: true,
       driver: { include: { user: { select: { id: true, name: true, phone: true } } } },
     },
@@ -71,7 +78,21 @@ const bookingDto = (booking: BookingRecord) => ({
   trip: {
     id: booking.trip.id,
     routeId: booking.trip.routeId,
-    route: booking.trip.route,
+    route: {
+      id: booking.trip.route.id,
+      name: booking.trip.route.name,
+      code: booking.trip.route.code,
+      origin: booking.trip.route.stops?.[0]?.stop.name ?? '',
+      destination: booking.trip.route.stops?.at(-1)?.stop.name ?? '',
+      stops: booking.trip.route.stops?.map((rs) => ({
+        id: rs.stop.id,
+        name: rs.stop.name,
+        latitude: Number(rs.stop.latitude),
+        longitude: Number(rs.stop.longitude),
+        sequence: rs.sequence,
+      })) ?? [],
+      path: booking.trip.route.stops?.map((rs) => [Number(rs.stop.latitude), Number(rs.stop.longitude)]) ?? [],
+    },
     busId: booking.trip.busId,
     bus: {
       id: booking.trip.bus.id,
