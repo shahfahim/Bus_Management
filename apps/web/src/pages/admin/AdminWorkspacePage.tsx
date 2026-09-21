@@ -922,35 +922,123 @@ function ResourceFormModal({ config, record, onClose, onSaved }: { config: Resou
           }
           if (field.kind === 'file-upload') {
             const preview = filePreviews[field.name]
+            const fieldKey = field.name
             return (
-              <div className={`${className} admin-file-upload`} key={field.name}>
-                <label htmlFor={`admin-field-${field.name}`}>{field.label}</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  {preview && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                      <img src={preview} alt="Preview" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--admin-border)' }} />
-                      <button type="button" className="admin-button admin-button--ghost" style={{ fontSize: '0.72rem' }} onClick={() => { setFilePreviews(p => ({ ...p, [field.name]: '' })); setFileValues(p => ({ ...p, [field.name]: null })); }}>Remove photo</button>
+              <div className="admin-form-grid__full" key={field.name} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ fontSize: '0.72rem', fontWeight: 750, color: 'var(--admin-label, #3a4a47)' }}>{field.label}</label>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '20px',
+                    padding: '16px 20px',
+                    border: `2px dashed var(--admin-border)`,
+                    borderRadius: '14px',
+                    background: 'var(--admin-surface-raised, #f5f5f4)',
+                    transition: 'border-color 0.2s, background 0.2s',
+                    cursor: 'pointer',
+                  }}
+                  onDragOver={(e) => { e.preventDefault(); (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--admin-accent, #0f6657)'; (e.currentTarget as HTMLDivElement).style.background = 'rgba(15,102,87,0.04)'; }}
+                  onDragLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--admin-border)'; (e.currentTarget as HTMLDivElement).style.background = 'var(--admin-surface-raised, #f5f5f4)'; }}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    (e.currentTarget as HTMLDivElement).style.borderColor = 'var(--admin-border)';
+                    (e.currentTarget as HTMLDivElement).style.background = 'var(--admin-surface-raised, #f5f5f4)';
+                    const file = e.dataTransfer.files?.[0];
+                    if (!file || !file.type.startsWith('image/')) return;
+                    setFileValues(p => ({ ...p, [fieldKey]: file }));
+                    setFilePreviews(p => ({ ...p, [fieldKey]: URL.createObjectURL(file) }));
+                  }}
+                  onClick={() => document.getElementById(`admin-field-${field.name}`)?.click()}
+                >
+                  {/* Avatar circle */}
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div style={{
+                      width: 80, height: 80, borderRadius: '50%',
+                      background: preview ? 'transparent' : 'linear-gradient(135deg, #e0eeeb 0%, #c8dfd9 100%)',
+                      border: preview ? '3px solid var(--admin-accent, #0f6657)' : '2px dashed #b0c8c3',
+                      overflow: 'hidden',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      boxShadow: preview ? '0 4px 16px rgba(15,102,87,0.18)' : 'none',
+                      transition: 'all 0.25s',
+                    }}>
+                      {preview
+                        ? <img src={preview} alt="Avatar preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#8ab4ac" strokeWidth="1.5"><circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/></svg>
+                      }
                     </div>
-                  )}
-                  <label htmlFor={`admin-field-${field.name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '8px 12px', border: '1px dashed var(--admin-border)', borderRadius: '8px', fontSize: '0.76rem', width: 'max-content' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    {preview ? 'Change photo' : 'Choose photo from device'}
-                  </label>
-                  <input
-                    id={`admin-field-${field.name}`}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp,image/gif"
-                    style={{ display: 'none' }}
-                    onChange={(event) => {
-                      const file = event.target.files?.[0]
-                      if (!file) return
-                      setFileValues(p => ({ ...p, [field.name]: file }))
-                      const blobUrl = URL.createObjectURL(file)
-                      setFilePreviews(p => ({ ...p, [field.name]: blobUrl }))
-                    }}
-                  />
-                  {field.help && <small style={{ color: 'var(--admin-muted)', fontSize: '0.67rem' }}>{field.help}</small>}
+                    {/* Camera badge */}
+                    <div style={{
+                      position: 'absolute', bottom: 0, right: 0,
+                      width: 24, height: 24, borderRadius: '50%',
+                      background: 'var(--admin-accent, #0f6657)', color: 'white',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      border: '2px solid white',
+                      boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
+                    }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    </div>
+                  </div>
+
+                  {/* Text instructions */}
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <p style={{ margin: '0 0 3px', fontWeight: 700, fontSize: '0.82rem', color: 'var(--admin-ink, #1a2e2a)' }}>
+                      {preview ? 'Photo selected' : 'Upload profile photo'}
+                    </p>
+                    <p style={{ margin: '0 0 10px', fontSize: '0.71rem', color: 'var(--admin-muted, #6b8480)' }}>
+                      {preview ? 'Click or drag a new image to replace it.' : 'Drag & drop here, or click to browse your device.'}
+                    </p>
+                    <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{
+                        display: 'inline-flex', alignItems: 'center', gap: '5px',
+                        padding: '5px 11px', borderRadius: '6px',
+                        background: 'var(--admin-accent, #0f6657)', color: 'white',
+                        fontSize: '0.68rem', fontWeight: 750, cursor: 'pointer',
+                        boxShadow: '0 2px 8px rgba(15,102,87,0.25)',
+                      }} onClick={(e) => { e.stopPropagation(); document.getElementById(`admin-field-${field.name}`)?.click(); }}>
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                        {preview ? 'Change photo' : 'Choose file'}
+                      </span>
+                      {preview && (
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '5px',
+                          padding: '5px 11px', borderRadius: '6px',
+                          background: 'transparent', color: 'var(--admin-danger, #c0392b)',
+                          border: '1px solid rgba(192,57,43,0.3)',
+                          fontSize: '0.68rem', fontWeight: 700, cursor: 'pointer',
+                        }} onClick={(e) => {
+                          e.stopPropagation();
+                          setFilePreviews(p => ({ ...p, [fieldKey]: '' }));
+                          setFileValues(p => ({ ...p, [fieldKey]: null }));
+                        }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+                          Remove
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Accepted formats badge */}
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                    {['JPG', 'PNG', 'WebP'].map(fmt => (
+                      <span key={fmt} style={{ fontSize: '0.58rem', fontWeight: 800, letterSpacing: '0.06em', padding: '2px 6px', borderRadius: '4px', background: 'var(--admin-border-soft, #e8edeb)', color: 'var(--admin-muted, #6b8480)' }}>{fmt}</span>
+                    ))}
+                  </div>
                 </div>
+
+                <input
+                  id={`admin-field-${field.name}`}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  style={{ display: 'none' }}
+                  onChange={(event) => {
+                    const file = event.target.files?.[0]
+                    if (!file) return
+                    setFileValues(p => ({ ...p, [fieldKey]: file }))
+                    setFilePreviews(p => ({ ...p, [fieldKey]: URL.createObjectURL(file) }))
+                  }}
+                />
+                {field.help && <small style={{ color: 'var(--admin-muted)', fontSize: '0.65rem' }}>{field.help}</small>}
               </div>
             )
           }
