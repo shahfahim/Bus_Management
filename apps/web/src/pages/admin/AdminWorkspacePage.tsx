@@ -68,6 +68,8 @@ interface FormFieldConfig {
   lookupLabel?: string[]
   fullWidth?: boolean
   createOnly?: boolean
+  hidden?: boolean
+  defaultValue?: FormValue
   visibleWhen?: {
     field: string
     value: FormValue
@@ -751,7 +753,7 @@ function toInputValue(value: unknown, kind: FieldKind): FormValue {
 
 function initialFormValues(fields: FormFieldConfig[], record?: AdminRecord): Record<string, FormValue> {
   return fields.reduce<Record<string, FormValue>>((values, field) => {
-    values[field.name] = toInputValue(record?.[field.name], field.kind)
+    values[field.name] = record ? toInputValue(record[field.name], field.kind) : (field.defaultValue ?? toInputValue(undefined, field.kind))
     return values
   }, {})
 }
@@ -912,7 +914,7 @@ function ResourceFormModal({ config, record, onClose, onSaved }: { config: Resou
     >
       <form id="admin-resource-form" className="admin-form-grid" onSubmit={handleSubmit}>
         {error && <div className="admin-alert admin-alert--error admin-form-grid__full" role="alert">{error}</div>}
-        {fields.filter((field) => isFieldVisible(field, values)).map((field) => {
+        {fields.filter((field) => isFieldVisible(field, values) && !field.hidden).map((field) => {
           const inputId = `admin-field-${field.name}`
           const value = values[field.name]
           const describedBy = field.help ? `${inputId}-help` : undefined
@@ -1161,6 +1163,29 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
     })
     return initial
   })
+
+  const roleParam = searchParams.get('role');
+  useEffect(() => {
+    if (config.id === 'users' && roleParam) {
+      setFilters(f => f.role === roleParam ? f : { ...f, role: roleParam });
+    }
+  }, [config.id, roleParam]);
+
+  const activeConfig = useMemo(() => {
+    if (config.id !== 'users') return config;
+    const roleFilter = filters.role;
+    if (!roleFilter) return config;
+    
+    const roleName = roleFilter === 'driver' ? 'driver' : roleFilter === 'student' ? 'student' : 'administrator';
+    const roleTitle = roleFilter === 'driver' ? 'Drivers' : roleFilter === 'student' ? 'Students' : 'Administrators';
+    return {
+      ...config,
+      title: roleTitle,
+      singular: roleName,
+      createLabel: `Add ${roleName}`,
+      fields: config.fields.map(f => f.name === 'role' ? { ...f, hidden: true, defaultValue: roleFilter } : f)
+    }
+  }, [config, filters.role])
   const [sort, setSort] = useState<{ key: string; direction: 'asc' | 'desc' } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -1319,7 +1344,7 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
 
   const exportRowsPDF = () => {
     if (!items.length) return
-    ExportFacade.exportToPDF(items, config.columns, `${config.id}-${new Date().toISOString().slice(0, 10)}.pdf`, `${config.title} Report`)
+    ExportFacade.exportToPDF(items, activeConfig.columns, `${activeConfig.id}-${new Date().toISOString().slice(0, 10)}.pdf`, `${activeConfig.title} Report`)
     onToast({ tone: 'info', message: `Exported ${items.length} visible records as PDF.` })
   }
 
@@ -1331,8 +1356,8 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
       <header className="admin-page-header">
         <div>
           <div className="admin-eyebrow">Operations</div>
-          <h1 id="admin-resource-title">{config.title}</h1>
-          <p>{config.description}</p>
+          <h1 id="admin-resource-title">{activeConfig.title}</h1>
+          <p>{activeConfig.description}</p>
         </div>
         <div className="admin-page-header__actions">
           <details className="admin-export-dropdown">
@@ -1342,7 +1367,7 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
               <button type="button" onClick={exportRowsPDF} disabled={!items.length || loading}>Export as PDF</button>
             </div>
           </details>
-          {config.canCreate && <button className="admin-button admin-button--primary" type="button" onClick={() => setFormRecord('new')}><span aria-hidden="true">＋</span> {config.createLabel ?? `Add ${config.singular}`}</button>}
+          {activeConfig.canCreate && <button className="admin-button admin-button--primary" type="button" onClick={() => setFormRecord('new')}><span aria-hidden="true">＋</span> {activeConfig.createLabel ?? `Add ${activeConfig.singular}`}</button>}
         </div>
       </header>
 
@@ -1350,24 +1375,24 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
         <div className="admin-toolbar">
           <form className="admin-search" role="search" onSubmit={applySearch}>
             <span className="admin-search__icon" aria-hidden="true">⌕</span>
-            <label className="admin-sr-only" htmlFor={`search-${config.id}`}>Search {config.title.toLowerCase()}</label>
-            <input id={`search-${config.id}`} type="search" value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder={config.searchPlaceholder} />
+            <label className="admin-sr-only" htmlFor={`search-${activeConfig.id}`}>Search {activeConfig.title.toLowerCase()}</label>
+            <input id={`search-${activeConfig.id}`} type="search" value={searchDraft} onChange={(event) => setSearchDraft(event.target.value)} placeholder={activeConfig.searchPlaceholder} />
             <button type="submit">Search</button>
           </form>
           <div className="admin-filters" aria-label="Table filters">
-            {config.filters.map((filter) => <label key={filter.name}><span className="admin-sr-only">{filter.label}</span><select value={filters[filter.name] ?? ''} onChange={(event) => updateFilter(filter.name, event.target.value)}><option value="">{filter.label}</option>{filter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
+            {activeConfig.filters.map((filter) => <label key={filter.name}><span className="admin-sr-only">{filter.label}</span><select value={filters[filter.name] ?? ''} onChange={(event) => updateFilter(filter.name, event.target.value)}><option value="">{filter.label}</option>{filter.options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select></label>)}
             {(search || Object.values(filters).some(Boolean)) && <button className="admin-link-button" type="button" onClick={() => { setSearch(''); setSearchDraft(''); setFilters({}); setPage(1) }}>Clear filters</button>}
           </div>
         </div>
 
-        {error && <div className="admin-state admin-state--error" role="alert"><div className="admin-state__icon">!</div><div><h2>We couldn’t load {config.title.toLowerCase()}</h2><p>{error}</p><button className="admin-button admin-button--secondary" type="button" onClick={() => void load()}>Try again</button></div></div>}
-        {!error && loading && <TableSkeleton columns={config.columns.length} />}
-        {!error && !loading && items.length === 0 && <div className="admin-state"><div className="admin-state__icon">⌕</div><div><h2>No {config.title.toLowerCase()} found</h2><p>{search || Object.values(filters).some(Boolean) ? 'Try changing or clearing the current filters.' : `No ${config.singular} records have been added yet.`}</p>{config.canCreate && !search && <button className="admin-button admin-button--primary" type="button" onClick={() => setFormRecord('new')}>{config.createLabel ?? `Add ${config.singular}`}</button>}</div></div>}
+        {error && <div className="admin-state admin-state--error" role="alert"><div className="admin-state__icon">!</div><div><h2>We couldn’t load {activeConfig.title.toLowerCase()}</h2><p>{error}</p><button className="admin-button admin-button--secondary" type="button" onClick={() => void load()}>Try again</button></div></div>}
+        {!error && loading && <TableSkeleton columns={activeConfig.columns.length} />}
+        {!error && !loading && items.length === 0 && <div className="admin-state"><div className="admin-state__icon">⌕</div><div><h2>No {activeConfig.title.toLowerCase()} found</h2><p>{search || Object.values(filters).some(Boolean) ? 'Try changing or clearing the current filters.' : `No ${activeConfig.singular} records have been added yet.`}</p>{activeConfig.canCreate && !search && <button className="admin-button admin-button--primary" type="button" onClick={() => setFormRecord('new')}>{activeConfig.createLabel ?? `Add ${activeConfig.singular}`}</button>}</div></div>}
         {!error && !loading && items.length > 0 && (
           <div className="admin-table-wrap">
             <table className="admin-table">
-              <thead><tr>{config.columns.map((column) => <th key={column.key} className={column.mobileHidden ? 'admin-table__mobile-hidden' : undefined} scope="col">{column.sortable ? <button className="admin-sort-button" type="button" onClick={() => toggleSort(primaryPath(column.key))} aria-label={`Sort by ${column.label}`}>{column.label}<span aria-hidden="true">{sort?.key === primaryPath(column.key) ? sort.direction === 'asc' ? ' ↑' : ' ↓' : ' ↕'}</span></button> : column.label}</th>)}<th scope="col" className="admin-table__actions-heading"><span className="admin-sr-only">Actions</span></th></tr></thead>
-              <tbody>{items.map((record) => <tr key={record.id}>{config.columns.map((column) => <td key={column.key} className={column.mobileHidden ? 'admin-table__mobile-hidden' : undefined} data-label={column.label}>{formatCell(getValue(record, column.key), column.kind)}</td>)}<td className="admin-row-actions"><details><summary className="admin-icon-button" aria-label={`Actions for ${String(firstDefined(record, ['name', 'reference', 'title', 'fleetNumber']) ?? config.singular)}`}>•••</summary><div className="admin-action-menu"><button type="button" onClick={() => void loadDetail(record)} disabled={busyRow === record.id}>View details</button>{config.canEdit && <button type="button" onClick={() => setFormRecord(record)}>Edit</button>}{config.actions?.filter((action) => !action.visible || action.visible(record)).map((action) => <button key={action.id} type="button" className={action.tone ? `admin-action-menu__${action.tone}` : undefined} onClick={() => void runAction(action, record)} disabled={busyRow === record.id}>{action.label}</button>)}{config.canDelete && <button type="button" className="admin-action-menu__danger" onClick={() => void deleteRecord(record)} disabled={busyRow === record.id}>Delete</button>}</div></details></td></tr>)}</tbody>
+              <thead><tr>{activeConfig.columns.map((column) => <th key={column.key} className={column.mobileHidden ? 'admin-table__mobile-hidden' : undefined} scope="col">{column.sortable ? <button className="admin-sort-button" type="button" onClick={() => toggleSort(primaryPath(column.key))} aria-label={`Sort by ${column.label}`}>{column.label}<span aria-hidden="true">{sort?.key === primaryPath(column.key) ? sort.direction === 'asc' ? ' ↑' : ' ↓' : ' ↕'}</span></button> : column.label}</th>)}<th scope="col" className="admin-table__actions-heading"><span className="admin-sr-only">Actions</span></th></tr></thead>
+              <tbody>{items.map((record) => <tr key={record.id}>{activeConfig.columns.map((column) => <td key={column.key} className={column.mobileHidden ? 'admin-table__mobile-hidden' : undefined} data-label={column.label}>{formatCell(getValue(record, column.key), column.kind)}</td>)}<td className="admin-row-actions"><details><summary className="admin-icon-button" aria-label={`Actions for ${String(firstDefined(record, ['name', 'reference', 'title', 'fleetNumber']) ?? activeConfig.singular)}`}>•••</summary><div className="admin-action-menu"><button type="button" onClick={() => void loadDetail(record)} disabled={busyRow === record.id}>View details</button>{activeConfig.canEdit && <button type="button" onClick={() => setFormRecord(record)}>Edit</button>}{activeConfig.actions?.filter((action) => !action.visible || action.visible(record)).map((action) => <button key={action.id} type="button" className={action.tone ? `admin-action-menu__${action.tone}` : undefined} onClick={() => void runAction(action, record)} disabled={busyRow === record.id}>{action.label}</button>)}{activeConfig.canDelete && <button type="button" className="admin-action-menu__danger" onClick={() => void deleteRecord(record)} disabled={busyRow === record.id}>Delete</button>}</div></details></td></tr>)}</tbody>
             </table>
           </div>
         )}
@@ -1375,8 +1400,8 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
         {!error && !loading && meta.total > 0 && <footer className="admin-pagination"><p>Showing <strong>{firstItem}–{lastItem}</strong> of <strong>{NUMBER.format(meta.total)}</strong></p><div className="admin-pagination__controls"><label>Rows <select value={pageSize} onChange={(event) => { setPageSize(Number(event.target.value)); setPage(1) }}><option value="10">10</option><option value="20">20</option><option value="50">50</option></select></label><button className="admin-icon-button" type="button" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={meta.page <= 1} aria-label="Previous page">‹</button><span>Page {meta.page} of {meta.totalPages}</span><button className="admin-icon-button" type="button" onClick={() => setPage((current) => Math.min(meta.totalPages, current + 1))} disabled={meta.page >= meta.totalPages} aria-label="Next page">›</button></div></footer>}
       </div>
 
-      {formRecord && <ResourceFormModal config={config} record={formRecord === 'new' ? undefined : formRecord} onClose={() => setFormRecord(null)} onSaved={closeAndReload} />}
-      {detailRecord && <RecordDetailsModal config={config} record={detailRecord} onClose={() => setDetailRecord(null)} onChanged={refreshDetail} onToast={onToast} />}
+      {formRecord && <ResourceFormModal config={activeConfig} record={formRecord === 'new' ? undefined : formRecord} onClose={() => setFormRecord(null)} onSaved={closeAndReload} />}
+      {detailRecord && <RecordDetailsModal config={activeConfig} record={detailRecord} onClose={() => setDetailRecord(null)} onChanged={refreshDetail} onToast={onToast} />}
     </section>
   )
 }
