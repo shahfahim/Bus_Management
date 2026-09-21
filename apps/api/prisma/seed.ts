@@ -251,8 +251,9 @@ const main = async () => {
   console.log('Student: student@example.edu');
 
   // --- DEMO PERMANENT TRIP ---
-  const demoStartsAt = new Date('2020-01-01T00:00:00.000Z');
-  const demoEndsAt = new Date('2030-12-31T23:59:59.000Z');
+  const now = new Date();
+  const demoStartsAt = new Date(now.getTime() - 1 * 60 * 60_000); // 1 hour ago
+  const demoEndsAt = new Date(now.getTime() + 24 * 365 * 60 * 60_000); // 1 year from now
   let demoAssignment = await prisma.driverAssignment.findFirst({
     where: { driverId: driver.id, busId: bus.id, routeId: route.id, startsAt: demoStartsAt },
   });
