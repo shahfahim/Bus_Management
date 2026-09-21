@@ -171,8 +171,8 @@ export class ChartFactory {
             data={data}
             cx="50%"
             cy="50%"
-            innerRadius={60}
-            outerRadius={80}
+            innerRadius={50}
+            outerRadius={68}
             paddingAngle={5}
             dataKey="value"
             nameKey="label"
@@ -186,7 +186,6 @@ export class ChartFactory {
             itemStyle={{ color: '#F8FAFC' }}
             formatter={(value: any) => [this.formatValue(Number(value) || 0, valueKind), 'Value']} 
           />
-          <Legend wrapperStyle={{ fontSize: '12px', color: '#94A3B8' }} />
         </PieChart>
       </ResponsiveContainer>
     );
