@@ -3,9 +3,8 @@ import { Camera, CameraOff, CheckCircle2, Keyboard, QrCode, RotateCcw, ShieldAle
 import { type FormEvent, useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Button, Card, Field, InlineAlert, PageHeader, Pill, useToast, EmptyState, Skeleton } from '../../components/ui';
-import { api, errorMessage, unwrap } from '../../lib/api';
+import { api, errorMessage, unwrap, asItems } from '../../lib/api';
 import { formatDateTime, formatTime, localDateInputValue } from '../../lib/format';
-import { asItems } from '../../lib/query';
 import type { Passenger, Trip } from '../../types';
 
 interface ValidationResult {

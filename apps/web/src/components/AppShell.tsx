@@ -13,6 +13,7 @@ import {
   MapIcon,
   Menu,
   Moon,
+  Navigation,
   PanelLeftClose,
   PanelLeftOpen,
   QrCode,
