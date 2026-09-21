@@ -3,14 +3,14 @@
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
-  --ink: #0a1715;
-  --ink-soft: #344844;
-  --ink-faint: #5b6d69;
-  --canvas: #f5f7f5;
+  --ink: #0f172a;
+  --ink-soft: #334155;
+  --ink-faint: #64748b;
+  --canvas: #f8fafc;
   --surface: #ffffff;
-  --surface-raised: #fbfcfb;
-  --line: #dfe7e4;
-  --line-strong: #cbd8d4;
+  --surface-raised: #f1f5f9;
+  --line: #e2e8f0;
+  --line-strong: #cbd5e1;
   --primary: #0f6657;
   --primary-hover: #0b5549;
   --primary-soft: #e3f3ef;
@@ -24,12 +24,12 @@
   --info-soft: #eaf2fc;
   --violet: #7259b6;
   --violet-soft: #f0edfa;
-  --shadow-sm: 0 1px 2px rgb(20 44 39 / 5%), 0 4px 14px rgb(20 44 39 / 4%);
-  --shadow-md: 0 16px 45px rgb(20 44 39 / 11%);
-  --radius-sm: 8px;
-  --radius-md: 14px;
-  --radius-lg: 22px;
-  --sidebar-width: 252px;
+  --shadow-sm: 0 4px 20px rgba(0, 0, 0, 0.04), 0 1px 3px rgba(0, 0, 0, 0.03);
+  --shadow-md: 0 20px 40px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.02);
+  --radius-sm: 10px;
+  --radius-md: 16px;
+  --radius-lg: 26px;
+  --sidebar-width: 260px;
   background: var(--canvas);
   color: var(--ink);
 }
@@ -46,10 +46,10 @@ button { border: 0; }
 a { color: inherit; text-decoration: none; }
 img { display: block; max-width: 100%; }
 h1, h2, h3, p { margin-top: 0; }
-h1 { margin-bottom: .5rem; font-size: clamp(1.75rem, 2.8vw, 2.45rem); letter-spacing: -.035em; line-height: 1.12; }
-h2 { margin-bottom: .4rem; font-size: 1.17rem; letter-spacing: -.018em; line-height: 1.3; }
-h3 { margin-bottom: .3rem; font-size: 1rem; }
-p { color: var(--ink-soft); line-height: 1.55; }
+h1 { margin-bottom: .6rem; font-size: clamp(1.85rem, 3vw, 2.75rem); letter-spacing: -.04em; line-height: 1.1; font-weight: 800; }
+h2 { margin-bottom: .5rem; font-size: 1.25rem; letter-spacing: -.02em; line-height: 1.3; font-weight: 750; }
+h3 { margin-bottom: .4rem; font-size: 1.05rem; font-weight: 700; letter-spacing: -.01em; }
+p { color: var(--ink-soft); line-height: 1.6; }
 strong { font-weight: 700; }
 button, a, input, select, textarea { outline: none; }
 :focus-visible { outline: 3px solid rgb(15 102 87 / 26%); outline-offset: 2px; }
