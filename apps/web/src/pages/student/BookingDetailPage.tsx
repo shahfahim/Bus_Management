@@ -72,7 +72,7 @@ export function BookingDetailPage() {
 
   if (loading) return <div className="page-stack"><Skeleton lines={2} /><Card><Skeleton lines={9} /></Card></div>;
   if (!booking) return <div className="page-stack"><Link className="back-link" to="/student/bookings"><ArrowLeft /> All bookings</Link><InlineAlert>{error || 'Booking not found.'}</InlineAlert></div>;
-  const canCancel = ['PENDING', 'CONFIRMED'].includes(booking.status) && !booking.checkedInAt && new Date(booking.trip?.departureTime ?? 0).getTime() > Date.now();
+  const canCancel = ['PENDING', 'CONFIRMED'].includes(booking.status) && !booking.checkedInAt && (new Date(booking.trip?.departureTime ?? 0).getTime() > Date.now() || ['SCHEDULED', 'BOARDING', 'IN_PROGRESS', 'DELAYED'].includes(booking.trip?.status ?? ''));
 
   return (
     <div className="page-stack">

@@ -77,7 +77,7 @@ export function BookingsPage() {
 }
 
 function BookingCard({ booking, onCancel }: { booking: Booking; onCancel: () => void }) {
-  const canCancel = ['PENDING', 'CONFIRMED'].includes(booking.status) && !booking.checkedInAt && new Date(booking.trip?.departureTime ?? 0).getTime() > Date.now();
+  const canCancel = ['PENDING', 'CONFIRMED'].includes(booking.status) && !booking.checkedInAt && (new Date(booking.trip?.departureTime ?? 0).getTime() > Date.now() || ['SCHEDULED', 'BOARDING', 'IN_PROGRESS', 'DELAYED'].includes(booking.trip?.status ?? ''));
   return (
     <Card className="booking-card">
       <div className="booking-card__date"><span>{new Date(booking.trip?.departureTime ?? booking.createdAt).toLocaleDateString(undefined, { month: 'short' })}</span><strong>{new Date(booking.trip?.departureTime ?? booking.createdAt).getDate()}</strong></div>
