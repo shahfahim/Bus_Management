@@ -16,6 +16,8 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [notice, setNotice] = useState('');
+  const [docFile, setDocFile] = useState<File | null>(null);
+  const [docPreview, setDocPreview] = useState('');
   const { user, loading, login } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -117,10 +119,100 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
                     <Field label="Department" name="department" placeholder="Computer Science" required />
                   </div>
                 <Field autoComplete="tel" label="Phone (optional)" name="phone" placeholder="+880 …" type="tel" />
-                <div className="form-group">
-                  <label htmlFor="document">Verification Document (ID card or Payment slip)</label>
-                  <input accept="image/jpeg,image/png,image/webp,application/pdf" id="document" name="document" required type="file" />
-                  <p className="help-text">Max 5MB. Must be clear and readable.</p>
+                <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '0.72rem', fontWeight: 750, color: '#3a4a47' }}>Verification Document <span style={{ color: '#c0392b' }}>*</span></label>
+                  <div
+                    style={{
+                      display: 'flex', alignItems: 'center', gap: '16px',
+                      padding: '14px 16px',
+                      border: '2px dashed #b0c8c3',
+                      borderRadius: '14px',
+                      background: '#f5f5f4',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.2s, background 0.2s',
+                    }}
+                    onDragOver={(e) => { e.preventDefault(); (e.currentTarget as HTMLDivElement).style.borderColor = '#0f6657'; (e.currentTarget as HTMLDivElement).style.background = 'rgba(15,102,87,0.04)'; }}
+                    onDragLeave={(e) => { (e.currentTarget as HTMLDivElement).style.borderColor = '#b0c8c3'; (e.currentTarget as HTMLDivElement).style.background = '#f5f5f4'; }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      (e.currentTarget as HTMLDivElement).style.borderColor = '#b0c8c3';
+                      (e.currentTarget as HTMLDivElement).style.background = '#f5f5f4';
+                      const file = e.dataTransfer.files?.[0];
+                      if (!file) return;
+                      setDocFile(file);
+                      setDocPreview(file.type.startsWith('image/') ? URL.createObjectURL(file) : '');
+                    }}
+                    onClick={() => document.getElementById('document')?.click()}
+                  >
+                    {/* Icon box */}
+                    <div style={{
+                      width: 56, height: 56, flexShrink: 0, borderRadius: '12px',
+                      background: docFile ? 'linear-gradient(135deg,#0f6657,#1a8a72)' : 'linear-gradient(135deg,#e0eeeb,#c8dfd9)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      overflow: 'hidden', boxShadow: docFile ? '0 4px 14px rgba(15,102,87,0.22)' : 'none',
+                      transition: 'all 0.25s',
+                    }}>
+                      {docPreview
+                        ? <img src={docPreview} alt="doc" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : docFile
+                          ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+                          : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8ab4ac" strokeWidth="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="13" x2="12" y2="17"/><line x1="10" y1="15" x2="14" y2="15"/></svg>
+                      }
+                    </div>
+                    {/* Text */}
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ margin: '0 0 2px', fontWeight: 700, fontSize: '0.8rem', color: '#1a2e2a' }}>
+                        {docFile ? docFile.name : 'ID card or Payment slip'}
+                      </p>
+                      <p style={{ margin: '0 0 9px', fontSize: '0.69rem', color: '#6b8480' }}>
+                        {docFile ? `${(docFile.size / 1024).toFixed(0)} KB · click to replace` : 'Drag & drop here, or click to browse'}
+                      </p>
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <span style={{
+                          display: 'inline-flex', alignItems: 'center', gap: '5px',
+                          padding: '4px 10px', borderRadius: '6px',
+                          background: '#0f6657', color: 'white',
+                          fontSize: '0.67rem', fontWeight: 750, cursor: 'pointer',
+                          boxShadow: '0 2px 8px rgba(15,102,87,0.25)',
+                        }} onClick={(e) => { e.stopPropagation(); document.getElementById('document')?.click(); }}>
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                          {docFile ? 'Replace file' : 'Choose file'}
+                        </span>
+                        {docFile && (
+                          <span style={{
+                            display: 'inline-flex', alignItems: 'center', gap: '4px',
+                            padding: '4px 10px', borderRadius: '6px',
+                            border: '1px solid rgba(192,57,43,0.35)', color: '#c0392b',
+                            fontSize: '0.67rem', fontWeight: 700, cursor: 'pointer',
+                          }} onClick={(e) => { e.stopPropagation(); setDocFile(null); setDocPreview(''); }}>
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
+                            Remove
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {/* Format badges */}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                      {['JPG', 'PNG', 'PDF'].map(f => (
+                        <span key={f} style={{ fontSize: '0.57rem', fontWeight: 800, letterSpacing: '0.05em', padding: '2px 6px', borderRadius: '4px', background: '#e8edeb', color: '#6b8480' }}>{f}</span>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Hidden real input — used by form submit handler */}
+                  <input
+                    accept="image/jpeg,image/png,image/webp,application/pdf"
+                    id="document"
+                    name="document"
+                    required
+                    style={{ display: 'none' }}
+                    type="file"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0] ?? null;
+                      setDocFile(file);
+                      setDocPreview(file && file.type.startsWith('image/') ? URL.createObjectURL(file) : '');
+                    }}
+                  />
+                  <small style={{ fontSize: '0.65rem', color: '#6b8480' }}>Max 5 MB. Must be clear and readable.</small>
                 </div>
               </>
             )}
