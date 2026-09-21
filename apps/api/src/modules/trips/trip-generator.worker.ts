@@ -43,9 +43,15 @@ export const generateTrips = async () => {
     for (let i = 0; i < 7; i++) {
       const targetDate = new Date(baseDate.getTime() + i * 24 * 60 * 60 * 1000);
 
-      // Check validFrom and validTo
-      if (targetDate < schedule.validFrom) continue;
-      if (schedule.validTo && targetDate > schedule.validTo) continue;
+      // Check validFrom and validTo by comparing YYYY-MM-DD strings to avoid TZ shift bugs
+      const targetDateStr = formatter.format(targetDate);
+      const validFromStr = schedule.validFrom.toISOString().split('T')[0] as string;
+      if (targetDateStr < validFromStr) continue;
+      
+      if (schedule.validTo) {
+        const validToStr = schedule.validTo.toISOString().split('T')[0] as string;
+        if (targetDateStr > validToStr) continue;
+      }
 
       // Check days of week (0 = Sunday, 1 = Monday, ...)
       // We must get the day of the week in Dhaka time
