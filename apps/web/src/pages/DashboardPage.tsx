@@ -20,30 +20,36 @@ import { LiveTripMap } from '../components/LiveMap';
 import { Card, EmptyState, InlineAlert, PageHeader, Pill, Skeleton } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { api, asItems, unwrap } from '../lib/api';
-import { formatDateTime, formatMoney, formatTime } from '../lib/format';
+import { formatDateTime, formatMoney, formatTime, localDateInputValue } from '../lib/format';
 import { useRemoteData } from '../hooks/useRemoteData';
-import type { Booking, DashboardSummary, RoadAlert } from '../types';
+import type { Booking, DashboardSummary, RoadAlert, Trip } from '../types';
 
 interface DashboardData {
   summary: DashboardSummary;
   bookings: Booking[];
   alerts: RoadAlert[];
+  trips: Trip[];
 }
 
 export function DashboardPage() {
   const { user } = useAuth();
   const loadDashboard = useCallback(async (signal: AbortSignal): Promise<DashboardData> => {
-    const [summaryResult, bookingsResult, alertsResult] = await Promise.allSettled([
+    const isDriver = user?.role === 'DRIVER' || user?.role === 'CONDUCTOR';
+    const [summaryResult, bookingsResult, alertsResult, tripsResult] = await Promise.allSettled([
       api.get<DashboardSummary | { data: DashboardSummary }>('/dashboard/summary', signal),
       user?.role === 'STUDENT'
         ? api.get<unknown>('/bookings?upcoming=true&limit=2', signal)
         : Promise.resolve([]),
       api.get<unknown>('/road-alerts?active=true&limit=4', signal),
+      isDriver
+        ? api.get<unknown>('/driver/trips?date=' + localDateInputValue(), signal)
+        : Promise.resolve([]),
     ]);
     return {
       summary: summaryResult.status === 'fulfilled' ? unwrap(summaryResult.value) : {},
       bookings: bookingsResult.status === 'fulfilled' ? asItems<Booking>(bookingsResult.value) : [],
       alerts: alertsResult.status === 'fulfilled' ? asItems<RoadAlert>(alertsResult.value) : [],
+      trips: tripsResult.status === 'fulfilled' ? asItems<Trip>(tripsResult.value) : [],
     };
   }, [user?.role]);
   const { data, loading, error, reload } = useRemoteData(loadDashboard, [user?.role]);
@@ -62,7 +68,7 @@ export function DashboardPage() {
       {loading ? <DashboardSkeleton /> : (
         <>
           {user.role === 'STUDENT' && <StudentDashboard bookings={data?.bookings ?? []} summary={data?.summary ?? {}} />}
-          {(user.role === 'DRIVER' || user.role === 'CONDUCTOR') && <DriverDashboard summary={data?.summary ?? {}} />}
+          {(user.role === 'DRIVER' || user.role === 'CONDUCTOR') && <DriverDashboard summary={data?.summary ?? {}} trips={data?.trips ?? []} />}
           {user.role === 'ADMIN' && <AdminDashboard summary={data?.summary ?? {}} />}
           <AlertsPanel alerts={data?.alerts ?? []} />
         </>
@@ -106,8 +112,7 @@ function StudentDashboard({ bookings, summary }: { bookings: Booking[]; summary:
   );
 }
 
-function DriverDashboard({ summary }: { summary: DashboardSummary }) {
-  const trip = summary.nextTrip;
+function DriverDashboard({ summary, trips }: { summary: DashboardSummary; trips: Trip[] }) {
   return (
     <>
       <div className="stat-grid stat-grid--3">
@@ -115,16 +120,34 @@ function DriverDashboard({ summary }: { summary: DashboardSummary }) {
         <StatCard icon={UsersRound} label="Passengers today" tone="violet" value={summary.passengersToday ?? 0} />
         <StatCard icon={Clock3} label="Trips in progress" tone="amber" value={summary.activeTrips ?? 0} />
       </div>
-      <Card className="driver-next-trip">
-        <div className="card-heading"><div><p className="eyebrow">Next assignment</p><h2>{trip?.route?.name ?? 'No upcoming assignment'}</h2></div>{trip && <Pill>{trip.status}</Pill>}</div>
-        {trip ? (
-          <div className="driver-next-trip__body">
-            <div className="driver-next-trip__route"><span>{trip.route?.origin}</span><i /><BusFront aria-hidden="true" /><i /><span>{trip.route?.destination}</span></div>
-            <div className="detail-grid"><div><span>Departure</span><strong>{formatTime(trip.departureTime)}</strong></div><div><span>Bus</span><strong>{trip.bus?.registrationNumber}</strong></div><div><span>Passengers</span><strong>{(trip.totalSeats ?? 0) - trip.availableSeats}</strong></div></div>
-            <Link className="button button--primary button--md" to={`/driver/trips/${trip.id}`}>Open trip controls <ArrowRight aria-hidden="true" size={17} /></Link>
+      
+      <section style={{ marginTop: '32px' }}>
+        <div className="section-heading">
+          <div><p className="eyebrow">Today's schedule</p><h2>Your assigned trips</h2></div>
+        </div>
+        {trips.length > 0 ? (
+          <div className="driver-trip-list">
+            {trips.map((trip) => (
+              <Card className="driver-trip-card" key={trip.id}>
+                <div className="driver-trip-card__time"><strong>{formatTime(trip.departureTime)}</strong><span>{new Date(trip.departureTime).toLocaleDateString(undefined, { weekday: 'short' })}</span></div>
+                <div className="driver-trip-card__main">
+                  <div><h2>{trip.route?.name}</h2><p>{trip.route?.origin} → {trip.route?.destination}</p></div>
+                  <div className="driver-trip-card__meta">
+                    <span><BusFront aria-hidden="true" /> {trip.bus?.registrationNumber}</span>
+                    <span><UsersRound aria-hidden="true" /> {(trip.totalSeats ?? 0) - trip.availableSeats} passengers</span>
+                    <span><Clock3 aria-hidden="true" /> {formatDateTime(trip.estimatedArrivalTime)}</span>
+                  </div>
+                </div>
+                <Pill>{trip.status}</Pill>
+                <Link className="button button--primary button--md" to={`/driver/trips/${trip.id}`}>{trip.status === 'IN_PROGRESS' ? <Navigation aria-hidden="true" size={17} /> : null} Open controls <ArrowRight aria-hidden="true" size={16} /></Link>
+              </Card>
+            ))}
           </div>
-        ) : <EmptyState description="The transport office has not assigned another trip yet." title="You’re clear for now" />}
-      </Card>
+        ) : (
+          <Card><EmptyState description="The transport office has not assigned any trips to you today." title="You’re clear for now" /></Card>
+        )}
+      </section>
+
       <QuickActions role="DRIVER" />
     </>
   );
