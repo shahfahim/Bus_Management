@@ -33,7 +33,7 @@ export function DriverTripsPage() {
 
   return (
     <div className="page-stack">
-      <PageHeader description="Review assignments, passenger load and real-time trip state." eyebrow="Driver operations" title="Assigned trips" />
+      <PageHeader description="Review assignments, passenger load and real-time trip state." eyebrow="Driver operations" title="My Trips & Scanner" />
       <Card className="driver-trip-filters"><label className="field"><span className="field__label">Service date</span><input onChange={(event) => setDate(event.target.value)} type="date" value={date} /></label><SelectField label="Trip status" onChange={(event) => setStatus(event.target.value)} options={[{ value: '', label: 'All statuses' }, { value: 'SCHEDULED', label: 'Scheduled' }, { value: 'BOARDING', label: 'Boarding' }, { value: 'IN_PROGRESS', label: 'In progress' }, { value: 'DELAYED', label: 'Delayed' }, { value: 'COMPLETED', label: 'Completed' }]} value={status} /><Button onClick={() => void load()} variant="secondary">Refresh assignments</Button></Card>
       {error && <InlineAlert>{error}</InlineAlert>}
       {loading ? <div className="trip-list"><Card><Skeleton lines={4} /></Card><Card><Skeleton lines={4} /></Card></div> : trips.length === 0 ? <Card><EmptyState description="No bus or route has been assigned for this date and status." icon={<CalendarDays />} title="No assigned trips" /></Card> : (
