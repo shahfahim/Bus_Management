@@ -79,10 +79,17 @@ export function QrScannerPage() {
     setResult(undefined); setValidationError(''); setCameraError(''); lastToken.current = '';
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera access is not available in this browser.');
-      const reader = new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 120, delayBetweenScanSuccess: 1000 });
+      const reader = new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 80, delayBetweenScanSuccess: 1000 });
       setScanning(true);
       const controls = await reader.decodeFromConstraints(
-        { video: { facingMode: 'environment' }, audio: false },
+        { 
+          video: { 
+            facingMode: 'environment',
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 }
+          }, 
+          audio: false 
+        },
         videoRef.current!,
         (scanResult) => {
           if (scanResult) void validate(scanResult.getText());
