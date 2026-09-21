@@ -56,3 +56,19 @@
 
 /* Boarding pass */
 .travel-pass { overflow: hidden; border: 1px solid #c6d9d4; border-radius: 18px; background: linear-gradient(145deg, white, #f5fbf9); box-shadow: var(--shadow-md); }.travel-pass__top { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; padding: 23px; border-bottom: 1px dashed #b8cbc6; }.travel-pass__top h2 { margin-bottom: 4px; font-size: 1.35rem; }.travel-pass__top p { margin: 0; font-size: .75rem; }.travel-pass__details { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; padding: 18px 23px; }.travel-pass__details div { display: flex; flex-direction: column; }.travel-pass__details span { color: var(--ink-faint); font-size: .61rem; text-transform: uppercase; }.travel-pass__details strong { margin-top: 4px; font-size: .74rem; }.travel-pass__qr { display: grid; grid-template-columns: auto 1fr; align-items: center; gap: 24px; padding: 23px; border-top: 1px dashed #b8cbc6; background: var(--primary-pale); }.qr-card { padding: 7px; border: 1px solid var(--line); border-radius: 10px; background: white; }.travel-pass__qr > div:last-child > svg { color: var(--primary); }.travel-pass__qr h3 { margin: 7px 0 3px; }.travel-pass__qr p { margin-bottom: 5px; font-size: .72rem; }.travel-pass__qr small { display: block; margin-bottom: 12px; color: var(--ink-faint); font-size: .63rem; }
+
+/* Auth Page Animations */
+.auth-mode-animated {
+  animation: authSlideFade 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes authSlideFade {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}

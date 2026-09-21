@@ -94,7 +94,7 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
       <section className="auth-panel">
         <Brand />
         <div className="auth-card">
-          <div className="auth-card__heading">
+          <div key={`${mode}-heading`} className="auth-mode-animated auth-card__heading">
             <p className="eyebrow">{mode === 'login' ? 'Welcome back' : 'Account registration'}</p>
             <h1>{mode === 'login' ? 'Your campus, on schedule.' : 'Start riding smarter.'}</h1>
             <p>{mode === 'login' ? 'Sign in to manage trips, seats and live bus updates.' : 'Register with any valid email. A transport administrator will review your account.'}</p>
@@ -105,7 +105,7 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
           </div>
           {error && <InlineAlert>{error}</InlineAlert>}
           {notice && <InlineAlert tone="success">{notice}</InlineAlert>}
-          <form className="auth-form" onSubmit={handleSubmit}>
+          <form key={`${mode}-form`} className="auth-mode-animated auth-form" onSubmit={handleSubmit}>
             {mode === 'register' && (
               <>
                 <Field autoComplete="name" icon={<UserRound aria-hidden="true" size={18} />} label="Full name" name="name" placeholder="Your full name" required />
