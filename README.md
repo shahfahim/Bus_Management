@@ -4,6 +4,7 @@
   <p>
     <a href="#features">Features</a> •
     <a href="#architecture">Architecture</a> •
+    <a href="#project-structure">Project Structure</a> •
     <a href="#getting-started">Getting Started</a> •
     <a href="#documentation">Documentation</a>
   </p>
@@ -38,11 +39,54 @@
 
 ## 🏗️ Architecture
 
-UniRide is a monorepo consisting of:
-- **`apps/api`**: Node.js, Express 5, Socket.IO, Prisma ORM, PostgreSQL
-- **`apps/web`**: React 19, Vite, Leaflet Maps, ZXing QR Scanner
+UniRide is designed as a modern **Monorepo** using npm workspaces. It separates the frontend and backend into isolated packages while sharing tooling and configuration.
+
+### Frontend (`apps/web`)
+- **Framework**: React 19 + Vite
+- **Styling**: Vanilla CSS with comprehensive CSS variable theming (light mode)
+- **Mapping**: Leaflet for live GPS tracking of the bus fleet
+- **Capabilities**: QR code scanning (ZXing), PWA support (workbox), real-time WebSockets (Socket.IO client).
+
+### Backend (`apps/api`)
+- **Framework**: Node.js + Express 5
+- **Database**: PostgreSQL with Prisma ORM
+- **Real-time**: Socket.IO for broadcasting GPS coordinates to active clients
+- **Tasks**: Background workers for automated trip scheduling and route generation.
 
 *See the [Architecture Document](docs/ARCHITECTURE.md) for deeper design and systems notes.*
+
+## 📁 Project Structure
+
+```text
+e:\Bus_Management\
+├── apps/
+│   ├── api/                     # Backend Node.js Express server
+│   │   ├── prisma/              # Prisma schema, migrations, and seed data
+│   │   └── src/                 
+│   │       ├── config/          # Environment and app configuration
+│   │       ├── lib/             # Utilities (logging, security, auth)
+│   │       ├── modules/         # Domain-driven feature modules (auth, trips, users)
+│   │       ├── realtime/        # Socket.IO handlers for live GPS
+│   │       ├── app.ts           # Express application setup
+│   │       └── server.ts        # Entry point for the API
+│   │
+│   └── web/                     # Frontend React + Vite application
+│       ├── public/              # Static assets (manifest, icons)
+│       └── src/
+│           ├── components/      # Reusable UI components (buttons, modals, charts)
+│           ├── contexts/        # React context providers (Auth, Realtime, Theme)
+│           ├── hooks/           # Custom React hooks (useMap, useScanner)
+│           ├── lib/             # API client wrappers and utilities
+│           ├── pages/           # Page-level components organized by role (admin, driver, student)
+│           ├── services/        # Push notifications and background sync
+│           ├── styles/          # Core CSS variables, layout, and component styles
+│           └── App.tsx          # Application routing (RBAC protected routes)
+│
+├── docs/                        # Project documentation (architecture, deployment)
+├── nginx/                       # NGINX configuration for production reverse-proxy
+├── package.json                 # Monorepo root configuration and workspaces
+└── docker-compose.yml           # Local development orchestration (Postgres, API, Web)
+```
 
 ## 🚀 Getting Started
 
