@@ -601,8 +601,8 @@ export const listBookings = async (studentId: string, query: BookingListInput) =
     ...(query.unrated ? { rating: null } : {}),
     ...(statusFilter ? { status: statusFilter } : {}),
     ...(upcoming
-      ? {
-          status: { in: [BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
+        ? {
+          status: { in: [BookingStatus.HELD, BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
           trip: { scheduledStartAt: { gte: new Date() } },
         }
       : {}),
