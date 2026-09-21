@@ -265,7 +265,7 @@ const main = async () => {
       createdById: admin.id,
       startsAt: demoStartsAt,
       endsAt: demoEndsAt,
-      status: AssignmentStatus.IN_PROGRESS,
+      status: AssignmentStatus.ACTIVE,
     },
   });
   const demoTrip = await prisma.trip.upsert({
