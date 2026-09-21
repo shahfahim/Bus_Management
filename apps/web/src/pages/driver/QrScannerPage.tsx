@@ -1,10 +1,11 @@
 import { BrowserQRCodeReader, type IScannerControls } from '@zxing/browser';
-import { Camera, CameraOff, CheckCircle2, Keyboard, QrCode, RotateCcw, ShieldAlert, UserRoundCheck } from 'lucide-react';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { Camera, CameraOff, CheckCircle2, Keyboard, QrCode, RotateCcw, ShieldAlert, UserRoundCheck, CalendarDays, BusFront, UsersRound, Clock3, ScanLine } from 'lucide-react';
+import { type FormEvent, useEffect, useRef, useState, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Button, Card, Field, InlineAlert, PageHeader, Pill, useToast } from '../../components/ui';
+import { Button, Card, Field, InlineAlert, PageHeader, Pill, useToast, EmptyState, Skeleton } from '../../components/ui';
 import { api, errorMessage, unwrap } from '../../lib/api';
-import { formatDateTime } from '../../lib/format';
+import { formatDateTime, formatTime, localDateInputValue } from '../../lib/format';
+import { asItems } from '../../lib/query';
 import type { Passenger, Trip } from '../../types';
 
 interface ValidationResult {
@@ -14,7 +15,7 @@ interface ValidationResult {
 }
 
 export function QrScannerPage() {
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const tripId = searchParams.get('tripId') ?? undefined;
   const videoRef = useRef<HTMLVideoElement>(null);
   const controlsRef = useRef<IScannerControls | undefined>(undefined);
@@ -26,6 +27,25 @@ export function QrScannerPage() {
   const [result, setResult] = useState<ValidationResult>();
   const [manual, setManual] = useState(false);
   const { notify } = useToast();
+
+  // Trip selection state when tripId is missing
+  const [trips, setTrips] = useState<Trip[]>([]);
+  const [loadingTrips, setLoadingTrips] = useState(false);
+  const [tripsError, setTripsError] = useState('');
+
+  const loadTrips = useCallback(async () => {
+    if (tripId) return;
+    setLoadingTrips(true); setTripsError('');
+    try {
+      const date = localDateInputValue();
+      const response = await api.get<unknown>(`/driver/trips?date=${date}`);
+      setTrips(asItems<Trip>(response));
+    } catch (err) {
+      setTripsError(errorMessage(err, 'Could not load your assigned trips.'));
+    } finally { setLoadingTrips(false); }
+  }, [tripId]);
+
+  useEffect(() => { void loadTrips(); }, [loadTrips]);
 
   const stopCamera = () => {
     controlsRef.current?.stop();
@@ -85,7 +105,36 @@ export function QrScannerPage() {
 
   return (
     <div className="page-stack narrow-page">
-      <PageHeader description={tripId ? 'Validating passes for the selected trip.' : 'Codes are validated server-side against your assigned trip.'} eyebrow="Secure bus entry" title="Scan passenger QR" />
+      <PageHeader description={!tripId ? 'Select an assigned trip to start scanning.' : 'Codes are validated server-side against your assigned trip.'} eyebrow="Secure bus entry" title="Scan passenger QR" />
+      
+      {!tripId ? (
+        <div className="trip-selection">
+          {tripsError && <InlineAlert>{tripsError}</InlineAlert>}
+          {loadingTrips ? (
+            <div className="trip-list"><Card><Skeleton lines={4} /></Card><Card><Skeleton lines={4} /></Card></div>
+          ) : trips.length === 0 ? (
+            <Card><EmptyState description="You have no assigned trips today." icon={<CalendarDays />} title="No assigned trips" /></Card>
+          ) : (
+            <div className="driver-trip-list">
+              {trips.map((trip) => (
+                <Card className="driver-trip-card" key={trip.id}>
+                  <div className="driver-trip-card__time"><strong>{formatTime(trip.departureTime)}</strong><span>{new Date(trip.departureTime).toLocaleDateString(undefined, { weekday: 'short' })}</span></div>
+                  <div className="driver-trip-card__main">
+                    <div><h2>{trip.route?.name}</h2><p>{trip.route?.origin} → {trip.route?.destination}</p></div>
+                    <div className="driver-trip-card__meta">
+                      <span><BusFront aria-hidden="true" /> {trip.bus?.registrationNumber}</span>
+                      <span><UsersRound aria-hidden="true" /> {(trip.totalSeats ?? 0) - trip.availableSeats} passengers</span>
+                      <span><Clock3 aria-hidden="true" /> {formatDateTime(trip.estimatedArrivalTime)}</span>
+                    </div>
+                  </div>
+                  <Pill>{trip.status}</Pill>
+                  <Button className="button--md" icon={<ScanLine aria-hidden="true" size={16} />} onClick={() => setSearchParams({ tripId: trip.id })}>Select to scan</Button>
+                </Card>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
       <div className="scanner-layout">
         <Card className="scanner-card">
           <div className="scanner-viewport">
@@ -107,6 +156,7 @@ export function QrScannerPage() {
         </Card>
         {result && <Card className="checkin-receipt"><div className="checkin-receipt__icon"><UserRoundCheck aria-hidden="true" /></div><h2>{result.passenger.student.name}</h2><p>{result.passenger.student.studentId ?? result.passenger.reference}</p><dl><div><dt>Seat</dt><dd>{result.passenger.seatNumber}</dd></div><div><dt>Route</dt><dd>{result.trip?.route?.name ?? 'Assigned route'}</dd></div><div><dt>Checked in</dt><dd>{formatDateTime(result.checkIn.checkedInAt)}</dd></div></dl><Pill tone="positive">SERVER VERIFIED</Pill></Card>}
       </div>
+      )}
     </div>
   );
 }

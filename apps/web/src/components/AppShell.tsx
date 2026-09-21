@@ -58,11 +58,13 @@ const roleNavigation: Record<Role, NavItem[]> = {
     { label: 'My Expenses', to: '/student/expenses', icon: WalletCards },
   ],
   DRIVER: [
-    { label: 'My Trips & Scanner', to: '/driver/trips', icon: QrCode },
+    { label: 'My Trips', to: '/driver/trips', icon: Navigation },
+    { label: 'Scanner', to: '/driver/check-in', icon: QrCode },
     { label: 'Report Issue', to: '/driver/incidents', icon: LifeBuoy },
   ],
   CONDUCTOR: [
-    { label: 'My Trips & Scanner', to: '/driver/trips', icon: QrCode },
+    { label: 'My Trips', to: '/driver/trips', icon: Navigation },
+    { label: 'Scanner', to: '/driver/check-in', icon: QrCode },
     { label: 'Report Issue', to: '/driver/incidents', icon: LifeBuoy },
   ],
   ADMIN: [
