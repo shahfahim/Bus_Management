@@ -6,15 +6,12 @@ export type Theme = 'light' | 'dark' | 'system';
 
 class ThemeManager {
   private static instance: ThemeManager;
-  private currentTheme: Theme = 'system';
+  private currentTheme: Theme = 'light';
   private resolvedTheme: 'light' | 'dark' = 'light';
   private listeners: Set<(theme: 'light' | 'dark') => void> = new Set();
-  private mediaQuery: MediaQueryList | null = null;
 
   private constructor() {
     if (typeof window !== 'undefined') {
-      this.mediaQuery = window.matchMedia('(prefers-color-scheme: dark)');
-      this.mediaQuery.addEventListener('change', this.handleSystemThemeChange);
       this.init();
     }
   }
@@ -27,45 +24,18 @@ class ThemeManager {
   }
 
   private init() {
-    const savedTheme = localStorage.getItem('uniride-theme') as Theme | null;
-    if (savedTheme) {
-      this.setTheme(savedTheme);
-    } else {
-      this.setTheme('system');
-    }
+    this.setTheme('light');
   }
 
-  private handleSystemThemeChange = (e: MediaQueryListEvent) => {
-    if (this.currentTheme === 'system') {
-      this.resolvedTheme = e.matches ? 'dark' : 'light';
-      this.applyTheme();
-    }
-  };
-
   private applyTheme() {
-    const isDark = this.resolvedTheme === 'dark';
-    
-    // Apply class to HTML root
-    if (isDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-    
-    // Notify observers
+    document.documentElement.classList.remove('dark');
     this.listeners.forEach((listener) => listener(this.resolvedTheme));
   }
 
   public setTheme(theme: Theme) {
-    this.currentTheme = theme;
-    localStorage.setItem('uniride-theme', theme);
-
-    if (theme === 'system') {
-      this.resolvedTheme = this.mediaQuery?.matches ? 'dark' : 'light';
-    } else {
-      this.resolvedTheme = theme;
-    }
-
+    this.currentTheme = 'light';
+    this.resolvedTheme = 'light';
+    localStorage.setItem('uniride-theme', 'light');
     this.applyTheme();
   }
 
@@ -77,10 +47,8 @@ class ThemeManager {
     return this.resolvedTheme;
   }
 
-  // --- OBSERVER PATTERN (Subject capabilities) ---
   public subscribe(listener: (theme: 'light' | 'dark') => void): () => void {
     this.listeners.add(listener);
-    // Immediately notify the new listener of the current state
     listener(this.resolvedTheme);
     return () => this.listeners.delete(listener);
   }
