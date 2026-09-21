@@ -281,7 +281,7 @@ const main = async () => {
       scheduledEndAt: demoEndsAt,
       boardingOpensAt: demoStartsAt,
       bookingClosesAt: demoEndsAt,
-      fareAmount: 50,
+      fareAmount: 0,
       currency: 'BDT',
     },
     update: { 
@@ -290,6 +290,7 @@ const main = async () => {
       scheduledEndAt: demoEndsAt,
       boardingOpensAt: demoStartsAt,
       bookingClosesAt: demoEndsAt,
+      fareAmount: 0,
     },
   });
   for (const routeStop of routeStops) {
