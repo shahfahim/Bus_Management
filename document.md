@@ -16,6 +16,7 @@ UniRide is a modern web application built using a monorepo structure (managed vi
 - **Mapping**: `leaflet` and `react-leaflet` for rendering interactive live bus maps.
 - **Offline & PWA**: `vite-plugin-pwa` and Google Workbox for service workers, caching, and offline capabilities.
 - **Utilities**: `zxing/browser` for QR Code scanning and `recharts` for data visualization.
+- **UI/UX Aesthetics**: Premium aesthetic with smooth CSS transitions, interactive drag-and-drop file uploaders, and organized collapsible UI sections.
 
 **Backend (`apps/api`)**
 - **Server**: Node.js with Express 5.
@@ -64,7 +65,7 @@ e:\Bus_Management\
 │       │   └── manifest.json    # Web App Manifest for PWA installation
 │       └── src/
 │           ├── components/      # Reusable UI Components
-│           │   ├── animations/  # Framer-motion page transition wrappers
+│           │   ├── animations/  # CSS-based animation styles and transition wrappers
 │           │   ├── ui/          # Low-level UI (Buttons, Inputs, Modals, Toasts)
 │           │   ├── AppShell.tsx # Main application layout and sidebar navigation
 │           │   ├── LiveMap.tsx  # Leaflet map component for real-time tracking

@@ -33,9 +33,10 @@
 - **🎓 Student Portal:** Seat booking, digital bus passes, and QR code boarding.
 - **🗺️ Live Tracking & GPS:** Real-time bus tracking and ETA updates via WebSockets.
 - **📅 Automated Scheduling:** Set up recurring trips and let the background worker generate future schedules automatically.
-- **🛡️ Admin Workspace:** RBAC-protected dashboard for managing users, trips, vehicles, incidents, and approvals.
+- **🛡️ Admin Workspace:** RBAC-protected dashboard with dynamic role-based forms for managing users, trips, vehicles, incidents, and approvals.
 - **🔔 Notifications:** Integrated Web Push notifications for trip delays, maintenance, and alerts.
 - **🚦 Incident & Maintenance:** Comprehensive logging for road incidents, lost and found, and vehicle maintenance.
+- **✨ Premium UI/UX:** Smooth authentication transitions, professional drag-and-drop file uploaders, and organized collapsible trip histories.
 
 ## 🏗️ Architecture
 
