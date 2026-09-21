@@ -38,7 +38,8 @@ export function QrScannerPage() {
     try {
       const date = localDateInputValue();
       const response = await api.get<unknown>(`/driver/trips?date=${date}`);
-      setTrips(asItems<Trip>(response));
+      const allTrips = asItems<Trip>(response);
+      setTrips(allTrips.filter(t => t.status !== 'CANCELLED' && t.status !== 'COMPLETED'));
     } catch (err) {
       setTripsError(errorMessage(err, 'Could not load your assigned trips.'));
     } finally { setLoadingTrips(false); }
