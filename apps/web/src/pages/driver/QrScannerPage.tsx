@@ -87,14 +87,12 @@ export function QrScannerPage() {
           facingMode: { exact: 'environment' },
           width: { ideal: 1280, max: 1920 },
           height: { ideal: 720, max: 1080 },
-          // @ts-expect-error – non-standard but widely supported on Android Chrome
           focusMode: 'continuous',
-          // zoom: 1 prevents ultra-wide lens on multi-camera phones
-          // @ts-expect-error
+          // zoom: 1 prevents ultra-wide lens on multi-camera phones (non-standard)
           zoom: 1,
           // Force at least 1280px width which typically selects the main lens
           advanced: [{ width: { min: 1280 } }],
-        },
+        } as MediaTrackConstraints,
         audio: false,
       };
 
@@ -111,13 +109,10 @@ export function QrScannerPage() {
         // Apply continuous autofocus after stream is ready
         const [track] = stream.getVideoTracks();
         const caps = track.getCapabilities();
-        // @ts-expect-error
-        const supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
         try {
-          // @ts-expect-error
-          if (caps.focusMode?.includes('continuous')) await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-          // @ts-expect-error
-          if (supportedConstraints.zoom && caps.zoom) await track.applyConstraints({ advanced: [{ zoom: 1 }] });
+          if ((caps as Record<string, unknown>).focusMode && Array.isArray((caps as Record<string, unknown>).focusMode) && ((caps as Record<string, unknown>).focusMode as string[]).includes('continuous')) {
+            await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] });
+          }
         } catch { /* ignore unsupported constraint errors */ }
 
         let active = true;
@@ -137,9 +132,8 @@ export function QrScannerPage() {
         // Store a pseudo-controls object so stopCamera() can clean up
         controlsRef.current = {
           stop: () => { active = false; stream.getTracks().forEach(t => t.stop()); },
-          // @ts-expect-error
-          switchTorch: () => {},
-        } as IScannerControls;
+          switchTorch: async () => { /* no-op */ },
+        } as unknown as IScannerControls;
       } else {
         // Fallback: zxing BrowserQRCodeReader
         const reader = new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 50, delayBetweenScanSuccess: 2000 });
@@ -158,10 +152,9 @@ export function QrScannerPage() {
           const [track] = stream.getVideoTracks();
           const caps = track.getCapabilities();
           try {
-            // @ts-expect-error
-            if (caps.focusMode?.includes('continuous')) await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
-            // @ts-expect-error
-            if (caps.zoom) await track.applyConstraints({ advanced: [{ zoom: 1 }] });
+            if ((caps as Record<string, unknown>).focusMode && Array.isArray((caps as Record<string, unknown>).focusMode) && ((caps as Record<string, unknown>).focusMode as string[]).includes('continuous')) {
+              await track.applyConstraints({ advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet] });
+            }
           } catch { /* ignore */ }
         }
       }
