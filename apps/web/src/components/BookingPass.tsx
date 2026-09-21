@@ -39,8 +39,8 @@ export function BookingPass({ booking }: { booking: Booking }) {
               fgColor="#102b29"
               id={`booking-qr-${booking.id}`}
               includeMargin
-              level="H"
-              size={190}
+              level="M"
+              size={220}
               value={booking.qrToken!}
             />
           </div>

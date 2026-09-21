@@ -79,26 +79,107 @@ export function QrScannerPage() {
     setResult(undefined); setValidationError(''); setCameraError(''); lastToken.current = '';
     try {
       if (!navigator.mediaDevices?.getUserMedia) throw new Error('Camera access is not available in this browser.');
-      const reader = new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 80, delayBetweenScanSuccess: 1000 });
       setScanning(true);
-      const controls = await reader.decodeFromConstraints(
-        { 
-          video: { 
-            facingMode: 'environment',
-            width: { ideal: 1280, max: 1920 },
-            height: { ideal: 720, max: 1080 }
-          }, 
-          audio: false 
+
+      // Advanced constraints: force main (wide-normal) lens, enable continuous autofocus
+      const constraints: MediaStreamConstraints = {
+        video: {
+          facingMode: { exact: 'environment' },
+          width: { ideal: 1280, max: 1920 },
+          height: { ideal: 720, max: 1080 },
+          // @ts-expect-error – non-standard but widely supported on Android Chrome
+          focusMode: 'continuous',
+          // zoom: 1 prevents ultra-wide lens on multi-camera phones
+          // @ts-expect-error
+          zoom: 1,
+          // Force at least 1280px width which typically selects the main lens
+          advanced: [{ width: { min: 1280 } }],
         },
-        videoRef.current!,
-        (scanResult) => {
-          if (scanResult) void validate(scanResult.getText());
+        audio: false,
+      };
+
+      // Try to use native BarcodeDetector first (fast, hardware-accelerated on Android)
+      const hasBarcodeDetector = 'BarcodeDetector' in window;
+      if (hasBarcodeDetector) {
+        // @ts-expect-error – BarcodeDetector not yet in TS lib
+        const detector = new BarcodeDetector({ formats: ['qr_code'] });
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const video = videoRef.current!;
+        video.srcObject = stream;
+        await video.play();
+
+        // Apply continuous autofocus after stream is ready
+        const [track] = stream.getVideoTracks();
+        const caps = track.getCapabilities();
+        // @ts-expect-error
+        const supportedConstraints = navigator.mediaDevices.getSupportedConstraints();
+        try {
+          // @ts-expect-error
+          if (caps.focusMode?.includes('continuous')) await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+          // @ts-expect-error
+          if (supportedConstraints.zoom && caps.zoom) await track.applyConstraints({ advanced: [{ zoom: 1 }] });
+        } catch { /* ignore unsupported constraint errors */ }
+
+        let active = true;
+        const scanLoop = async () => {
+          if (!active || !videoRef.current || videoRef.current.readyState < 2) { if (active) requestAnimationFrame(scanLoop); return; }
+          try {
+            const results = await detector.detect(videoRef.current);
+            if (results.length > 0) {
+              const raw = results[0].rawValue as string;
+              if (raw && raw !== lastToken.current) void validate(raw);
+            }
+          } catch { /* ignore decode errors */ }
+          if (active) setTimeout(scanLoop, 50);
+        };
+        void scanLoop();
+
+        // Store a pseudo-controls object so stopCamera() can clean up
+        controlsRef.current = {
+          stop: () => { active = false; stream.getTracks().forEach(t => t.stop()); },
+          // @ts-expect-error
+          switchTorch: () => {},
+        } as IScannerControls;
+      } else {
+        // Fallback: zxing BrowserQRCodeReader
+        const reader = new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 50, delayBetweenScanSuccess: 2000 });
+        const controls = await reader.decodeFromConstraints(
+          constraints,
+          videoRef.current!,
+          (scanResult) => {
+            if (scanResult) void validate(scanResult.getText());
+          }
+        );
+        controlsRef.current = controls;
+
+        // Apply post-stream constraints for autofocus
+        if (videoRef.current?.srcObject) {
+          const stream = videoRef.current.srcObject as MediaStream;
+          const [track] = stream.getVideoTracks();
+          const caps = track.getCapabilities();
+          try {
+            // @ts-expect-error
+            if (caps.focusMode?.includes('continuous')) await track.applyConstraints({ advanced: [{ focusMode: 'continuous' }] });
+            // @ts-expect-error
+            if (caps.zoom) await track.applyConstraints({ advanced: [{ zoom: 1 }] });
+          } catch { /* ignore */ }
         }
-      );
-      controlsRef.current = controls;
+      }
     } catch (reason) {
       setScanning(false);
-      setCameraError(errorMessage(reason, 'Camera permission is required to scan a boarding pass.'));
+      // If exact facingMode fails, retry without 'exact'
+      try {
+        const reader = new BrowserQRCodeReader(undefined, { delayBetweenScanAttempts: 50, delayBetweenScanSuccess: 2000 });
+        const controls = await reader.decodeFromConstraints(
+          { video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+          videoRef.current!,
+          (scanResult) => { if (scanResult) void validate(scanResult.getText()); }
+        );
+        controlsRef.current = controls;
+        setScanning(true);
+      } catch {
+        setCameraError(errorMessage(reason, 'Camera permission is required to scan a boarding pass.'));
+      }
     }
   };
 
