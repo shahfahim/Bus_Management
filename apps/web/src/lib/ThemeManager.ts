@@ -32,7 +32,8 @@ class ThemeManager {
     this.listeners.forEach((listener) => listener(this.resolvedTheme));
   }
 
-  public setTheme(theme: Theme) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  public setTheme(_theme?: Theme) {
     this.currentTheme = 'light';
     this.resolvedTheme = 'light';
     localStorage.setItem('uniride-theme', 'light');

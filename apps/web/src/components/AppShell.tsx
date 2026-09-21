@@ -1,4 +1,3 @@
-import { useTheme } from '../contexts/ThemeContext';
 import { AnimatePresence } from 'framer-motion';
 import { AnimatedPage } from './animations/withAnimation';
 import {
@@ -12,14 +11,12 @@ import {
   LifeBuoy,
   MapIcon,
   Menu,
-  Moon,
   Navigation,
   PanelLeftClose,
   PanelLeftOpen,
   QrCode,
   Route as RouteIcon,
   Shield,
-  Sun,
   UserCheck,
   Users,
   UsersRound,
@@ -87,7 +84,6 @@ const roleNavigation: Record<Role, NavItem[]> = {
 
 export function AppShell() {
   const { user, logout } = useAuth();
-  const { resolvedTheme, setTheme } = useTheme();
   const { connected } = useSocket();
   const { notify } = useToast();
   const navigate = useNavigate();
