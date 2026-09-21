@@ -143,8 +143,35 @@ function DriverDashboard({ summary, trips }: { summary: DashboardSummary; trips:
                 <Link className="button button--primary button--md" to={`/driver/trips/${trip.id}`}>{trip.status === 'IN_PROGRESS' ? <Navigation aria-hidden="true" size={17} /> : null} Open controls <ArrowRight aria-hidden="true" size={16} /></Link>
               </Card>
             ))}
-            {trips.filter(t => t.status !== 'COMPLETED' && t.status !== 'CANCELLED').length === 0 && (
+            {trips.filter(t => t.status !== 'COMPLETED' && t.status !== 'CANCELLED').length === 0 && trips.some(t => t.status === 'COMPLETED' || t.status === 'CANCELLED') && (
               <Card><EmptyState description="You have completed all your assigned trips for today!" title="All caught up" /></Card>
+            )}
+            {trips.some(t => t.status === 'COMPLETED' || t.status === 'CANCELLED') && (
+              <details className="past-trips-section" style={{ background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)', marginTop: '8px' }}>
+                <summary style={{ padding: '16px', fontWeight: 600, cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <span>Past Trips ({trips.filter(t => t.status === 'COMPLETED' || t.status === 'CANCELLED').length})</span>
+                  <span aria-hidden="true" style={{ fontSize: '0.8em', color: 'var(--ink-soft)' }}>▼</span>
+                </summary>
+                <div style={{ padding: '16px', paddingTop: 0 }}>
+                  <div className="driver-trip-list">
+                    {trips.filter(t => t.status === 'COMPLETED' || t.status === 'CANCELLED').map((trip) => (
+                      <Card className="driver-trip-card" key={trip.id} style={{ opacity: 0.8 }}>
+                        <div className="driver-trip-card__time"><strong>{formatTime(trip.departureTime)}</strong><span>{new Date(trip.departureTime).toLocaleDateString(undefined, { weekday: 'short' })}</span></div>
+                        <div className="driver-trip-card__main">
+                          <div><h2>{trip.route?.name}</h2><p>{trip.route?.origin} → {trip.route?.destination}</p></div>
+                          <div className="driver-trip-card__meta">
+                            <span><BusFront aria-hidden="true" /> {trip.bus?.registrationNumber}</span>
+                            <span><UsersRound aria-hidden="true" /> {(trip.totalSeats ?? 0) - trip.availableSeats} passengers</span>
+                            <span><Clock3 aria-hidden="true" /> {formatDateTime(trip.estimatedArrivalTime)}</span>
+                          </div>
+                        </div>
+                        <Pill tone={trip.status === 'CANCELLED' ? 'danger' : 'positive'}>{trip.status}</Pill>
+                        <Link className="button button--secondary button--md" to={`/driver/trips/${trip.id}`}>View details <ArrowRight aria-hidden="true" size={16} /></Link>
+                      </Card>
+                    ))}
+                  </div>
+                </div>
+              </details>
             )}
           </div>
         ) : (
