@@ -42,6 +42,7 @@ type FieldKind =
   | 'textarea'
   | 'select'
   | 'checkbox'
+  | 'file-upload'
 
 type CellKind = 'text' | 'date' | 'datetime' | 'currency' | 'status' | 'boolean' | 'number' | 'rating' | 'link'
 type FormValue = string | boolean
@@ -345,7 +346,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { name: 'name', label: 'Full name', kind: 'text', required: true },
       { name: 'email', label: 'Email address', kind: 'email', required: true },
       { name: 'phone', label: 'Phone number (optional)', kind: 'tel' },
-      { name: 'avatarUrl', label: 'Profile picture URL', kind: 'text', help: 'Optional link to a public image.' },
+      { name: 'avatarUrl', label: 'Profile photo', kind: 'file-upload', help: 'Upload a photo (JPEG, PNG or WebP, max 5 MB). Or paste a URL instead.' },
       { name: 'role', label: 'Role', kind: 'select', required: true, options: [{ label: 'Student', value: 'student' }, { label: 'Driver', value: 'driver' }, { label: 'Administrator', value: 'admin' }] },
       { name: 'identifier', label: 'Student / staff / employee ID', kind: 'text', required: true },
       { name: 'licenseNumber', label: 'Driver license number', kind: 'text', required: true, visibleWhen: { field: 'role', value: 'driver' } },
@@ -828,6 +829,16 @@ function ResourceFormModal({ config, record, onClose, onSaved }: { config: Resou
   const editing = Boolean(record)
   const fields = useMemo(() => config.fields.filter((field) => !(editing && field.createOnly)), [config.fields, editing])
   const [values, setValues] = useState<Record<string, FormValue>>(() => initialFormValues(fields, record))
+  const [fileValues, setFileValues] = useState<Record<string, File | null>>({})
+  const [filePreviews, setFilePreviews] = useState<Record<string, string>>(() => {
+    // Pre-populate previews from existing record URLs
+    const previews: Record<string, string> = {}
+    fields.filter(f => f.kind === 'file-upload').forEach(f => {
+      const existing = record?.[f.name]
+      if (typeof existing === 'string' && existing) previews[f.name] = existing
+    })
+    return previews
+  })
   const [lookups, setLookups] = useState<Record<string, SelectOption[]>>({})
   const [lookupLoading, setLookupLoading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -864,7 +875,24 @@ function ResourceFormModal({ config, record, onClose, onSaved }: { config: Resou
     setSubmitting(true)
     setError(null)
     try {
-      const payload = serializeForm(fields, values, editing)
+      // Upload any pending file-upload fields first
+      const uploadedUrls: Record<string, string> = {}
+      for (const field of fields) {
+        if (field.kind !== 'file-upload') continue
+        const file = fileValues[field.name]
+        if (!file) continue
+        const formData = new FormData()
+        formData.append('avatar', file)
+        const result = await api.post<{ url?: string }>('/admin/users/avatar', formData)
+        if (result?.url) uploadedUrls[field.name] = result.url
+      }
+      const payload = { ...serializeForm(fields.filter(f => f.kind !== 'file-upload'), values, editing), ...uploadedUrls }
+      // Also include file-upload fields that were NOT re-uploaded (keep existing URL)
+      fields.filter(f => f.kind === 'file-upload').forEach(f => {
+        if (uploadedUrls[f.name]) return // already set above
+        const existingUrl = filePreviews[f.name]
+        if (existingUrl && !existingUrl.startsWith('blob:')) payload[f.name] = existingUrl
+      })
       if (editing && record) await api.patch(`${config.endpoint}/${encodeURIComponent(record.id)}`, payload)
       else await api.post(config.endpoint, payload)
       onSaved(`${humanize(config.singular)} ${editing ? 'updated' : 'created'} successfully.`)
@@ -891,6 +919,40 @@ function ResourceFormModal({ config, record, onClose, onSaved }: { config: Resou
           const className = field.fullWidth ? 'admin-field admin-form-grid__full' : 'admin-field'
           if (field.kind === 'checkbox') {
             return <label className={`${className} admin-checkbox-field`} key={field.name}><input type="checkbox" checked={Boolean(value)} onChange={(event) => setValue(field.name, event.target.checked)} /><span><strong>{field.label}</strong>{field.help && <small id={describedBy}>{field.help}</small>}</span></label>
+          }
+          if (field.kind === 'file-upload') {
+            const preview = filePreviews[field.name]
+            return (
+              <div className={`${className} admin-file-upload`} key={field.name}>
+                <label htmlFor={`admin-field-${field.name}`}>{field.label}</label>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {preview && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                      <img src={preview} alt="Preview" style={{ width: 64, height: 64, borderRadius: '50%', objectFit: 'cover', border: '2px solid var(--admin-border)' }} />
+                      <button type="button" className="admin-button admin-button--ghost" style={{ fontSize: '0.72rem' }} onClick={() => { setFilePreviews(p => ({ ...p, [field.name]: '' })); setFileValues(p => ({ ...p, [field.name]: null })); }}>Remove photo</button>
+                    </div>
+                  )}
+                  <label htmlFor={`admin-field-${field.name}`} style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', cursor: 'pointer', padding: '8px 12px', border: '1px dashed var(--admin-border)', borderRadius: '8px', fontSize: '0.76rem', width: 'max-content' }}>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                    {preview ? 'Change photo' : 'Choose photo from device'}
+                  </label>
+                  <input
+                    id={`admin-field-${field.name}`}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    style={{ display: 'none' }}
+                    onChange={(event) => {
+                      const file = event.target.files?.[0]
+                      if (!file) return
+                      setFileValues(p => ({ ...p, [field.name]: file }))
+                      const blobUrl = URL.createObjectURL(file)
+                      setFilePreviews(p => ({ ...p, [field.name]: blobUrl }))
+                    }}
+                  />
+                  {field.help && <small style={{ color: 'var(--admin-muted)', fontSize: '0.67rem' }}>{field.help}</small>}
+                </div>
+              </div>
+            )
           }
           return (
             <div className={className} key={field.name}>

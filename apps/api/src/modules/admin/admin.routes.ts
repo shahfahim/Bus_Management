@@ -341,6 +341,29 @@ adminRouter.delete(
 
 adminRouter.get('/users', asyncRoute(async (request, response) => response.json(await listAdminUsers(userQuerySchema.parse(request.query)))));
 adminRouter.get('/users/:id', asyncRoute(async (request, response) => response.json(await getAdminUser(idSchema.parse(request.params.id)))));
+adminRouter.post('/users/avatar', asyncRoute(async (request, response) => {
+  // Multipart file upload – use multer inline
+  const multer = (await import('multer')).default;
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (['image/jpeg', 'image/png', 'image/webp', 'image/gif'].includes(file.mimetype)) cb(null, true);
+      else cb(new AppError(400, 'INVALID_FILE_TYPE', 'Only JPEG, PNG, WebP, or GIF images are allowed'));
+    },
+  }).single('avatar');
+  await new Promise<void>((resolve, reject) => upload(request as never, response as never, (err) => err ? reject(err) : resolve()));
+  const file = (request as { file?: Express.Multer.File }).file;
+  if (!file) throw new AppError(400, 'NO_FILE', 'No file was uploaded');
+  const { putObject, usesRemoteObjectStorage } = await import('../../lib/object-storage.js');
+  if (!usesRemoteObjectStorage()) throw new AppError(503, 'STORAGE_NOT_CONFIGURED', 'Remote storage is not configured');
+  const ext = file.originalname.split('.').pop()?.toLowerCase() ?? 'jpg';
+  const key = `avatars/${crypto.randomUUID()}.${ext}`;
+  await putObject(key, file.buffer, file.mimetype);
+  const { env } = await import('../../config/env.js');
+  const publicUrl = `${env.SUPABASE_URL!.replace(/\/$/, '')}/storage/v1/object/public/${env.SUPABASE_STORAGE_BUCKET!}/${key}`;
+  response.json({ url: publicUrl });
+}));
 adminRouter.post('/users', asyncRoute(async (request, response) => response.status(201).json(await createAdminUser(createUserSchema.parse(request.body), auditContext(request)))));
 adminRouter.patch('/users/:id', asyncRoute(async (request, response) => response.json(await updateAdminUser(idSchema.parse(request.params.id), updateUserSchema.parse(request.body), auditContext(request)))));
 adminRouter.put('/users/:id', asyncRoute(async (request, response) => response.json(await updateAdminUser(idSchema.parse(request.params.id), updateUserSchema.parse(request.body), auditContext(request)))));
