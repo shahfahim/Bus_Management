@@ -603,7 +603,12 @@ export const listBookings = async (studentId: string, query: BookingListInput) =
     ...(upcoming
         ? {
           status: { in: [BookingStatus.HELD, BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN] },
-          trip: { scheduledStartAt: { gte: new Date() } },
+          trip: {
+            OR: [
+              { scheduledStartAt: { gte: new Date() } },
+              { status: { in: [TripStatus.SCHEDULED, TripStatus.BOARDING, TripStatus.IN_PROGRESS, TripStatus.DELAYED] } }
+            ]
+          }
         }
       : {}),
     ...(query.from || query.to
