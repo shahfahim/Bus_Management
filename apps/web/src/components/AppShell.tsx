@@ -234,14 +234,7 @@ export function AppShell() {
             <span>University transport network</span>
           </div>
           <div className="topbar__actions">
-            <button 
-              aria-label="Toggle theme" 
-              className="icon-button" 
-              onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-              type="button"
-            >
-              {resolvedTheme === 'dark' ? <Sun aria-hidden="true" size={20} /> : <Moon aria-hidden="true" size={20} />}
-            </button>
+
             <NavLink aria-label={`${unread} unread notifications`} className="icon-button notification-button" to="/notifications">
               <Bell aria-hidden="true" size={20} />
               {unread > 0 && <span>{Math.min(unread, 9)}</span>}
