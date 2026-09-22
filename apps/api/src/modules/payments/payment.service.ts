@@ -24,6 +24,7 @@ import { notifyUser } from '../notifications/notification.service.js';
 
 const stripe = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null;
 const replayablePaymentStatuses: PaymentStatus[] = [PaymentStatus.PENDING, PaymentStatus.PROCESSING];
+const BOOKING_CHECKOUT_WINDOW_SECONDS = 31 * 60;
 
 const requireStripe = (): Stripe => {
   if (!stripe) throw new AppError(503, 'PAYMENTS_NOT_CONFIGURED', 'Online payments are not configured');
@@ -192,9 +193,16 @@ export const createCheckout = async ({
     const sessionAttemptKey = prepared.payment.providerPaymentReference
       ? `checkout:${prepared.payment.id}:${prepared.payment.providerPaymentReference}`
       : `checkout:${prepared.payment.id}:initial`;
+    // Stripe keeps sessions open for 24 hours by default, far beyond the seat hold. Close
+    // booking checkouts shortly after Stripe's 30-minute minimum instead of accepting
+    // payments that would only be refunded.
+    const bookingCheckoutExpiresAt = prepared.payment.bookingId
+      ? Math.floor(Date.now() / 1000) + BOOKING_CHECKOUT_WINDOW_SECONDS
+      : undefined;
     const session = await gateway.checkout.sessions.create(
       {
         mode: 'payment',
+        ...(bookingCheckoutExpiresAt ? { expires_at: bookingCheckoutExpiresAt } : {}),
         client_reference_id: prepared.payment.id,
         customer_email: (await prisma.user.findUnique({ where: { id: userId }, select: { email: true } }))?.email,
         line_items: [
@@ -218,6 +226,19 @@ export const createCheckout = async ({
       where: { id: prepared.payment.id },
       data: { providerPaymentReference: session.id, status: PaymentStatus.PROCESSING },
     });
+    if (prepared.payment.bookingId) {
+      // Keep the seat for as long as the rider can still complete this checkout. A hold is
+      // only extended while it is still live, and once it ends a new checkout cannot start.
+      const sessionExpiresAt = new Date(session.expires_at * 1000);
+      await prisma.booking.updateMany({
+        where: {
+          id: prepared.payment.bookingId,
+          status: BookingStatus.PENDING_PAYMENT,
+          holdExpiresAt: { gt: new Date(), lt: sessionExpiresAt },
+        },
+        data: { holdExpiresAt: sessionExpiresAt },
+      });
+    }
     return { paymentId: prepared.payment.id, checkoutUrl: session.url, expiresAt: new Date(session.expires_at * 1000), status: PaymentStatus.PROCESSING };
   } catch (error: unknown) {
     await prisma.payment.update({

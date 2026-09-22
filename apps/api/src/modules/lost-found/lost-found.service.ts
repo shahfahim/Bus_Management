@@ -103,7 +103,12 @@ export const listLostFound = async (
   const where: Prisma.LostFoundReportWhereInput = {
     ...(rawQuery.type ? { type: rawQuery.type } : {}),
     ...(rawQuery.category ? { category: { equals: rawQuery.category, mode: 'insensitive' } } : {}),
-    ...(rawQuery.reporterId ? { reporterId: rawQuery.reporterId } : {}),
+    // Only administrators may look up another person's reports by reporter.
+    ...(rawQuery.reporterId
+      ? admin || rawQuery.reporterId === actor?.userId
+        ? { reporterId: rawQuery.reporterId }
+        : { id: { in: [] } }
+      : {}),
     ...(requestedStatuses?.length ? { status: { in: requestedStatuses } } : {}),
     ...(rawQuery.from || rawQuery.to
       ? { happenedAt: { ...(rawQuery.from ? { gte: rawQuery.from } : {}), ...(rawQuery.to ? { lte: rawQuery.to } : {}) } }

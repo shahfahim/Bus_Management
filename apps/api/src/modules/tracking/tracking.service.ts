@@ -139,6 +139,10 @@ export const getDriverProfile = async (userId: string) => {
 };
 
 const activeTripStatuses = [TripStatus.SCHEDULED, TripStatus.BOARDING, TripStatus.IN_PROGRESS, TripStatus.DELAYED];
+// Drivers may open a trip for boarding shortly before departure, not hours or days early.
+const EARLIEST_START_BEFORE_DEPARTURE_MS = 60 * 60_000;
+// Faster than any bus can travel between two fixes; such a jump is a bad or spoofed reading.
+const MAX_PLAUSIBLE_SPEED_KPH = 200;
 
 export const listDriverTripSetupOptions = async (driverId: string) => {
   const now = new Date();
@@ -392,6 +396,9 @@ export const startTrip = async (tripId: string, actor: { userId: string; role: R
       throw new AppError(409, 'TRIP_ALREADY_STARTED', 'This trip cannot be started from its current state');
     }
     if (trip.bus.status !== 'ACTIVE') throw new AppError(409, 'BUS_UNAVAILABLE', 'The assigned bus is not active');
+    if (actor.role !== Role.ADMIN && Date.now() < trip.scheduledStartAt.getTime() - EARLIEST_START_BEFORE_DEPARTURE_MS) {
+      throw new AppError(409, 'TRIP_TOO_EARLY', 'A trip can be started at most 60 minutes before its scheduled departure');
+    }
     await assertBusHasNoMaintenanceConflict(tx, {
       busId: trip.busId,
       startsAt: trip.scheduledStartAt,
@@ -565,6 +572,8 @@ export const recordLocation = async (input: LocationInput, actor: { userId: stri
   }
 
   const previous = trip.locations[0];
+  // An offline replay can arrive after newer fixes; keep it as history but never publish it as the live position.
+  const isLatest = !previous || input.capturedAt.getTime() >= previous.recordedAt.getTime();
   if (previous) {
     const elapsedSeconds = (input.capturedAt.getTime() - previous.recordedAt.getTime()) / 1000;
     const movedMeters = haversineMeters(
@@ -573,6 +582,13 @@ export const recordLocation = async (input: LocationInput, actor: { userId: stri
     );
     if (elapsedSeconds >= 0 && elapsedSeconds < Math.max(5, trip.locationIntervalSeconds * 0.65) && movedMeters < 15) {
       return { accepted: false, reason: 'THROTTLED', nextUpdateInSeconds: Math.ceil(trip.locationIntervalSeconds - elapsedSeconds) };
+    }
+    // Allow for the reported uncertainty of both fixes so one imprecise reading cannot
+    // cause every later, accurate fix to be rejected.
+    const certainMeters = movedMeters - Number(previous.accuracyMeters ?? 0) - (input.accuracyMeters ?? 0);
+    const impliedSpeedKph = (certainMeters / 1000) / (Math.max(Math.abs(elapsedSeconds), 1) / 3600);
+    if (certainMeters > 1_000 && impliedSpeedKph > MAX_PLAUSIBLE_SPEED_KPH) {
+      throw new AppError(422, 'IMPLAUSIBLE_LOCATION', 'The GPS update is inconsistent with the previous position');
     }
   }
 
@@ -593,10 +609,12 @@ export const recordLocation = async (input: LocationInput, actor: { userId: stri
         recordedAt: input.capturedAt,
       },
     });
-    await tx.trip.update({
-      where: { id: trip.id },
-      data: { lastLocationAt: now, trackingStatus: TrackingStatus.ACTIVE },
-    });
+    if (isLatest) {
+      await tx.trip.update({
+        where: { id: trip.id },
+        data: { lastLocationAt: now, trackingStatus: TrackingStatus.ACTIVE },
+      });
+    }
     return created;
   });
 
@@ -610,6 +628,9 @@ export const recordLocation = async (input: LocationInput, actor: { userId: stri
     recordedAt: location.recordedAt,
     receivedAt: location.receivedAt,
   };
+  if (!isLatest) {
+    return { accepted: true, stale: true, location: payload, recommendedIntervalSeconds: trip.locationIntervalSeconds };
+  }
   emitToTrip(trip.id, 'trip:location', payload);
   void updateEtasAndNotify(trip.id, input).catch((error: unknown) =>
     logger.error({ err: error, tripId: trip.id }, 'ETA update failed after accepting GPS location'),

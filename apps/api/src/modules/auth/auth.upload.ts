@@ -75,6 +75,17 @@ export const persistVerificationUpload = async (request: Request): Promise<strin
   }
 };
 
+export const discardVerificationUpload = async (documentUrl: string | undefined): Promise<void> => {
+  const filename = documentUrl?.split('/').pop();
+  if (!filename) return;
+  try {
+    if (usesRemoteObjectStorage()) await removeObjects([`verifications/${filename}`]);
+    else await rm(resolve(uploadDirectory, filename), { force: true });
+  } catch {
+    // Best effort: an orphaned document is harmless and must not mask the original error.
+  }
+};
+
 export const sendVerificationDocument: RequestHandler = (request, response, next) => {
   const filename = request.params.filename;
   if (typeof filename !== 'string' || !/^[0-9a-f-]{36}\.(?:jpg|png|webp|pdf)$/.test(filename) || extname(filename).length > 5) {

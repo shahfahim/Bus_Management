@@ -1,6 +1,6 @@
 import type { Server as HttpServer } from 'node:http';
 import { Server } from 'socket.io';
-import { BookingStatus, Role, UserStatus } from '@prisma/client';
+import { BookingStatus, Role, TripStatus, UserStatus } from '@prisma/client';
 import { env } from '../config/env.js';
 import { logger } from '../lib/logger.js';
 import { prisma } from '../lib/prisma.js';
@@ -163,8 +163,11 @@ const canJoinTrip = async (actor: SocketData, tripId: string): Promise<boolean> 
       })) === 1
     );
   }
-  return (
-    (await prisma.booking.count({
+  // Riders may follow any trip the public catalog lists as live or bookable (its latest
+  // position and seat availability are already public), plus any trip they have booked.
+  const [publicTrip, booked] = await Promise.all([
+    prisma.trip.count({ where: { id: tripId, status: { in: followableTripStatuses } } }),
+    prisma.booking.count({
       where: {
         tripId,
         studentId: actor.userId,
@@ -172,6 +175,9 @@ const canJoinTrip = async (actor: SocketData, tripId: string): Promise<boolean> 
           in: [BookingStatus.HELD, BookingStatus.PENDING_PAYMENT, BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN],
         },
       },
-    })) === 1
-  );
+    }),
+  ]);
+  return publicTrip === 1 || booked === 1;
 };
+
+const followableTripStatuses: TripStatus[] = [TripStatus.SCHEDULED, TripStatus.BOARDING, TripStatus.IN_PROGRESS, TripStatus.DELAYED];

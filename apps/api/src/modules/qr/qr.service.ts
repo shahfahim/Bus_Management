@@ -192,12 +192,7 @@ export const scanBookingQr = async ({
     });
     throw new AppError(400, 'INVALID_QR', 'The QR code is not registered or was replaced');
   }
-  const trip = credential.booking.trip;
-  const scannerAssigned =
-    scanner.role === Role.ADMIN ||
-    trip.driverId === scanner.userId ||
-    (scanner.role === Role.CONDUCTOR && trip.conductorId === scanner.userId);
-  if (!scannerAssigned) throw new AppError(403, 'NOT_ASSIGNED_TO_TRIP', 'You are not assigned to scan passengers on this trip');
+  // Report a passenger from another trip as such, before the assignment check for that trip.
   if (requestedTripId && requestedTripId !== claims.tripId) {
     await writeRejectedCheckIn({
       token,
@@ -208,6 +203,12 @@ export const scanBookingQr = async ({
     });
     throw new AppError(409, 'WRONG_TRIP', 'The QR code belongs to a different trip');
   }
+  const trip = credential.booking.trip;
+  const scannerAssigned =
+    scanner.role === Role.ADMIN ||
+    trip.driverId === scanner.userId ||
+    (scanner.role === Role.CONDUCTOR && trip.conductorId === scanner.userId);
+  if (!scannerAssigned) throw new AppError(403, 'NOT_ASSIGNED_TO_TRIP', 'You are not assigned to scan passengers on this trip');
   if (credential.status === QrCodeStatus.USED || credential.usedAt) {
     await writeRejectedCheckIn({
       token,

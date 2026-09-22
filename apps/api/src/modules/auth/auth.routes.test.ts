@@ -30,6 +30,7 @@ vi.mock('./auth.middleware.js', () => ({
     return typeof cookies?.[name] === 'string' ? cookies[name] : undefined;
   },
   requireAuth: vi.fn(),
+  requireRole: vi.fn(() => vi.fn()),
 }));
 
 import { authRouter } from './auth.routes.js';

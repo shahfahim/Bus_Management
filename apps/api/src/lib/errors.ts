@@ -32,6 +32,11 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, request, respo
     normalized = new AppError(409, 'CONFLICT', 'A record with those values already exists', error.meta);
   } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
     normalized = new AppError(404, 'NOT_FOUND', 'The requested record does not exist');
+  } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {
+    // A foreign key blocked the change, e.g. deleting a bus or route a schedule still uses.
+    normalized = new AppError(409, 'RECORD_IN_USE', 'This record is still referenced by other records');
+  } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2023') {
+    normalized = new AppError(400, 'INVALID_IDENTIFIER', 'A supplied identifier is malformed');
   } else {
     normalized = new AppError(500, 'INTERNAL_ERROR', 'An unexpected error occurred');
   }

@@ -22,7 +22,8 @@ userRouter.patch(
     await prisma.$transaction(async (tx) => {
       await tx.user.update({
         where: { id: request.auth!.userId },
-        data: { name: input.name, phone: input.phone || null },
+        // Leave the phone untouched when it is omitted; an empty value clears it.
+        data: { name: input.name, phone: input.phone === undefined ? undefined : input.phone || null },
       });
       if (request.auth!.role === 'STUDENT' && input.department) {
         await tx.studentProfile.update({ where: { userId: request.auth!.userId }, data: { department: input.department } });

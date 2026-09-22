@@ -2,8 +2,8 @@ import { z } from 'zod';
 
 export const checkoutSchema = z
   .object({
-    bookingId: z.string().trim().min(5).max(100).optional(),
-    subscriptionPlanId: z.string().trim().min(5).max(100).optional(),
+    bookingId: z.string().trim().uuid().optional(),
+    subscriptionPlanId: z.string().trim().uuid().optional(),
     successUrl: z.string().url().optional(),
     cancelUrl: z.string().url().optional(),
     returnUrl: z.string().url().optional(),

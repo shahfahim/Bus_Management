@@ -138,7 +138,17 @@ export const listRatings = async (rawQuery: RatingQuery, options: { studentId?: 
     prisma.driverRating.findMany({ where, include, ...toPagination(query), orderBy: { createdAt: 'desc' } }),
     prisma.driverRating.count({ where }),
   ]);
-  const result = paginated(items.map(dto), total, query.page, pageSize);
+  // Public driver listings are anonymous so drivers cannot identify (or retaliate against) raters.
+  const serialize: (rating: RatingWithRelations) => Partial<ReturnType<typeof dto>> = options.publicOnly
+    ? (rating: RatingWithRelations) => ({
+        ...dto(rating),
+        student: undefined,
+        studentId: undefined,
+        booking: undefined,
+        bookingId: undefined,
+      })
+    : dto;
+  const result = paginated(items.map(serialize), total, query.page, pageSize);
   return { ...result, pagination: { ...result.pagination, totalPages: result.pagination.pages } };
 };
 

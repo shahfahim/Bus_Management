@@ -4,7 +4,8 @@ import rateLimit, { ipKeyGenerator } from 'express-rate-limit';
 import { asyncRoute } from '../../lib/async-route.js';
 import { AppError } from '../../lib/errors.js';
 import { normalizeEmail, sha256 } from '../../lib/security.js';
-import { readCookie, requireAuth } from './auth.middleware.js';
+import { Role } from '@prisma/client';
+import { readCookie, requireAuth, requireRole } from './auth.middleware.js';
 import { changePasswordSchema, loginSchema, registerSchema } from './auth.schemas.js';
 import {
   changePassword,
@@ -16,7 +17,7 @@ import {
   rotateRefreshToken,
   setAuthCookies,
 } from './auth.service.js';
-import { persistVerificationUpload, sendVerificationDocument, verificationUpload } from './auth.upload.js';
+import { discardVerificationUpload, persistVerificationUpload, sendVerificationDocument, verificationUpload } from './auth.upload.js';
 
 export const authRouter = Router();
 
@@ -57,8 +58,6 @@ authRouter.post(
   authenticationLimiter,
   verificationUpload,
   asyncRoute(async (request, response) => {
-    const documentUrl = await persistVerificationUpload(request);
-    
     let bodyData;
     if (request.is('multipart/form-data')) {
       bodyData = {
@@ -75,13 +74,21 @@ authRouter.post(
       bodyData = request.body;
     }
     
+    // Validate before storing the document so rejected sign-ups leave no orphaned files.
     const parsedData = registerSchema.parse(bodyData);
-    const result = await registerAccount(parsedData, request, documentUrl);
-    response.status(202).json(result);
+    const documentUrl = await persistVerificationUpload(request);
+    try {
+      const result = await registerAccount(parsedData, request, documentUrl);
+      response.status(202).json(result);
+    } catch (error) {
+      await discardVerificationUpload(documentUrl);
+      throw error;
+    }
   }),
 );
 
-authRouter.get('/verifications/:filename', sendVerificationDocument);
+// Identity documents are personal data: only administrators reviewing sign-ups may open them.
+authRouter.get('/verifications/:filename', requireAuth, requireRole(Role.ADMIN), sendVerificationDocument);
 
 authRouter.post(
   '/login',

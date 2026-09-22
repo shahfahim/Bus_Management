@@ -365,6 +365,7 @@ const cancelRelatedBookings = async (tx: Prisma.TransactionClient, tripId: strin
 
 export const updateAdminTrip = async (id: string, input: UpdateTrip, context: AuditContext) => {
   let affected: Array<{ id: string; studentId: string; refundRequired: boolean }> = [];
+  let rescheduled = false;
   const updated = await prisma.$transaction(
     async (tx) => {
       const before = await tx.trip.findUnique({ where: { id }, include: tripInclude });
@@ -374,6 +375,7 @@ export const updateAdminTrip = async (id: string, input: UpdateTrip, context: Au
         throw new AppError(409, 'INVALID_TRIP_TRANSITION', `Cannot change trip from ${before.status} to ${status}`);
       }
       const start = input.scheduledStart ?? before.scheduledStartAt;
+      rescheduled = status !== TripStatus.CANCELLED && start.getTime() !== before.scheduledStartAt.getTime();
       const end = input.scheduledEnd === undefined ? before.scheduledEndAt : input.scheduledEnd;
       if (!end || end <= start) throw new AppError(400, 'INVALID_TRIP_WINDOW', 'Scheduled arrival must be after departure');
       const routeId = input.routeId ?? before.routeId;
@@ -450,6 +452,23 @@ export const updateAdminTrip = async (id: string, input: UpdateTrip, context: Au
         logger.error({ err: error, bookingId: booking.id, tripId: updated.id }, 'Automatic trip-cancellation refund failed');
       });
     }
+  } else if (rescheduled) {
+    // Riders who already booked must learn about a new departure time.
+    const students = await prisma.booking.findMany({
+      where: { tripId: id, status: { in: activeBookingStatuses } },
+      select: { studentId: true },
+      distinct: ['studentId'],
+    });
+    await notifyUsers(
+      students.map(({ studentId }) => studentId),
+      {
+        type: NotificationType.SYSTEM,
+        title: 'Trip rescheduled',
+        body: `Trip ${updated.publicCode} now departs at ${updated.scheduledStartAt.toLocaleString('en-GB', { timeZone: 'Asia/Dhaka', dateStyle: 'medium', timeStyle: 'short' })}.`,
+        data: { tripId: updated.id, scheduledStartAt: updated.scheduledStartAt },
+        dedupePrefix: `admin-trip-reschedule:${updated.id}:${updated.updatedAt.getTime()}`,
+      },
+    );
   } else if (input.status === TripStatus.DELAYED) {
     const students = await prisma.booking.findMany({
       where: { tripId: id, status: { in: activeBookingStatuses } },
@@ -474,6 +493,13 @@ export const cancelAdminTrip = async (id: string, reason: string, context: Audit
   updateAdminTrip(id, { status: TripStatus.CANCELLED, cancellationReason: reason }, context);
 
 export const deleteAdminTrip = async (id: string, context: AuditContext): Promise<void> => {
+  // A deleted trip from a recurring schedule would simply be generated again, so remove it
+  // by cancelling it instead: the generator never recreates an administrator's cancellation.
+  const generated = await prisma.trip.findUnique({ where: { id }, select: { scheduleId: true, status: true } });
+  if (generated?.scheduleId && generated.status === TripStatus.SCHEDULED) {
+    await cancelAdminTrip(id, 'Removed by an administrator', context);
+    return;
+  }
   await prisma.$transaction(async (tx) => {
     const before = await tx.trip.findUnique({ where: { id }, include: tripInclude });
     if (!before) throw new AppError(404, 'TRIP_NOT_FOUND', 'Trip not found');

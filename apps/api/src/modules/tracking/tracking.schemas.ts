@@ -42,7 +42,7 @@ export const createDriverTripSchema = z
   });
 
 export const locationUpdateSchema = z.object({
-  tripId: z.string().trim().min(5).max(100),
+  tripId: z.string().trim().uuid(),
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
   accuracyMeters: z.number().nonnegative().max(10_000).optional(),

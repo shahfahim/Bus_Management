@@ -3,8 +3,10 @@ import { prisma } from '../../lib/prisma.js';
 import { AppError } from '../../lib/errors.js';
 import type { z } from 'zod';
 import type { createScheduleSchema, scheduleQuerySchema, updateScheduleSchema } from './admin.schemas.js';
-import { generateTrips } from '../trips/trip-generator.worker.js';
+import { generateTrips, SCHEDULE_CHANGE_CANCELLATION_REASON, tripMatchesSchedule } from '../trips/trip-generator.worker.js';
 import { logger } from '../../lib/logger.js';
+import { type AuditContext, writeAuditLog } from './audit.service.js';
+import { cancelAdminTrip, updateAdminTrip } from './trip-admin.service.js';
 
 type ScheduleQuery = z.infer<typeof scheduleQuerySchema>;
 type CreateScheduleInput = z.infer<typeof createScheduleSchema>;
@@ -58,7 +60,7 @@ export const listSchedules = async (query: ScheduleQuery) => {
   return { data: items, meta: { total, page, limit: take, totalPages: Math.ceil(total / take) } };
 };
 
-export const createSchedule = async (input: CreateScheduleInput) => {
+export const createSchedule = async (input: CreateScheduleInput, context: AuditContext) => {
   const route = await prisma.route.findUnique({ where: { id: input.routeId } });
   if (!route) throw new AppError(404, 'NOT_FOUND', 'Route not found');
 
@@ -82,6 +84,7 @@ export const createSchedule = async (input: CreateScheduleInput) => {
     },
     select: scheduleSelect,
   });
+  await writeAuditLog({ context, action: 'schedule.create', entityType: 'TripSchedule', entityId: schedule.id, after: schedule });
 
   // Automatically generate trips for this new schedule in the background
   generateTrips().catch((err) => logger.error({ err, scheduleId: schedule.id }, 'Failed to generate trips for new schedule'));
@@ -95,7 +98,7 @@ export const getSchedule = async (id: string) => {
   return schedule;
 };
 
-export const updateSchedule = async (id: string, input: UpdateScheduleInput) => {
+export const updateSchedule = async (id: string, input: UpdateScheduleInput, context: AuditContext) => {
   const schedule = await prisma.tripSchedule.findUnique({ where: { id } });
   if (!schedule) throw new AppError(404, 'NOT_FOUND', 'Schedule not found');
 
@@ -114,29 +117,46 @@ export const updateSchedule = async (id: string, input: UpdateScheduleInput) => 
     if (!driver) throw new AppError(404, 'NOT_FOUND', 'Driver not found');
   }
 
+  const validFrom = input.validFrom ?? schedule.validFrom;
+  const validTo = input.validTo === undefined ? schedule.validTo : input.validTo;
+  if (validTo && validTo < validFrom) throw new AppError(400, 'INVALID_SCHEDULE_WINDOW', 'validTo must be after validFrom');
+
   const updatedSchedule = await prisma.tripSchedule.update({
     where: { id },
     data: input,
     select: scheduleSelect,
   });
+  await writeAuditLog({ context, action: 'schedule.update', entityType: 'TripSchedule', entityId: id, before: schedule, after: updatedSchedule });
 
-  // Cancel all future SCHEDULED trips from the old config before regenerating
-  // so students cannot book trips that will never depart as configured.
-  const timeChanging = input.departureTime !== undefined || input.daysOfWeek !== undefined
-    || input.validFrom !== undefined || input.validTo !== undefined;
-  if (timeChanging) {
-    await prisma.trip.updateMany({
-      where: {
-        scheduleId: id,
-        status: TripStatus.SCHEDULED,
-        scheduledStartAt: { gte: new Date() },
-      },
-      data: {
-        status: TripStatus.CANCELLED,
-        cancellationReason: 'Schedule configuration changed by administrator',
-      },
-    });
-    logger.info({ scheduleId: id }, 'Cancelled future trips due to schedule config change');
+  // Reconcile the already generated future trips with the new configuration. Trips that no
+  // longer match are cancelled through the normal admin path, so their riders' seats are
+  // released, payments refunded and riders notified. Matching trips keep their bookings and
+  // only take the new driver and fare.
+  const futureTrips = await prisma.trip.findMany({
+    where: { scheduleId: id, status: TripStatus.SCHEDULED, scheduledStartAt: { gte: new Date() } },
+    select: { id: true, routeId: true, busId: true, driverId: true, scheduledStartAt: true, fareAmount: true },
+  });
+  for (const trip of futureTrips) {
+    try {
+      if (!tripMatchesSchedule(trip, updatedSchedule)) {
+        await cancelAdminTrip(trip.id, SCHEDULE_CHANGE_CANCELLATION_REASON, context);
+        continue;
+      }
+      const driverChanged = trip.driverId !== updatedSchedule.driverId;
+      const fareChanged = Number(trip.fareAmount) !== updatedSchedule.fareAmount;
+      if (driverChanged || fareChanged) {
+        await updateAdminTrip(
+          trip.id,
+          {
+            ...(driverChanged ? { driverId: updatedSchedule.driverId } : {}),
+            ...(fareChanged ? { fare: updatedSchedule.fareAmount } : {}),
+          },
+          context,
+        );
+      }
+    } catch (err: unknown) {
+      logger.error({ err, scheduleId: id, tripId: trip.id }, 'Could not reconcile a generated trip with its updated schedule');
+    }
   }
 
   // Regenerate trips for the new config
@@ -145,21 +165,18 @@ export const updateSchedule = async (id: string, input: UpdateScheduleInput) => 
   return updatedSchedule;
 };
 
-export const deleteSchedule = async (id: string) => {
+export const deleteSchedule = async (id: string, context: AuditContext) => {
   const schedule = await prisma.tripSchedule.findUnique({ where: { id } });
   if (!schedule) throw new AppError(404, 'NOT_FOUND', 'Schedule not found');
 
-  await prisma.$transaction([
-    prisma.trip.updateMany({
-      where: {
-        scheduleId: id,
-        status: TripStatus.SCHEDULED,
-      },
-      data: {
-        status: TripStatus.CANCELLED,
-        cancellationReason: 'Schedule was deleted by administrator',
-      },
-    }),
-    prisma.tripSchedule.delete({ where: { id } }),
-  ]);
+  // Cancel the schedule's upcoming trips with full booking handling before removing it.
+  const pendingTrips = await prisma.trip.findMany({
+    where: { scheduleId: id, status: TripStatus.SCHEDULED },
+    select: { id: true },
+  });
+  for (const trip of pendingTrips) {
+    await cancelAdminTrip(trip.id, 'Schedule was deleted by administrator', context);
+  }
+  await prisma.tripSchedule.delete({ where: { id } });
+  await writeAuditLog({ context, action: 'schedule.delete', entityType: 'TripSchedule', entityId: id, before: schedule });
 };

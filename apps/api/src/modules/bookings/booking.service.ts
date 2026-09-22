@@ -17,6 +17,7 @@ import { paginated, toPagination } from '../../lib/pagination.js';
 import { logger } from '../../lib/logger.js';
 import { assertBusHasNoMaintenanceConflict } from '../../lib/maintenance-window.js';
 import { prisma } from '../../lib/prisma.js';
+import { reservedSeatIds, seatOrder } from '../../lib/reserved-seats.js';
 import { emitToTrip, emitToUser } from '../../realtime/hub.js';
 import { notifyUser } from '../notifications/notification.service.js';
 import { refundBookingPayments } from '../payments/payment.service.js';
@@ -145,7 +146,7 @@ const bookingDto = (booking: BookingRecord) => ({
   cancelledAt: booking.cancelledAt,
 });
 
-const expireStaleHolds = async (tx: Prisma.TransactionClient, tripId?: string): Promise<number> => {
+const expireStaleHolds = async (tx: Prisma.TransactionClient, tripId?: string): Promise<string[]> => {
   const now = new Date();
   const candidates = await tx.booking.findMany({
     where: {
@@ -156,7 +157,7 @@ const expireStaleHolds = async (tx: Prisma.TransactionClient, tripId?: string): 
     select: { id: true },
     take: 500,
   });
-  if (!candidates.length) return 0;
+  if (!candidates.length) return [];
   await lockBookings(tx, candidates.map(({ id }) => id));
   const stale = await tx.booking.findMany({
     where: {
@@ -164,11 +165,11 @@ const expireStaleHolds = async (tx: Prisma.TransactionClient, tripId?: string): 
       status: { in: [BookingStatus.HELD, BookingStatus.PENDING_PAYMENT] },
       holdExpiresAt: { lte: now },
     },
-    select: { id: true },
+    select: { id: true, tripId: true },
   });
-  if (!stale.length) return 0;
+  if (!stale.length) return [];
   const ids = stale.map(({ id }) => id);
-  const expired = await tx.booking.updateMany({
+  await tx.booking.updateMany({
     where: {
       id: { in: ids },
       status: { in: [BookingStatus.HELD, BookingStatus.PENDING_PAYMENT] },
@@ -180,10 +181,15 @@ const expireStaleHolds = async (tx: Prisma.TransactionClient, tripId?: string): 
     where: { bookingId: { in: ids }, status: SeatAllocationStatus.HELD },
     data: { status: SeatAllocationStatus.EXPIRED, releasedAt: now, releaseReason: 'Booking hold expired' },
   });
-  return expired.count;
+  return [...new Set(stale.map((booking) => booking.tripId))];
 };
 
-export const expireBookingHolds = () => prisma.$transaction((tx) => expireStaleHolds(tx));
+export const expireBookingHolds = async (): Promise<void> => {
+  const tripIds = await prisma.$transaction((tx) => expireStaleHolds(tx));
+  // Let riders viewing these trips see the released seats without reloading.
+  const changedAt = new Date();
+  tripIds.forEach((tripId) => emitToTrip(tripId, 'trip:seats', { tripId, changedAt }));
+};
 
 const withSerializableRetry = async <T>(operation: () => Promise<T>, attempts = 3): Promise<T> => {
   for (let attempt = 1; ; attempt += 1) {
@@ -205,7 +211,7 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
         const trip = await tx.trip.findUnique({
           where: { id: tripId },
           include: {
-            bus: { include: { seats: true } },
+            bus: { include: { seats: { orderBy: seatOrder } } },
             stops: { orderBy: { sequence: 'asc' } },
           },
         });
@@ -228,6 +234,9 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
         if (trip.stops.length < 2) throw new AppError(409, 'TRIP_STOPS_MISSING', 'This trip does not have a valid stop sequence');
         const seat = trip.bus.seats.find((item) => item.seatNumber === seatNumber && item.status === SeatStatus.ACTIVE);
         if (!seat) throw new AppError(409, 'SEAT_UNAVAILABLE', 'The selected seat is unavailable');
+        if (reservedSeatIds(trip.bus.seats).has(seat.id)) {
+          throw new AppError(409, 'SEAT_RESERVED', 'This seat is reserved for teachers');
+        }
         const existing = await tx.booking.findFirst({
           where: { studentId, tripId, status: { in: [...activeBookingStatuses] } },
           include: { seatAllocations: { where: { status: SeatAllocationStatus.HELD }, include: { seat: true } } },
@@ -235,6 +244,16 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
         if (existing && existing.status !== BookingStatus.HELD) {
           throw new AppError(409, 'DUPLICATE_BOOKING', 'You already have an active booking for this trip');
         }
+        const occupied = await tx.seatAllocation.findFirst({
+          where: {
+            tripId,
+            seatId: seat.id,
+            status: { in: [SeatAllocationStatus.HELD, SeatAllocationStatus.CONFIRMED, SeatAllocationStatus.CHECKED_IN] },
+            ...(existing ? { bookingId: { not: existing.id } } : {}),
+          },
+          select: { id: true },
+        });
+        if (occupied) throw new AppError(409, 'SEAT_UNAVAILABLE', 'That seat was just taken by someone else');
         const previousSeatNumber = existing?.seatAllocations[0]?.seat.seatNumber;
         if (existing) {
           const releasedAt = new Date();
@@ -273,7 +292,13 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
       },
       { isolationLevel: Prisma.TransactionIsolationLevel.Serializable, timeout: 15000 },
     ),
-  );
+  ).catch((error: unknown) => {
+    // Two riders racing for the same seat: the partial unique index rejects the loser.
+    if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+      throw new AppError(409, 'SEAT_UNAVAILABLE', 'That seat was just taken by someone else');
+    }
+    throw error;
+  });
   if (held.previousSeatNumber && held.previousSeatNumber !== held.seatNumber) {
     emitToTrip(tripId, 'trip:seats', {
       tripId,
@@ -281,9 +306,11 @@ export const createSeatHold = async (tripId: string, seatNumber: string, student
       changedAt: new Date(),
     });
   }
+  // Broadcast to everyone following the trip, so never include per-viewer fields such as
+  // heldByCurrentUser; the rider who placed the hold learns it from this response.
   emitToTrip(tripId, 'trip:seats', {
     tripId,
-    seat: { number: held.seatNumber, status: 'HELD', heldByCurrentUser: true },
+    seat: { number: held.seatNumber, status: 'HELD' },
     changedAt: new Date(),
   });
   return { id: held.id, seatNumber: held.seatNumber, expiresAt: held.expiresAt };
@@ -481,7 +508,7 @@ export const createBooking = async ({
           const trip = await tx.trip.findUnique({
             where: { id: input.tripId },
             include: {
-              bus: { include: { seats: true } },
+              bus: { include: { seats: { orderBy: seatOrder } } },
               stops: { include: { routeStop: true }, orderBy: { sequence: 'asc' } },
             },
           });
@@ -503,6 +530,9 @@ export const createBooking = async ({
           const seat = trip.bus.seats.find((candidate) => candidate.id === input.seatId);
           if (!seat || seat.status !== SeatStatus.ACTIVE) {
             throw new AppError(409, 'SEAT_UNAVAILABLE', 'The selected seat is unavailable');
+          }
+          if (reservedSeatIds(trip.bus.seats).has(seat.id)) {
+            throw new AppError(409, 'SEAT_RESERVED', 'This seat is reserved for teachers');
           }
           const boarding = trip.stops.find(
             (stop) => stop.id === input.pickupStopId || stop.routeStop.stopId === input.pickupStopId,
@@ -664,9 +694,21 @@ export const cancelBooking = async ({ bookingId, studentId, reason, isAdmin = fa
       await lockBooking(tx, bookingId);
       const booking = await tx.booking.findFirst({
         where: { id: bookingId, ...(isAdmin ? {} : { studentId }) },
-        include: { payments: { where: { status: PaymentStatus.SUCCEEDED } }, subscription: true },
+        include: {
+          payments: { where: { status: PaymentStatus.SUCCEEDED } },
+          subscription: true,
+          trip: { select: { status: true, actualStartAt: true } },
+        },
       });
       if (!booking) throw new AppError(404, 'BOOKING_NOT_FOUND', 'Booking not found');
+      // Riders may only cancel before departure; otherwise a no-show could claim a refund
+      // for a trip that already ran. Administrators can still cancel (e.g. service disruption).
+      const tripDeparted =
+        booking.trip.actualStartAt !== null ||
+        !([TripStatus.SCHEDULED, TripStatus.BOARDING, TripStatus.DELAYED] as TripStatus[]).includes(booking.trip.status);
+      if (!isAdmin && tripDeparted) {
+        throw new AppError(409, 'TRIP_ALREADY_DEPARTED', 'This trip has already departed and can no longer be cancelled');
+      }
       const currentState = BookingStateFactory.getState(booking.status);
       const transition = currentState.cancel({ now, reason });
       

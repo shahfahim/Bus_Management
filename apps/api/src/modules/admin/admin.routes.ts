@@ -92,6 +92,8 @@ import {
 } from './assignment-admin.service.js';
 import { getAdminOverview, getAdminReports } from './analytics.service.js';
 import { auditContext } from './audit.service.js';
+import { detectImageType } from '../../lib/image-signature.js';
+import { uploadRateLimit } from '../../lib/upload-rate-limit.js';
 import {
   createAdminBus,
   createAdminRoute,
@@ -309,7 +311,7 @@ adminRouter.post(
   '/schedules',
   requireRole(Role.ADMIN),
   asyncRoute(async (request, response) => {
-    response.status(201).json(await createSchedule(createScheduleSchema.parse(request.body)));
+    response.status(201).json(await createSchedule(createScheduleSchema.parse(request.body), auditContext(request)));
   }),
 );
 
@@ -325,7 +327,7 @@ adminRouter.patch(
   '/schedules/:id',
   requireRole(Role.ADMIN),
   asyncRoute(async (request, response) => {
-    response.json(await updateSchedule(idSchema.parse(request.params.id), updateScheduleSchema.parse(request.body)));
+    response.json(await updateSchedule(idSchema.parse(request.params.id), updateScheduleSchema.parse(request.body), auditContext(request)));
   }),
 );
 
@@ -333,7 +335,7 @@ adminRouter.delete(
   '/schedules/:id',
   requireRole(Role.ADMIN),
   asyncRoute(async (request, response) => {
-    await deleteSchedule(idSchema.parse(request.params.id));
+    await deleteSchedule(idSchema.parse(request.params.id), auditContext(request));
     response.status(204).send();
   }),
 );
@@ -341,7 +343,7 @@ adminRouter.delete(
 
 adminRouter.get('/users', asyncRoute(async (request, response) => response.json(await listAdminUsers(userQuerySchema.parse(request.query)))));
 adminRouter.get('/users/:id', asyncRoute(async (request, response) => response.json(await getAdminUser(idSchema.parse(request.params.id)))));
-adminRouter.post('/users/avatar', asyncRoute(async (request, response) => {
+adminRouter.post('/users/avatar', uploadRateLimit, asyncRoute(async (request, response) => {
   // Multipart file upload – use multer inline
   const multer = (await import('multer')).default;
   const upload = multer({
@@ -357,9 +359,14 @@ adminRouter.post('/users/avatar', asyncRoute(async (request, response) => {
   if (!file) throw new AppError(400, 'NO_FILE', 'No file was uploaded');
   const { putObject, usesRemoteObjectStorage } = await import('../../lib/object-storage.js');
   if (!usesRemoteObjectStorage()) throw new AppError(503, 'STORAGE_NOT_CONFIGURED', 'Remote storage is not configured');
-  const ext = file.originalname.split('.').pop()?.toLowerCase() ?? 'jpg';
-  const key = `avatars/${crypto.randomUUID()}.${ext}`;
-  await putObject(key, file.buffer, file.mimetype);
+  // The avatar is served from a public bucket, so store only verified image bytes under a
+  // server-chosen extension and content type.
+  const detected = detectImageType(file.buffer);
+  if (!detected || detected.mimeType !== file.mimetype) {
+    throw new AppError(400, 'INVALID_FILE_CONTENT', 'The uploaded file is not a valid JPEG, PNG, WebP, or GIF image');
+  }
+  const key = `avatars/${crypto.randomUUID()}.${detected.extension}`;
+  await putObject(key, file.buffer, detected.mimeType);
   const { env } = await import('../../config/env.js');
   const publicUrl = `${env.SUPABASE_URL!.replace(/\/$/, '')}/storage/v1/object/public/${env.SUPABASE_STORAGE_BUCKET!}/${key}`;
   response.json({ url: publicUrl });

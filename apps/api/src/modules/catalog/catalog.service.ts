@@ -10,6 +10,7 @@ import {
 import { AppError } from '../../lib/errors.js';
 import { paginated, toPagination } from '../../lib/pagination.js';
 import { prisma } from '../../lib/prisma.js';
+import { reservedSeatIds, seatOrder } from '../../lib/reserved-seats.js';
 import type { z } from 'zod';
 import type { routeQuerySchema, tripQuerySchema } from './catalog.schemas.js';
 
@@ -323,7 +324,7 @@ export const getTripSeats = async (tripId: string, userId?: string) => {
   const trip = await prisma.trip.findUnique({
     where: { id: tripId },
     include: {
-      bus: { include: { seats: { orderBy: [{ rowNumber: 'asc' }, { seatNumber: 'asc' }] } } },
+      bus: { include: { seats: { orderBy: seatOrder } } },
       seatAllocations: {
         where: activeAllocationWhere(now),
         include: {
@@ -334,8 +335,10 @@ export const getTripSeats = async (tripId: string, userId?: string) => {
   });
   if (!trip) throw new AppError(404, 'TRIP_NOT_FOUND', 'Trip not found');
   const allocations = new Map(trip.seatAllocations.map((allocation) => [allocation.seatId, allocation]));
+  const reserved = reservedSeatIds(trip.bus.seats);
   const seats = trip.bus.seats.map((seat) => {
     const allocation = allocations.get(seat.id);
+    const isReserved = reserved.has(seat.id);
     const held = allocation?.status === SeatAllocationStatus.HELD;
     const recoverableByCurrentUser = Boolean(
       held &&
@@ -351,8 +354,9 @@ export const getTripSeats = async (tripId: string, userId?: string) => {
       row: seat.rowNumber,
       column: seat.columnLabel,
       type: seat.type,
+      reserved: isReserved,
       status:
-        seat.status !== SeatStatus.ACTIVE
+        seat.status !== SeatStatus.ACTIVE || (isReserved && !allocation)
           ? 'BLOCKED'
           : allocation
             ? held
