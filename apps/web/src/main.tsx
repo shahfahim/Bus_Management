@@ -1,3 +1,4 @@
+import { MotionConfig } from 'framer-motion';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
@@ -18,6 +19,8 @@ if ('serviceWorker' in navigator) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
+    {/* Honour the operating system's reduced-motion setting for every animation. */}
+    <MotionConfig reducedMotion="user">
     <ErrorBoundary>
       <ThemeProvider>
         <BrowserRouter>
@@ -31,5 +34,6 @@ createRoot(document.getElementById('root')!).render(
         </BrowserRouter>
       </ThemeProvider>
     </ErrorBoundary>
+    </MotionConfig>
   </StrictMode>,
 );

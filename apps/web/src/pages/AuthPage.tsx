@@ -232,7 +232,7 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
               </button>
             </div>
             <Button className="auth-submit" loading={submitting} size="lg" type="submit">
-              {mode === 'login' ? 'SignIn' : `Create student account`}
+              {mode === 'login' ? 'Sign in' : `Create student account`}
             </Button>
           </form>
           <p className="auth-security"><ShieldCheck aria-hidden="true" size={16} /> Protected by encrypted authentication and role-based access.</p>

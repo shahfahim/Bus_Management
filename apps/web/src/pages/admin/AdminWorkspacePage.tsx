@@ -12,6 +12,7 @@ import { useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import { ApiError, api } from '../../lib/api'
 import { ChartFactory } from '../../components/charts/ChartFactory'
 import { ExportFacade } from '../../lib/ExportFacade'
+import { createPortal } from 'react-dom'
 import './AdminWorkspacePage.css'
 
 type AdminSectionId =
@@ -810,7 +811,10 @@ function AdminModal({ title, description, onClose, children, footer }: { title: 
     document.addEventListener('keydown', handleKey)
     return () => document.removeEventListener('keydown', handleKey)
   }, [onClose])
-  return (
+  // Portal to <body> so glass (backdrop-filter) ancestors cannot trap the fixed overlay.
+  // The host keeps the workspace's CSS variables and resets without adding a box.
+  return createPortal(
+    <div className="admin-workspace admin-modal-host">
     <div className="admin-modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) onClose() }}>
       <section className="admin-modal" role="dialog" aria-modal="true" aria-labelledby={headingId}>
         <header className="admin-modal__header">
@@ -824,6 +828,8 @@ function AdminModal({ title, description, onClose, children, footer }: { title: 
         {footer && <footer className="admin-modal__footer">{footer}</footer>}
       </section>
     </div>
+    </div>,
+    document.body,
   )
 }
 

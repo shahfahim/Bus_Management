@@ -1,0 +1,593 @@
+/*
+ * Glass design layer.
+ * Loaded last: it re-tunes the shared tokens and turns the main surfaces (cards, shell,
+ * dialogs, toasts, forms) into frosted glass over a slowly drifting aurora background.
+ */
+
+:root {
+  --canvas: #edf3f1;
+  --surface: rgb(255 255 255 / 70%);
+  --surface-raised: rgb(255 255 255 / 46%);
+  --line: rgb(16 45 41 / 10%);
+  --line-strong: rgb(16 45 41 / 19%);
+
+  --glass: rgb(255 255 255 / 56%);
+  --glass-strong: rgb(255 255 255 / 78%);
+  --glass-border: rgb(255 255 255 / 72%);
+  --glass-blur: saturate(165%) blur(18px);
+  --glass-highlight: inset 0 1px 0 rgb(255 255 255 / 80%);
+  --glass-shadow: var(--glass-highlight), 0 12px 32px -14px rgb(14 48 42 / 24%), 0 2px 6px rgb(14 48 42 / 5%);
+  --glass-shadow-lift: var(--glass-highlight), 0 26px 50px -20px rgb(14 48 42 / 34%), 0 6px 14px rgb(14 48 42 / 7%);
+  --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --brand-gradient: linear-gradient(135deg, #17907a 0%, #0f6657 55%, #0b4f44 100%);
+}
+
+/* ---------- Ambient background ---------- */
+/* <html> paints the base colour; an opaque <body> would cover the aurora layer below it. */
+html { background: var(--canvas); }
+body { background: transparent; }
+body::before,
+body::after {
+  position: fixed;
+  z-index: -1;
+  pointer-events: none;
+  content: "";
+}
+body::before {
+  inset: -25%;
+  background:
+    radial-gradient(38% 34% at 14% 18%, rgb(38 168 142 / 42%), transparent 70%),
+    radial-gradient(32% 30% at 88% 12%, rgb(242 173 66 / 32%), transparent 70%),
+    radial-gradient(40% 38% at 72% 88%, rgb(114 89 182 / 24%), transparent 70%),
+    radial-gradient(30% 30% at 22% 92%, rgb(51 111 188 / 22%), transparent 70%);
+  filter: blur(24px);
+  animation: auroraDrift 32s ease-in-out infinite alternate;
+}
+/* A faint dot grid gives the glass something to refract. */
+body::after {
+  inset: 0;
+  background-image: radial-gradient(rgb(16 45 41 / 7%) 1px, transparent 1px);
+  background-size: 26px 26px;
+  mask-image: radial-gradient(ellipse at 50% 30%, black 20%, transparent 75%);
+}
+@keyframes auroraDrift {
+  0% { transform: translate3d(0, 0, 0) rotate(0deg) scale(1); }
+  50% { transform: translate3d(3%, -2%, 0) rotate(6deg) scale(1.06); }
+  100% { transform: translate3d(-3%, 3%, 0) rotate(-4deg) scale(1.02); }
+}
+::selection { background: rgb(38 168 142 / 28%); }
+
+/* ---------- Glass surfaces ---------- */
+.card,
+.quick-link,
+.notification-list,
+.live-map,
+.custom-trip-map-panel,
+.travel-pass,
+.fatal-error__card,
+.view-toggle,
+.map-trip-option {
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+.card { border-radius: 20px; }
+
+/* Interactive cards lift towards the pointer. */
+.stat-card,
+.quick-link,
+.booking-card,
+.trip-result,
+.driver-trip-card,
+.lost-card,
+.eligible-rating,
+.review-card,
+.road-alert-card,
+.map-trip-option {
+  transition: transform .45s var(--ease-out-expo), box-shadow .45s var(--ease-out-expo), border-color .3s;
+}
+.stat-card:hover,
+.quick-link:hover,
+.booking-card:hover,
+.trip-result:hover,
+.driver-trip-card:hover,
+.lost-card:hover,
+.eligible-rating:hover,
+.review-card:hover,
+.road-alert-card:hover,
+.map-trip-option:hover {
+  border-color: rgb(255 255 255 / 95%);
+  box-shadow: var(--glass-shadow-lift);
+  transform: translateY(-3px);
+}
+.lost-card__image { transition: transform .7s var(--ease-out-expo); }
+.lost-card:hover .lost-card__image { transform: scale(1.04); }
+
+/* Stat cards: glossy icon chips with a soft sheen sweep. */
+.stat-card { position: relative; overflow: hidden; }
+.stat-card::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 35%, rgb(255 255 255 / 45%) 50%, transparent 65%);
+  content: "";
+  pointer-events: none;
+  transform: translateX(-110%);
+  transition: transform 1s var(--ease-out-expo);
+}
+.stat-card:hover::after { transform: translateX(110%); }
+.stat-card__icon { box-shadow: inset 0 1px 0 rgb(255 255 255 / 70%), 0 8px 18px -10px currentColor; }
+.stat-card strong { font-variant-numeric: tabular-nums; }
+
+/* ---------- Typography accents ---------- */
+.page-header h1,
+.auth-card__heading h1 {
+  background: linear-gradient(120deg, #0d2d28 10%, #0f6657 60%, #1a927c 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.eyebrow {
+  display: inline-flex;
+  width: max-content;
+  align-items: center;
+  gap: 7px;
+}
+.eyebrow::before {
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: var(--brand-gradient);
+  content: "";
+}
+
+/* ---------- App shell ---------- */
+.sidebar {
+  border-right: 1px solid rgb(255 255 255 / 9%);
+  background:
+    radial-gradient(120% 50% at 0% 0%, rgb(38 168 142 / 22%), transparent 60%),
+    linear-gradient(180deg, rgb(12 46 40 / 90%), rgb(8 30 27 / 94%));
+  box-shadow: 12px 0 40px -24px rgb(4 20 17 / 60%);
+  -webkit-backdrop-filter: blur(22px) saturate(140%);
+  backdrop-filter: blur(22px) saturate(140%);
+}
+.sidebar__role,
+.sidebar__help {
+  border: 1px solid rgb(255 255 255 / 9%);
+  background: rgb(255 255 255 / 6%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 6%);
+}
+.nav-link { transition: background .25s, color .25s, transform .35s var(--ease-out-expo); }
+.nav-link:hover { transform: translateX(3px); }
+.sidebar--mini .nav-link:hover { transform: none; }
+.nav-link--active {
+  background: linear-gradient(90deg, rgb(103 200 182 / 24%), rgb(103 200 182 / 5%));
+  box-shadow: inset 0 0 0 1px rgb(255 255 255 / 8%), inset 3px 0 #67c8b6, 0 8px 22px -14px rgb(103 200 182 / 70%);
+}
+.nav-link--active svg { color: #8ee0cf; filter: drop-shadow(0 0 6px rgb(103 200 182 / 55%)); }
+.brand__mark {
+  background: var(--brand-gradient);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 25%), 0 10px 24px -8px rgb(15 102 87 / 60%);
+}
+
+.topbar {
+  border-bottom: 1px solid var(--glass-border);
+  background: rgb(255 255 255 / 52%);
+  box-shadow: 0 10px 30px -24px rgb(14 48 42 / 35%);
+  -webkit-backdrop-filter: blur(20px) saturate(170%);
+  backdrop-filter: blur(20px) saturate(170%);
+}
+.notification-button {
+  border-color: var(--glass-border) !important;
+  background: var(--glass) !important;
+  box-shadow: var(--glass-highlight);
+}
+.notification-button > span { animation: badgePop .5s var(--ease-spring); }
+@keyframes badgePop { from { transform: scale(0); } to { transform: scale(1); } }
+.profile-trigger { transition: background .2s; }
+.profile-trigger:hover { background: rgb(255 255 255 / 55%); }
+.profile-dropdown {
+  border: 1px solid var(--glass-border);
+  background: var(--glass-strong);
+  box-shadow: var(--glass-shadow-lift);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  animation: dropIn .35s var(--ease-out-expo);
+}
+@keyframes dropIn {
+  from { opacity: 0; transform: translateY(-6px) scale(.96); }
+  to { opacity: 1; transform: none; }
+}
+.profile-dropdown a:hover, .profile-dropdown button:hover { background: rgb(255 255 255 / 70%); }
+
+@media (max-width: 1040px) {
+  .sidebar-scrim {
+    background: rgb(7 26 23 / 34%);
+    -webkit-backdrop-filter: blur(4px);
+    backdrop-filter: blur(4px);
+    animation: scrimIn .3s ease-out;
+  }
+}
+@keyframes scrimIn { from { opacity: 0; } }
+
+/* Page transitions are driven by framer-motion; stagger the sections inside each page. */
+.main-content { animation: none; }
+.page-stack > * { animation: sectionRise .7s var(--ease-out-expo) backwards; }
+.page-stack > *:nth-child(1) { animation-delay: .03s; }
+.page-stack > *:nth-child(2) { animation-delay: .09s; }
+.page-stack > *:nth-child(3) { animation-delay: .15s; }
+.page-stack > *:nth-child(4) { animation-delay: .21s; }
+.page-stack > *:nth-child(5) { animation-delay: .27s; }
+.page-stack > *:nth-child(6) { animation-delay: .33s; }
+.page-stack > *:nth-child(n + 7) { animation-delay: .38s; }
+@keyframes sectionRise {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: none; }
+}
+/* Items inside grids and lists cascade in after their section. */
+.stat-grid > *,
+.quick-grid > *,
+.trip-list > *,
+.booking-list > *,
+.driver-trip-list > *,
+.lost-grid > *,
+.review-list > *,
+.rating-eligible-grid > *,
+.alert-list > * {
+  animation: itemRise .6s var(--ease-out-expo) backwards;
+}
+.stat-grid > *:nth-child(2), .quick-grid > *:nth-child(2), .trip-list > *:nth-child(2), .booking-list > *:nth-child(2), .driver-trip-list > *:nth-child(2), .lost-grid > *:nth-child(2), .review-list > *:nth-child(2), .rating-eligible-grid > *:nth-child(2), .alert-list > *:nth-child(2) { animation-delay: .06s; }
+.stat-grid > *:nth-child(3), .quick-grid > *:nth-child(3), .trip-list > *:nth-child(3), .booking-list > *:nth-child(3), .driver-trip-list > *:nth-child(3), .lost-grid > *:nth-child(3), .review-list > *:nth-child(3), .rating-eligible-grid > *:nth-child(3), .alert-list > *:nth-child(3) { animation-delay: .12s; }
+.stat-grid > *:nth-child(4), .quick-grid > *:nth-child(4), .trip-list > *:nth-child(4), .booking-list > *:nth-child(4), .driver-trip-list > *:nth-child(4), .lost-grid > *:nth-child(4), .review-list > *:nth-child(4), .rating-eligible-grid > *:nth-child(4), .alert-list > *:nth-child(4) { animation-delay: .18s; }
+.stat-grid > *:nth-child(n + 5), .quick-grid > *:nth-child(n + 5), .trip-list > *:nth-child(n + 5), .booking-list > *:nth-child(n + 5), .driver-trip-list > *:nth-child(n + 5), .lost-grid > *:nth-child(n + 5), .review-list > *:nth-child(n + 5), .rating-eligible-grid > *:nth-child(n + 5), .alert-list > *:nth-child(n + 5) { animation-delay: .22s; }
+@keyframes itemRise {
+  from { opacity: 0; transform: translateY(12px) scale(.985); }
+  to { opacity: 1; transform: none; }
+}
+
+/* ---------- Buttons ---------- */
+.button { border-radius: 11px; }
+.button--primary,
+.button--danger {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+}
+.button--primary {
+  background: var(--brand-gradient);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 22%), 0 10px 22px -10px rgb(15 102 87 / 65%);
+}
+.button--primary:hover:not(:disabled) {
+  background: var(--brand-gradient);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 26%), 0 16px 30px -12px rgb(15 102 87 / 70%);
+}
+.button--danger {
+  background: linear-gradient(135deg, #de5249, #c53d35 55%, #a42f28);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%), 0 10px 22px -10px rgb(197 61 53 / 60%);
+}
+.button--primary::after,
+.button--danger::after {
+  position: absolute;
+  z-index: -1;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgb(255 255 255 / 38%) 50%, transparent 70%);
+  content: "";
+  transform: translateX(-120%);
+  transition: transform .8s var(--ease-out-expo);
+}
+.button--primary:hover::after,
+.button--danger:hover::after { transform: translateX(120%); }
+.button--secondary {
+  border-color: var(--glass-border);
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+.button--secondary:hover:not(:disabled) { border-color: #fff; background: var(--glass-strong); }
+.button--ghost:hover:not(:disabled),
+.icon-button:hover { background: rgb(255 255 255 / 60%); }
+
+/* ---------- Form controls ---------- */
+.field input,
+.field select,
+.field textarea,
+.modal-form input,
+.modal-form select,
+.modal-form textarea,
+.incident-form input,
+.incident-form select,
+.incident-form textarea {
+  border-color: rgb(16 45 41 / 14%);
+  border-radius: 11px;
+  background: rgb(255 255 255 / 66%);
+  box-shadow: inset 0 1px 2px rgb(14 48 42 / 5%);
+  transition: border-color .2s, box-shadow .3s var(--ease-out-expo), background .2s;
+}
+.field input:hover,
+.field select:hover,
+.field textarea:hover { background: rgb(255 255 255 / 82%); }
+.field input:focus,
+.field select:focus,
+.field textarea:focus,
+.modal-form input:focus,
+.modal-form select:focus,
+.modal-form textarea:focus,
+.incident-form input:focus,
+.incident-form select:focus,
+.incident-form textarea:focus {
+  border-color: rgb(15 102 87 / 55%);
+  background: #fff;
+  box-shadow: 0 0 0 4px rgb(38 168 142 / 16%), 0 8px 20px -12px rgb(15 102 87 / 45%);
+}
+.segmented-control,
+.trip-point-tabs {
+  border: 1px solid var(--glass-border);
+  background: rgb(16 45 41 / 6%);
+  box-shadow: inset 0 1px 2px rgb(14 48 42 / 6%);
+}
+.segmented-control button,
+.trip-point-tabs button { transition: background .3s, color .3s, box-shadow .3s; }
+.segmented-control button[aria-selected="true"],
+.trip-point-tabs button[aria-selected="true"] { background: rgb(255 255 255 / 90%); box-shadow: var(--glass-shadow); }
+
+/* ---------- Status and feedback ---------- */
+.pill { border: 1px solid rgb(255 255 255 / 60%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 55%); }
+.inline-alert {
+  border-radius: 14px;
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+  animation: sectionRise .5s var(--ease-out-expo) backwards;
+}
+.inline-alert--error { background: rgb(253 236 234 / 80%); }
+.inline-alert--warning { background: rgb(255 244 223 / 80%); }
+.inline-alert--info { background: rgb(234 242 252 / 80%); }
+.inline-alert--success { background: rgb(232 247 240 / 80%); }
+.empty-state__icon {
+  background: linear-gradient(145deg, rgb(255 255 255 / 90%), var(--primary-soft));
+  box-shadow: var(--glass-shadow);
+  animation: floatY 4s ease-in-out infinite;
+}
+@keyframes floatY { 50% { transform: translateY(-5px); } }
+.skeleton {
+  background: linear-gradient(110deg, rgb(255 255 255 / 35%) 8%, rgb(255 255 255 / 85%) 18%, rgb(255 255 255 / 35%) 33%);
+  background-size: 200% 100%;
+}
+.loading-orbit {
+  border-color: rgb(15 102 87 / 14%);
+  border-top-color: var(--primary);
+  box-shadow: 0 0 22px -4px rgb(38 168 142 / 55%);
+}
+.live-dot { animation: livePulse 1.8s ease-out infinite; }
+@keyframes livePulse {
+  0% { box-shadow: 0 0 0 0 rgb(65 186 140 / 45%); }
+  100% { box-shadow: 0 0 0 9px rgb(65 186 140 / 0%); }
+}
+
+/* ---------- Tables ---------- */
+th { border-bottom-color: var(--line-strong); }
+tbody tr { transition: background .2s; }
+tbody tr:hover { background: rgb(255 255 255 / 55%); }
+
+/* ---------- Dialogs ---------- */
+.modal-backdrop {
+  background: radial-gradient(circle at 50% 30%, rgb(15 60 52 / 38%), rgb(8 24 21 / 58%));
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  backdrop-filter: blur(10px) saturate(120%);
+}
+.modal {
+  border: 1px solid rgb(255 255 255 / 80%);
+  border-radius: 24px;
+  background: linear-gradient(160deg, rgb(255 255 255 / 95%), rgb(255 255 255 / 86%));
+  box-shadow: var(--glass-highlight), 0 40px 90px -30px rgb(4 24 20 / 55%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+}
+.modal__header { border-bottom-color: var(--line); }
+.modal__footer { border-top-color: var(--line); background: rgb(255 255 255 / 40%); }
+
+/* ---------- Toasts ---------- */
+.toast {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--glass-border);
+  border-left: 1px solid var(--glass-border);
+  border-radius: 16px;
+  background: var(--glass-strong);
+  box-shadow: var(--glass-shadow-lift);
+  -webkit-backdrop-filter: blur(22px) saturate(170%);
+  backdrop-filter: blur(22px) saturate(170%);
+}
+.toast > svg {
+  padding: 5px;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--info-soft);
+}
+.toast--success > svg { background: var(--primary-soft); }
+.toast--error > svg { background: var(--danger-soft); }
+.toast__timer {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 3px;
+  width: 100%;
+  background: var(--info);
+  transform-origin: left;
+  animation: toastTimer 5s linear forwards;
+}
+.toast--success .toast__timer { background: var(--brand-gradient); }
+.toast--error .toast__timer { background: var(--danger); }
+@keyframes toastTimer { to { transform: scaleX(0); } }
+
+/* ---------- Seat map, maps and passes ---------- */
+.seat-picker {
+  border: 1px solid var(--glass-border);
+  background: linear-gradient(180deg, rgb(255 255 255 / 55%), rgb(255 255 255 / 30%));
+  box-shadow: var(--glass-shadow);
+}
+.seat { background: rgb(255 255 255 / 75%); box-shadow: inset 0 -2px 0 rgb(15 102 87 / 8%); }
+.seat--selected {
+  background: var(--brand-gradient);
+  box-shadow: 0 0 0 4px rgb(38 168 142 / 18%), 0 10px 20px -10px rgb(15 102 87 / 70%);
+  animation: seatPick .45s var(--ease-spring);
+}
+@keyframes seatPick { 40% { transform: scale(1.14); } }
+.map-frame { border-color: var(--glass-border); border-radius: 16px; }
+.live-map .map-frame { border-radius: 0; }
+.travel-pass { background: linear-gradient(150deg, rgb(255 255 255 / 85%), rgb(241 250 248 / 65%)); }
+.travel-pass__qr { background: rgb(241 250 248 / 55%); }
+.qr-card { box-shadow: var(--glass-shadow); }
+
+/* ---------- Sign-in ---------- */
+.auth-layout { background: transparent; }
+.auth-card {
+  padding: 36px clamp(22px, 4vw, 40px) 28px;
+  border: 1px solid var(--glass-border);
+  border-radius: 28px;
+  background: linear-gradient(160deg, rgb(255 255 255 / 72%), rgb(255 255 255 / 50%));
+  box-shadow: var(--glass-shadow-lift);
+  -webkit-backdrop-filter: blur(24px) saturate(170%);
+  backdrop-filter: blur(24px) saturate(170%);
+  animation: authCardIn .8s var(--ease-out-expo) backwards;
+}
+@keyframes authCardIn {
+  from { opacity: 0; transform: translateY(22px) scale(.97); }
+  to { opacity: 1; transform: none; }
+}
+.auth-visual {
+  background:
+    radial-gradient(80% 60% at 100% 0%, rgb(38 168 142 / 30%), transparent 60%),
+    radial-gradient(60% 50% at 0% 100%, rgb(242 173 66 / 16%), transparent 60%),
+    #0c2a25;
+}
+.auth-visual__glow { animation: glowDrift 14s ease-in-out infinite alternate; }
+@keyframes glowDrift {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(-18%, 22%) scale(1.25); }
+}
+.route-card { animation: floatY 6s ease-in-out infinite; }
+.route-card--seat { animation-delay: -3s; }
+.route-bus { animation: busBob 3.2s ease-in-out infinite; }
+@keyframes busBob {
+  0%, 100% { transform: rotate(-7deg) translateY(0); box-shadow: 0 15px 35px rgb(0 0 0 / 28%); }
+  50% { transform: rotate(-7deg) translateY(-6px); box-shadow: 0 22px 40px rgb(0 0 0 / 22%), 0 0 0 10px rgb(103 200 182 / 12%); }
+}
+.route-line i { animation: stopPing 2.8s ease-out infinite; }
+.route-line i:nth-child(2) { animation-delay: .7s; }
+.route-line i:nth-child(3) { animation-delay: 1.4s; }
+.route-line i:nth-child(4) { animation-delay: 2.1s; }
+@keyframes stopPing {
+  0% { box-shadow: 0 0 0 0 rgb(255 255 255 / 35%); }
+  70%, 100% { box-shadow: 0 0 0 12px rgb(255 255 255 / 0%); }
+}
+.auth-visual__copy { animation: sectionRise 1s .15s var(--ease-out-expo) backwards; }
+
+/* ---------- Admin workspace ----------
+ * Its stylesheet loads lazily after this file, so these rules carry a `body` prefix to win. */
+body .admin-workspace {
+  --admin-bg: transparent;
+  --admin-surface: rgb(255 255 255 / 64%);
+  --admin-surface-soft: rgb(255 255 255 / 42%);
+  --admin-border: rgb(16 45 41 / 10%);
+  --admin-shadow: var(--glass-shadow);
+  background: transparent;
+}
+body .admin-modal-host { display: contents; }
+body .admin-panel {
+  border-color: var(--glass-border);
+  border-radius: 20px;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  animation: sectionRise .7s var(--ease-out-expo) backwards;
+}
+body .admin-section-nav {
+  background: rgb(255 255 255 / 45%);
+  -webkit-backdrop-filter: blur(18px) saturate(160%);
+  backdrop-filter: blur(18px) saturate(160%);
+}
+/* One typeface across the product: the workspace headings used a serif. */
+body .admin-page-header h1,
+body .admin-panel__header h2,
+body .admin-state h2,
+body .admin-state__icon,
+body .admin-modal__header h2,
+body .admin-metric-card__glyph,
+body .admin-metric-card > strong,
+body .admin-donut strong {
+  font-family: inherit;
+  letter-spacing: -.03em;
+}
+body .admin-page-header h1 {
+  font-weight: 800;
+  background: linear-gradient(120deg, #0d2d28 10%, #0f6657 60%, #1a927c 95%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+body .admin-panel__header h2,
+body .admin-modal__header h2,
+body .admin-state h2 { font-weight: 750; }
+body .admin-section-nav {
+  margin: 0 0 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: 18px;
+  box-shadow: var(--glass-shadow);
+}
+body .admin-button--primary { background: var(--brand-gradient); box-shadow: 0 10px 22px -12px rgb(15 102 87 / 65%); }
+body .admin-modal-backdrop {
+  background: radial-gradient(circle at 50% 30%, rgb(15 60 52 / 38%), rgb(8 24 21 / 58%));
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
+}
+body .admin-modal {
+  border: 1px solid rgb(255 255 255 / 80%);
+  border-radius: 24px;
+  background: linear-gradient(160deg, rgb(255 255 255 / 90%), rgb(255 255 255 / 76%));
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  animation: dialogIn .5s var(--ease-spring) backwards;
+}
+@keyframes dialogIn {
+  from { opacity: 0; transform: translateY(24px) scale(.95); }
+  to { opacity: 1; transform: none; }
+}
+body .admin-toast {
+  border-radius: 16px;
+  background: rgb(15 52 44 / 82%);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+  animation: toastIn .5s var(--ease-spring);
+}
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(16px) scale(.94); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Trip schedules (its stylesheet also loads lazily). */
+body .schedule-card,
+body .schedule-wizard {
+  border: 1px solid var(--glass-border);
+  background: var(--glass);
+  box-shadow: var(--glass-shadow);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+}
+body .schedule-card { border-radius: 20px; transition: transform .45s var(--ease-out-expo), box-shadow .45s var(--ease-out-expo); }
+body .schedule-card:hover { box-shadow: var(--glass-shadow-lift); }
+body .schedules-grid > * { animation: itemRise .6s var(--ease-out-expo) backwards; }
+body .schedules-grid > *:nth-child(2) { animation-delay: .06s; }
+body .schedules-grid > *:nth-child(3) { animation-delay: .12s; }
+body .schedules-grid > *:nth-child(n + 4) { animation-delay: .18s; }
+
+/* Glass without backdrop support falls back to opaque surfaces. */
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  :root { --glass: rgb(255 255 255 / 92%); --glass-strong: #fff; --surface: #fff; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::before { animation: none; }
+}

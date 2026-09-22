@@ -13,7 +13,9 @@ import {
   useMemo,
   useState,
 } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, CheckCircle2, Info, LoaderCircle, Search, X } from 'lucide-react';
+import { createPortal } from 'react-dom';
 
 export function cx(...values: Array<string | false | null | undefined>) {
   return values.filter(Boolean).join(' ');
@@ -213,7 +215,11 @@ const pillTones: Record<string, string> = {
 
 export function Pill({ children, tone }: { children: ReactNode; tone?: 'positive' | 'warning' | 'danger' | 'info' | 'neutral' }) {
   const content = String(children);
-  return <span className={cx('pill', `pill--${tone ?? pillTones[content] ?? 'neutral'}`)}>{children}</span>;
+  // Show enum values such as IN_PROGRESS as readable labels ("In progress").
+  const label = typeof children === 'string' && /^[A-Z][A-Z_]*$/.test(children)
+    ? children.charAt(0) + children.slice(1).toLowerCase().replace(/_/g, ' ')
+    : children;
+  return <span className={cx('pill', `pill--${tone ?? pillTones[content] ?? 'neutral'}`)}>{label}</span>;
 }
 
 export function EmptyState({
@@ -284,23 +290,47 @@ export function Modal({
     };
   }, [onClose, open]);
 
-  if (!open) return null;
-  return (
-    <div className="modal-backdrop" onMouseDown={(event) => event.target === event.currentTarget && onClose()} role="presentation">
-      <section aria-labelledby={titleId} aria-modal="true" className="modal" role="dialog">
-        <header className="modal__header">
-          <div>
-            <h2 id={titleId}>{title}</h2>
-            {description && <p>{description}</p>}
-          </div>
-          <button aria-label="Close dialog" className="icon-button" onClick={onClose} type="button">
-            <X aria-hidden="true" />
-          </button>
-        </header>
-        <div className="modal__body">{children}</div>
-        {footer && <footer className="modal__footer">{footer}</footer>}
-      </section>
-    </div>
+  // Portal to <body> so glass (backdrop-filter) ancestors cannot trap the fixed overlay,
+  // and keep it mounted while the exit animation plays.
+  return createPortal(
+    <AnimatePresence>
+      {open && (
+        <motion.div
+          animate={{ opacity: 1 }}
+          className="modal-backdrop"
+          exit={{ opacity: 0 }}
+          initial={{ opacity: 0 }}
+          key="modal-backdrop"
+          onMouseDown={(event) => event.target === event.currentTarget && onClose()}
+          role="presentation"
+          transition={{ duration: 0.25, ease: 'easeOut' }}
+        >
+          <motion.section
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            aria-labelledby={titleId}
+            aria-modal="true"
+            className="modal"
+            exit={{ opacity: 0, y: 16, scale: 0.97, transition: { duration: 0.18, ease: 'easeIn' } }}
+            initial={{ opacity: 0, y: 28, scale: 0.94 }}
+            role="dialog"
+            transition={{ type: 'spring', stiffness: 380, damping: 30, mass: 0.9 }}
+          >
+            <header className="modal__header">
+              <div>
+                <h2 id={titleId}>{title}</h2>
+                {description && <p>{description}</p>}
+              </div>
+              <button aria-label="Close dialog" className="icon-button" onClick={onClose} type="button">
+                <X aria-hidden="true" />
+              </button>
+            </header>
+            <div className="modal__body">{children}</div>
+            {footer && <footer className="modal__footer">{footer}</footer>}
+          </motion.section>
+        </motion.div>
+      )}
+    </AnimatePresence>,
+    document.body,
   );
 }
 
@@ -330,26 +360,38 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     <ToastContext.Provider value={value}>
       {children}
       <aside aria-live="polite" aria-relevant="additions" className="toast-region">
-        {messages.map((message) => {
-          const Icon = message.tone === 'success' ? CheckCircle2 : message.tone === 'error' ? AlertCircle : Info;
-          return (
-            <div className={cx('toast', `toast--${message.tone}`)} key={message.id} role="status">
-              <Icon aria-hidden="true" size={20} />
-              <div>
-                <strong>{message.title}</strong>
-                {message.description && <p>{message.description}</p>}
-              </div>
-              <button
-                aria-label="Dismiss notification"
-                className="icon-button"
-                onClick={() => setMessages((current) => current.filter((toast) => toast.id !== message.id))}
-                type="button"
+        <AnimatePresence initial={false}>
+          {messages.map((message) => {
+            const Icon = message.tone === 'success' ? CheckCircle2 : message.tone === 'error' ? AlertCircle : Info;
+            return (
+              <motion.div
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                className={cx('toast', `toast--${message.tone}`)}
+                exit={{ opacity: 0, x: 48, scale: 0.94, transition: { duration: 0.2, ease: 'easeIn' } }}
+                initial={{ opacity: 0, x: 56, scale: 0.92 }}
+                key={message.id}
+                layout
+                role="status"
+                transition={{ type: 'spring', stiffness: 420, damping: 32 }}
               >
-                <X aria-hidden="true" size={16} />
-              </button>
-            </div>
-          );
-        })}
+                <Icon aria-hidden="true" size={20} />
+                <div>
+                  <strong>{message.title}</strong>
+                  {message.description && <p>{message.description}</p>}
+                </div>
+                <button
+                  aria-label="Dismiss notification"
+                  className="icon-button"
+                  onClick={() => setMessages((current) => current.filter((toast) => toast.id !== message.id))}
+                  type="button"
+                >
+                  <X aria-hidden="true" size={16} />
+                </button>
+                <span aria-hidden="true" className="toast__timer" />
+              </motion.div>
+            );
+          })}
+        </AnimatePresence>
       </aside>
     </ToastContext.Provider>
   );

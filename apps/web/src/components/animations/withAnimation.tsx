@@ -53,10 +53,11 @@ export const AnimatedPage: React.FC<{ children: React.ReactNode; className?: str
   return (
     <motion.div
       className={className}
-      initial={{ opacity: 0, x: -10 }}
-      animate={{ opacity: 1, x: 0 }}
-      exit={{ opacity: 0, x: 10 }}
-      transition={{ duration: 0.25, ease: 'easeInOut' }}
+      initial={{ opacity: 0, y: 18, scale: 0.992, filter: 'blur(8px)' }}
+      // Drop the filter once settled: a lingering filter would trap fixed-position children.
+      animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)', transitionEnd: { filter: 'none' } }}
+      exit={{ opacity: 0, y: -10, scale: 0.996, filter: 'blur(6px)', transition: { duration: 0.18, ease: 'easeIn' } }}
+      transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
     >
       {children}
     </motion.div>
