@@ -30,7 +30,7 @@
 
 ## ✨ Features
 
-- **🎓 Student Portal:** Seat booking, digital bus passes, and QR code boarding.
+- **🎓 Student Portal:** Seat booking (the two front seats of each bus are reserved for teachers), digital bus passes, and QR code boarding.
 - **🗺️ Live Tracking & GPS:** Real-time bus tracking and ETA updates via WebSockets.
 - **📅 Automated Scheduling:** Set up recurring trips and let the background worker generate future schedules automatically.
 - **🛡️ Admin Workspace:** RBAC-protected dashboard with dynamic role-based forms for managing users, trips, vehicles, incidents, and approvals.
@@ -59,34 +59,35 @@ UniRide is designed as a modern **Monorepo** using npm workspaces. It separates 
 ## 📁 Project Structure
 
 ```text
-e:\Bus_Management\
+Bus_Management/
 ├── apps/
 │   ├── api/                     # Backend Node.js Express server
 │   │   ├── prisma/              # Prisma schema, migrations, and seed data
-│   │   └── src/                 
-│   │       ├── config/          # Environment and app configuration
-│   │       ├── lib/             # Utilities (logging, security, auth)
-│   │       ├── modules/         # Domain-driven feature modules (auth, trips, users)
-│   │       ├── realtime/        # Socket.IO handlers for live GPS
+│   │   └── src/
+│   │       ├── config/          # Validated environment configuration
+│   │       ├── lib/             # Utilities (locks, logging, storage, security, geo)
+│   │       ├── modules/         # Feature modules (auth, bookings, tracking, payments, admin, trips…)
+│   │       ├── realtime/        # Socket.IO hub for live GPS, seats, and notifications
 │   │       ├── app.ts           # Express application setup
-│   │       └── server.ts        # Entry point for the API
+│   │       └── server.ts        # Entry point: HTTP, Socket.IO, background monitors
 │   │
 │   └── web/                     # Frontend React + Vite application
-│       ├── public/              # Static assets (manifest, icons)
+│       ├── public/              # Static assets (favicon, web manifest)
 │       └── src/
-│           ├── components/      # Reusable UI components (buttons, modals, charts)
-│           ├── contexts/        # React context providers (Auth, Realtime, Theme)
-│           ├── hooks/           # Custom React hooks (useMap, useScanner)
-│           ├── lib/             # API client wrappers and utilities
-│           ├── pages/           # Page-level components organized by role (admin, driver, student)
-│           ├── services/        # Push notifications and background sync
+│           ├── components/      # Reusable UI components (shell, maps, seat map, charts)
+│           ├── contexts/        # React context providers (Auth, Socket, Theme)
+│           ├── hooks/           # Custom hooks (location sharing, remote data, socket events)
+│           ├── lib/             # API client, formatting, exports, offline cache helpers
+│           ├── pages/           # Pages organized by role (admin, driver, student, shared)
+│           ├── services/        # Repository classes over the API client
 │           ├── styles/          # Core CSS variables, layout, and component styles
+│           ├── sw.ts            # Service worker: offline caching and Web Push
 │           └── App.tsx          # Application routing (RBAC protected routes)
 │
-├── docs/                        # Project documentation (architecture, deployment)
+├── docs/                        # Project documentation (API, architecture, deployment, security)
 ├── nginx/                       # NGINX configuration for production reverse-proxy
 ├── package.json                 # Monorepo root configuration and workspaces
-└── docker-compose.yml           # Local development orchestration (Postgres, API, Web)
+└── docker-compose.yml           # Local PostgreSQL for development
 ```
 
 ## 🚀 Getting Started

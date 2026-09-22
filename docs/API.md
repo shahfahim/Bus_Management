@@ -19,7 +19,7 @@ The browser client authenticates with secure, HTTP-only, same-site cookies. Sess
 
 | Method | Path | Access | Purpose |
 | --- | --- | --- | --- |
-| POST | `/auth/register` | Public | Submit a student, teacher, or driver account for administrator verification (HTTP 202). Student ID is required only for students; driver credentials are required for drivers. |
+| POST | `/auth/register` | Public | Submit a student account for administrator verification (HTTP 202). Driver, conductor, and admin accounts are created by an administrator. |
 | POST | `/auth/login` | Public | Authenticate and create a rotating session |
 | POST | `/auth/refresh` | Refresh cookie | Rotate refresh/access tokens |
 | POST | `/auth/logout` | Authenticated | Revoke the current session |
@@ -42,7 +42,7 @@ The browser client authenticates with secure, HTTP-only, same-site cookies. Sess
 | GET | `/subscriptions` | Own pass history; filter by status or route |
 | GET/POST | `/bookings` | Own booking history / confirm a hold or create a booking |
 | GET | `/bookings/:id` | Own booking details |
-| POST or DELETE | `/bookings/:id/cancel` or `/bookings/:id` | Cancel and release a booking |
+| POST or DELETE | `/bookings/:id/cancel` or `/bookings/:id` | Cancel and release a booking before the trip departs (`TRIP_ALREADY_DEPARTED` afterwards) |
 | GET or POST | `/bookings/:id/qr` | Get/rotate the active boarding QR |
 | GET/POST/PATCH/DELETE | `/ratings` | Eligible journeys and own driver reviews |
 
@@ -54,7 +54,7 @@ The browser client authenticates with secure, HTTP-only, same-site cookies. Sess
 | GET | `/driver/trips`, `/driver/trips/:id` | Assigned trips |
 | GET | `/driver/trip-setup/options` | Active assigned buses and campus preset for custom-trip setup |
 | POST | `/driver/trips` | Create a custom scheduled trip between any two validated map coordinates using an assigned bus |
-| POST | `/driver/trips/:id/start` | Start an assigned trip |
+| POST | `/driver/trips/:id/start` | Start an assigned trip, at most 60 minutes before its scheduled departure |
 | POST | `/driver/trips/:id/end` | Complete an assigned trip |
 | GET | `/driver/trips/:id/passengers` | Passenger/check-in manifest |
 | POST | `/driver/location` | Throttled GPS sample (supports offline replay metadata) |
@@ -99,12 +99,15 @@ All `/admin/*` endpoints require `ADMIN`. Resource families include:
 - `/admin/users`, `/admin/bookings`, `/admin/payments`, `/admin/checkins`
 - `/admin/maintenance`, `/admin/road-alerts`, `/admin/lost-found`, `/admin/incidents`
 - `/admin/ratings`, `/admin/notifications`
+- `/admin/schedules` (recurring trip schedules)
 
 Each family provides the safe operations valid for that resource. Financial and accepted check-in records are immutable; corrections use refund/revoke actions rather than destructive edits.
 
+Editing a schedule reconciles its already generated future trips: trips that no longer match the new route, bus, days, validity window or departure time are cancelled through the normal trip-cancellation path (seats released, payments refunded, riders notified), and matching trips keep their bookings and take the new driver and fare. Deleting an unused trip that came from a schedule cancels it instead, so the generator does not recreate it.
+
 ## Socket.IO
 
-Connect to the API origin with `{ auth: { token } }`. The server joins `user:<id>` and `role:<role>` rooms after verifying the access JWT. Authorized clients can join a trip room.
+Connect to the API origin with `{ auth: { token } }`. The server joins `user:<id>` and `role:<role>` rooms after verifying the access JWT. Clients join a trip room with `trip:join`: administrators any trip, drivers and conductors their assigned trips, and riders any scheduled or active trip (whose position and seat availability are already public) or a trip they have booked. Trip-room events never carry per-viewer fields.
 
 Important events include:
 

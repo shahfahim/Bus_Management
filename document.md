@@ -1,118 +1,116 @@
 # UniRide Architecture & Project Structure
 
-This document outlines the high-level architecture and detailed directory structure of the **UniRide** Bus Management platform.
+This document outlines the high-level architecture and directory structure of the **UniRide** Bus Management platform. For design invariants, security model and operational notes, see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md); for endpoints, see [docs/API.md](docs/API.md).
 
 ## 1. High-Level Architecture
 
-UniRide is a modern web application built using a monorepo structure (managed via npm workspaces). It strictly separates concerns between the client-side presentation layer (Web) and the server-side business logic and data persistence layer (API).
+UniRide is a web application built as a monorepo (npm workspaces). It separates the client-side presentation layer (`apps/web`) from the server-side business logic and data persistence layer (`apps/api`). In production the API can also serve the built web client from one process (`SERVE_WEB_ASSETS=true`).
 
 ### Technology Stack
 
 **Frontend (`apps/web`)**
-- **Core Framework**: React 19 with Vite for lightning-fast bundling.
-- **Routing**: `react-router-dom` for client-side routing.
-- **State & Data**: Context API for global state (Auth, Theme, Socket) and custom hooks.
-- **Real-time**: `socket.io-client` for real-time GPS tracking and live updates.
-- **Mapping**: `leaflet` and `react-leaflet` for rendering interactive live bus maps.
-- **Offline & PWA**: `vite-plugin-pwa` and Google Workbox for service workers, caching, and offline capabilities.
-- **Utilities**: `zxing/browser` for QR Code scanning and `recharts` for data visualization.
-- **UI/UX Aesthetics**: Premium aesthetic with smooth CSS transitions, interactive drag-and-drop file uploaders, and organized collapsible UI sections.
+- **Core Framework**: React 19 with Vite.
+- **Routing**: `react-router-dom` with lazy-loaded pages and role-guarded routes.
+- **State & Data**: Context API for global state (Auth, Theme, Socket), custom hooks, and small repository classes over a shared `fetch` client.
+- **Real-time**: `socket.io-client` for live GPS, seat availability, trip status and notifications.
+- **Mapping**: `leaflet` and `react-leaflet` with OpenStreetMap tiles.
+- **Offline & PWA**: `vite-plugin-pwa` (injectManifest) with a Workbox service worker that caches assets and API responses and handles Web Push.
+- **Utilities**: `@zxing/browser` for QR scanning, `recharts` for charts, `jspdf`/`papaparse` for exports, `framer-motion` for transitions.
 
 **Backend (`apps/api`)**
-- **Server**: Node.js with Express 5.
-- **Database ORM**: Prisma ORM interacting with a PostgreSQL database.
-- **Real-time Engine**: `socket.io` for bi-directional communication (emitting GPS coordinates to riders).
-- **Security**: `helmet`, `cors`, `express-rate-limit`, and custom JWT-based authentication.
-- **Validation**: `zod` for robust, type-safe request payload validation.
-- **Notifications & Payments**: Integrated `web-push` for browser notifications and `stripe` for payment processing.
+- **Server**: Node.js 22 with Express 5.
+- **Database ORM**: Prisma ORM over PostgreSQL.
+- **Real-time Engine**: `socket.io` with JWT-authenticated user, role and trip rooms.
+- **Security**: `helmet`, exact-origin `cors`, `express-rate-limit`, bcrypt passwords, short-lived JWT access tokens and rotating refresh sessions in HttpOnly cookies.
+- **Validation**: `zod` request schemas.
+- **Integrations**: `stripe` (Checkout + signed webhooks), `web-push` (VAPID), optional Supabase Storage for uploads.
+- **Background work**: in-process monitors for seat-hold expiry, maintenance reconciliation, GPS health, notification retries, and a trip generator that creates the next 7 days of trips from recurring schedules.
 
 ---
 
 ## 2. File & Directory Architecture
 
-The repository is structured as a monorepo. Below is a comprehensive tree detailing the purpose of each directory and critical file.
-
 ```text
-e:\Bus_Management\
+Bus_Management/
 ├── apps/
-│   ├── api/                     # 🚀 Backend Node.js Express Application
-│   │   ├── prisma/              # Database Schema and Migrations
-│   │   │   ├── migrations/      # Auto-generated SQL migration history
-│   │   │   ├── schema.prisma    # Prisma schema defining all database models
-│   │   │   └── seed.ts          # Database seed script for initial testing data
-│   │   └── src/                 
-│   │       ├── config/          # Configuration files (environment variables, constants)
-│   │       ├── lib/             # Core utilities and shared libraries
-│   │       │   ├── auth.ts      # JWT signing and verification utilities
-│   │       │   ├── logger.ts    # Pino-based application logging
-│   │       │   └── prisma.ts    # Singleton Prisma Client instance
-│   │       ├── modules/         # Domain-Driven Design (DDD) Feature Modules
-│   │       │   ├── auth/        # Authentication, login, and registration routes
-│   │       │   ├── incidents/   # Incident reporting and management logic
-│   │       │   ├── trips/       # Trip scheduling, assignment, and status updates
-│   │       │   └── users/       # User management, role updates, and approvals
-│   │       ├── realtime/        # WebSockets / Real-time Logic
-│   │       │   ├── socket.ts    # Socket.IO server initialization
-│   │       │   └── tracking.ts  # Handlers for driver GPS ping and student subscription
-│   │       ├── types/           # Global TypeScript type definitions for the API
-│   │       ├── app.ts           # Express application setup, middleware, and route mounting
-│   │       └── server.ts        # Entry point: starts the Express server and Socket.IO
+│   ├── api/                          # 🚀 Backend Express application (@bus/api)
+│   │   ├── prisma/
+│   │   │   ├── migrations/           # SQL migration history
+│   │   │   ├── schema.prisma         # All database models, enums and indexes
+│   │   │   └── seed.ts               # Seed accounts, fleet, routes and trips
+│   │   ├── uploads/                  # Local upload directory (dev / single instance)
+│   │   └── src/
+│   │       ├── config/env.ts         # Zod-validated environment variables
+│   │       ├── lib/                  # Shared server utilities
+│   │       │   ├── booking-lock.ts       # Row locks shared by booking workflows
+│   │       │   ├── bus-schedule-lock.ts  # Advisory locks for bus scheduling/maintenance
+│   │       │   ├── errors.ts             # AppError, 404 and error handlers
+│   │       │   ├── geo.ts                # Distance, progress and ETA helpers
+│   │       │   ├── logger.ts             # Pino logger
+│   │       │   ├── maintenance-window.ts # Maintenance overlap checks
+│   │       │   ├── object-storage.ts     # Local disk / Supabase Storage uploads
+│   │       │   ├── prisma.ts             # Prisma client singleton
+│   │       │   ├── reserved-seats.ts     # Front seats reserved for teachers
+│   │       │   ├── security.ts           # SHA-256, random tokens, email normalization
+│   │       │   ├── web-assets.ts         # Serves the built web client in production
+│   │       │   └── ...                   # pagination, password policy, rate limits, request context
+│   │       ├── modules/              # Feature modules: *.routes.ts, *.schemas.ts, *.service.ts
+│   │       │   ├── admin/            # Fleet, routes, trips, schedules, people, finance, incidents, audit, analytics
+│   │       │   ├── auth/             # Registration, login, refresh, logout, JWT middleware, avatars
+│   │       │   ├── bookings/         # Seat holds, bookings, cancellation, hold-expiry monitor
+│   │       │   ├── catalog/          # Public buses, routes, stops, trips and seat availability
+│   │       │   ├── lost-found/       # Reports, image uploads, matching and claims
+│   │       │   ├── maintenance/      # Maintenance records and reconciliation monitor
+│   │       │   ├── notifications/    # In-app + Web Push delivery strategies and retry monitor
+│   │       │   ├── payments/         # Stripe Checkout, webhooks, receipts, refunds
+│   │       │   ├── qr/               # Signed boarding QR codes and driver check-in
+│   │       │   ├── ratings/          # Driver ratings
+│   │       │   ├── road-alerts/      # Road alerts and affected-rider notifications
+│   │       │   ├── subscriptions/    # Travel-pass plans and student subscriptions
+│   │       │   ├── tracking/         # Driver trips, GPS ingestion, incidents, custom trips, GPS monitor
+│   │       │   ├── trips/            # Trip generator worker for recurring schedules
+│   │       │   └── users/            # Profile and role dashboards
+│   │       ├── realtime/hub.ts       # Socket.IO server, auth and room/emit helpers
+│   │       ├── types/express.d.ts    # Request augmentation (auth context)
+│   │       ├── app.ts                # Middleware stack and route mounting (/api and /api/v1)
+│   │       └── server.ts             # Entry point: HTTP + Socket.IO + monitors, graceful shutdown
 │   │
-│   └── web/                     # 💻 Frontend React Application
-│       ├── public/              # Static Assets
-│       │   ├── icons/           # PWA icons (Android, Apple Touch Icons)
-│       │   ├── assets/          # Static images and branding assets
-│       │   └── manifest.json    # Web App Manifest for PWA installation
+│   └── web/                          # 💻 Frontend React application (@bus/web)
+│       ├── public/
+│       │   ├── favicon.svg           # App icon
+│       │   └── manifest.webmanifest  # PWA manifest
 │       └── src/
-│           ├── components/      # Reusable UI Components
-│           │   ├── animations/  # CSS-based animation styles and transition wrappers
-│           │   ├── ui/          # Low-level UI (Buttons, Inputs, Modals, Toasts)
-│           │   ├── AppShell.tsx # Main application layout and sidebar navigation
-│           │   ├── LiveMap.tsx  # Leaflet map component for real-time tracking
-│           │   └── ...          # Other domain-specific components (SeatMap, Scanner)
-│           ├── contexts/        # Global React Contexts
-│           │   ├── AuthContext.tsx   # Manages user session, JWT token, and login state
-│           │   ├── SocketContext.tsx # Maintains persistent Socket.IO connection
-│           │   └── ThemeContext.tsx  # Manages application visual theme (light mode)
-│           ├── hooks/           # Custom React Hooks
-│           │   ├── useGeolocation.ts # Hook to interface with device GPS
-│           │   ├── useScanner.ts     # Hook for ZXing QR code detection
-│           │   └── useMap.ts         # Hook for map interactions
-│           ├── lib/             # API clients and utilities
-│           │   ├── api.ts       # Configured `fetch` wrapper with Auth headers interceptor
-│           │   ├── format.ts    # String and date formatting utilities
-│           │   └── query.ts     # Data fetching helpers
-│           ├── pages/           # Application Pages / Routes (Organized by Role)
-│           │   ├── admin/       # Dashboard, User Management, Schedules, Analytics
-│           │   ├── driver/      # My Trips, QR Scanner, Incident Reporting
-│           │   ├── student/     # Route Booking, Subscriptions, Live Tracking
-│           │   └── AuthPage.tsx # Public Login / Registration page
-│           ├── services/        # Browser APIs and Background Services
-│           │   ├── push.ts      # Web Push Notification subscription handling
-│           │   └── sync.ts      # Offline background sync logic (Service Worker)
-│           ├── styles/          # CSS Stylesheets
-│           │   ├── base.css       # Global resets and CSS variables (Theming)
-│           │   ├── components.css # Styles for reusable components
-│           │   ├── pages.css      # Layout styles for specific pages
-│           │   └── utilities.css  # Helper classes (flex, spacing, text)
-│           ├── types/           # Frontend TypeScript interfaces (mirrors API models)
-│           ├── App.tsx          # Root Router setup and RBAC Protected Route logic
-│           ├── main.tsx         # React application bootstrap and DOM render
-│           └── sw.ts            # Workbox Service Worker for PWA capabilities
+│           ├── components/           # AppShell, LiveMap, SeatMap, BookingPass, TripLocationPicker,
+│           │   │                     # ProtectedRoute, ErrorBoundary, ui.tsx (shared UI kit)
+│           │   ├── animations/       # withAnimation transition wrapper
+│           │   └── charts/           # ChartFactory (Recharts)
+│           ├── contexts/             # AuthContext, SocketContext, ThemeContext
+│           ├── hooks/                # useLocationSharing (driver GPS), useRemoteData, useSocketEvent
+│           ├── lib/                  # api.ts (fetch client + session refresh), format.ts,
+│           │                         # offline-cache.ts, ExportFacade.ts (CSV/PDF), ThemeManager.ts
+│           ├── pages/
+│           │   ├── admin/            # AdminWorkspacePage (/admin/:section), AdminSchedulesPage
+│           │   ├── driver/           # Trips, trip detail, create trip, QR scanner, incidents
+│           │   ├── student/          # Live buses, routes, booking, bookings, payments, expenses,
+│           │   │                     # subscriptions, ratings
+│           │   ├── shared/           # Notifications, lost & found
+│           │   └── AuthPage.tsx ...  # Auth, dashboard, profile, change password, 404
+│           ├── services/             # Auth/Booking/Trip repositories over the API client
+│           ├── styles/               # base, layout, components, modules, pages, responsive CSS
+│           ├── types/index.ts        # Frontend types mirroring API responses
+│           ├── App.tsx               # Routes and role guards
+│           ├── main.tsx              # Bootstrap, providers, service worker registration
+│           └── sw.ts                 # Workbox service worker: caching + Web Push handlers
 │
-├── docs/                        # 📚 Project Documentation
-│   ├── ARCHITECTURE.md          # Deep dive into system design and scaling
-│   ├── DEPLOY_FREE.md           # Guide for deploying to free tiers (Supabase + Render)
-│   └── assets/                  # Images and diagrams used in documentation
-│
-├── nginx/                       # 🌐 Reverse Proxy Configuration
-│   └── default.conf             # NGINX configuration for routing in production environments
-│
-├── .env.example                 # Template for required environment variables
-├── docker-compose.yml           # Docker orchestration for local development (Postgres)
-├── docker-compose.prod.yml      # Docker orchestration for production deployment
-├── package.json                 # Monorepo configuration, workspace definitions, and root scripts
-└── README.md                    # Project landing page and Getting Started guide
+├── docs/                             # 📚 API, architecture, deployment and security audit
+├── nginx/default.conf                # Reverse proxy for the Docker production setup
+├── Dockerfile.api / Dockerfile.web   # Container images
+├── docker-compose.yml                # Local PostgreSQL
+├── docker-compose.prod.yml           # Production containers (Postgres, migrate, API, web/nginx)
+├── render.yaml                       # Render free-tier blueprint (single service)
+├── .env.example                      # Template for required environment variables
+├── package.json                      # Workspaces and root scripts
+└── README.md                         # Project landing page and Getting Started guide
 ```
 
 ---

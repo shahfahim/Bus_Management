@@ -21,11 +21,11 @@ Routes validate untrusted input with Zod, enforce authentication and role policy
 
 ## Modules
 
-- `auth`: role-aware student/teacher/driver registration, administrator approval, login throttling, short-lived access JWTs, rotating refresh sessions, forced temporary-password replacement, logout, and current-user identity.
-- `tracking`: assigned-trip controls, GPS updates, incidents, and driver-created custom trips. Custom trip creation atomically creates its route, two stops, trip timings, and audit record after assignment, licence, maintenance, overlap, and abuse-limit checks.
+- `auth`: student self-registration with administrator approval, admin-created staff accounts, login throttling, short-lived access JWTs, rotating refresh sessions, forced temporary-password replacement, logout, and current-user identity.
 - `catalog`: public buses, routes, stops, trips, route alerts, latest trip position, and authoritative seat availability.
-- `bookings`: expiring seat holds, booking confirmation/cancellation, subscription use, and ownership checks.
-- `tracking`: driver assignments, trip lifecycle, adaptive GPS ingestion, ETA calculation, passenger manifests, incidents, and offline/degraded tracking state.
+- `bookings`: expiring seat holds, booking confirmation/cancellation, subscription use, ownership checks, and the reserved front seats (the first two seats of each bus by row/seat order are kept for teachers and rejected for student holds and bookings).
+- `tracking`: driver assignments, trip lifecycle, adaptive GPS ingestion, ETA calculation, passenger manifests, incidents, offline/degraded tracking state, and driver-created custom trips. Custom trip creation atomically creates its route, two stops, trip timings, and audit record after assignment, licence, maintenance, overlap, and abuse-limit checks.
+- `trips`: the trip generator creates the next 7 days of trips (with stop timings and the schedule's fare) from active recurring schedules, using Asia/Dhaka calendar days. It takes a per-schedule advisory lock so overlapping runs cannot create duplicates.
 - `qr`: signed booking-bound QR tokens and atomic, auditable, single-use check-in.
 - `subscriptions`: route-scoped travel-pass catalog, student pass history, booking eligibility, and remaining-ride accounting.
 - `payments`: Stripe Checkout, verified/idempotent webhooks, receipts, cumulative/out-of-order refund reconciliation, and payment/subscription lifecycle.
@@ -46,15 +46,17 @@ PostgreSQL, not the browser, is the final authority for business rules.
 - Payment checkout is serialized per payable resource. Client and provider idempotency keys are separate defenses. Only signed Stripe webhook events can mark a payment successful.
 - A late successful payment cannot reclaim an expired seat; it enters the refund workflow. Stripe refunds are reconciled cumulatively even when charge/refund webhook events arrive out of order.
 - QR payloads are signed, random-ID bound, user/booking/trip bound, expiry bound, stored only as hashes, and consumed atomically.
-- GPS timestamps, coordinates, assignment, trip state, throttling, and replay age are validated server-side.
+- GPS timestamps, coordinates, assignment, trip state, throttling, and replay age are validated server-side. A fix implying more than 200 km/h from the previous one (after allowing for both readings' accuracy) is rejected, and an offline replay older than the latest fix is kept as history but never published as the live position.
+- Riders can cancel only before departure, so a no-show cannot claim a refund for a trip that ran; administrators can still cancel afterwards.
+- Student identity documents are served only to administrators, and public driver-rating listings omit the rater's identity.
 - ETA alerts use route progress, stop timing, recent speed, and active road-alert multipliers rather than straight-line distance alone.
 - Every admin mutation records actor, request ID, IP/user agent, entity, and before/after state where applicable.
 
 ## Authentication and authorization
 
-Passwords use bcrypt with cost 12. Admin-created accounts must replace their temporary password before using protected domain APIs. Access tokens are short-lived. Refresh tokens are kept in HTTP-only cookies, stored as hashes, rotated on each refresh, and the session family is revoked on replay/logout. The UI stores the access token in session storage; all resource-level ownership remains enforced by the API.
+Passwords use bcrypt with cost 12. Admin-created accounts must replace their temporary password before using protected domain APIs. Access tokens are short-lived. Refresh tokens are kept in HTTP-only cookies, stored as hashes, rotated on each refresh, and the session family is revoked on replay/logout. The access token is also delivered as an HTTP-only cookie, so browser JavaScript never holds session credentials; all resource-level ownership remains enforced by the API.
 
-RBAC roles are `STUDENT`, `TEACHER`, `DRIVER`, `CONDUCTOR`, and `ADMIN`. Teachers use rider features without being asked for a student ID. Route guards provide a first check; domain services also validate assignment and ownership. Admin-only routes are guarded before handlers run.
+RBAC roles are `STUDENT`, `DRIVER`, `CONDUCTOR`, and `ADMIN`. The database `Role` enum still contains a `TEACHER` value from an earlier migration, but no API or UI path uses it; teachers ride on the reserved front seats without app accounts. Route guards provide a first check; domain services also validate assignment and ownership. Admin-only routes are guarded before handlers run.
 
 Security middleware includes Helmet, exact-origin credentialed CORS, bounded request bodies, endpoint and global rate limiting, structured request IDs/logs, MIME and file-signature image checks, randomized filenames, and normalized error responses. No raw card data enters this system.
 
@@ -69,9 +71,10 @@ Driver GPS uses browser `watchPosition` with adaptive upload cadence: approximat
 - Run migrations before starting a new API release.
 - Readiness checks include PostgreSQL; liveness checks only the process.
 - The API handles `SIGTERM`/`SIGINT`, stops monitors, closes HTTP, and disconnects Prisma.
-- In-process monitors handle seat-hold expiry, maintenance reconciliation, GPS health, and bounded notification retries. Run one scheduler instance until distributed scheduling or dedicated workers are introduced; notification delivery itself also uses a database claim to prevent duplicate sends.
+- In-process monitors handle seat-hold expiry, maintenance reconciliation, GPS health, bounded notification retries, and recurring trip generation. Run one scheduler instance until distributed scheduling or dedicated workers are introduced; notification delivery itself also uses a database claim to prevent duplicate sends.
 - Local uploaded media is appropriate for a single instance; use object storage and malware scanning for a horizontally scaled deployment.
 - Structured logs go to stdout and should be collected by the hosting platform.
+- The service worker caches API responses as an offline fallback; the web client clears that cache on login, logout, and session expiry so one account's data is not served to the next user of a shared browser.
 
 ## Current external-service boundaries
 
