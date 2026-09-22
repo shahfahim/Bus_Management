@@ -92,6 +92,8 @@ export interface Seat {
   type?: 'STANDARD' | 'PRIORITY' | 'ACCESSIBLE';
   status: 'AVAILABLE' | 'HELD' | 'BOOKED' | 'BLOCKED';
   heldByCurrentUser?: boolean;
+  /** Front seats kept for teachers; the API rejects student bookings for them. */
+  reserved?: boolean;
 }
 
 export interface Booking {

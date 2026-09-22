@@ -81,6 +81,10 @@ export function BookTripPage() {
       if (payload.tripId !== tripId) return;
       if (payload.seats) setSeats(payload.seats);
       else if (payload.seat) setSeats((current) => current.map((seat) => seat.number === payload.seat!.number ? { ...seat, ...payload.seat! } : seat));
+      // A bare change notice (booking, cancellation, refund) carries no seat details; refetch them.
+      else void api.get<SeatResponse | { data: SeatResponse }>(`/trips/${tripId}/seats`)
+        .then((response) => setSeats(asItems<Seat>(unwrap(response))))
+        .catch(() => undefined);
     };
     socket.on('trip:seats', seatUpdate);
     return () => {

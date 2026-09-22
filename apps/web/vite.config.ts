@@ -16,26 +16,8 @@ export default defineConfig(({ mode }) => {
         srcDir: 'src',
         filename: 'sw.ts',
         registerType: 'autoUpdate',
-        manifest: {
-          name: 'UniRide',
-          short_name: 'UniRide',
-          description: 'University Bus Management System',
-          theme_color: '#134e4a',
-          background_color: '#ffffff',
-          display: 'standalone',
-          icons: [
-            {
-              src: 'pwa-192x192.png',
-              sizes: '192x192',
-              type: 'image/png'
-            },
-            {
-              src: 'pwa-512x512.png',
-              sizes: '512x512',
-              type: 'image/png'
-            }
-          ]
-        },
+        // public/manifest.webmanifest is the source of truth (linked from index.html).
+        manifest: false,
         devOptions: {
           enabled: true,
           type: 'module',

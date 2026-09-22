@@ -4,7 +4,7 @@ import { api, unwrap } from '../lib/api';
 
 export class BookingRepository extends BaseRepository<any> {
   constructor() {
-    super('/student/bookings');
+    super('/bookings');
   }
 
   async holdSeat(tripId: string, seatNumber: string): Promise<any> {
@@ -13,7 +13,7 @@ export class BookingRepository extends BaseRepository<any> {
   }
 
   async releaseSeat(holdId: string, tripId: string): Promise<any> {
-    const response = await api.post<any>(`/student/bookings/release`, { holdId, tripId });
+    const response = await api.delete<any>(`/trips/${tripId}/seat-holds/${holdId}`);
     return unwrap(response);
   }
 
@@ -24,7 +24,7 @@ export class BookingRepository extends BaseRepository<any> {
   }
 
   async cancelBooking(id: string, reason: string) {
-    const response = await api.post(`/student/bookings/${id}/cancel`, { reason });
+    const response = await api.post(`/bookings/${id}/cancel`, { reason });
     return unwrap(response);
   }
 }

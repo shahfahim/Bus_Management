@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { api, errorMessage } from '../lib/api';
+import { ApiError, api, errorMessage } from '../lib/api';
 
 interface LocationState {
   latitude: number;
@@ -45,7 +45,10 @@ export function useLocationSharing(tripId: string | undefined, enabled: boolean)
         pending.current = null;
         setState((current) => ({ ...current, lastSentAt: new Date().toISOString(), error: null }));
       } catch (error) {
-        pending.current = location;
+        // Keep the point for replay only when it failed in transit; the server rejects a
+        // 4xx point (e.g. trip ended, implausible fix) every time it is resent.
+        const retryable = !(error instanceof ApiError) || error.status >= 500;
+        pending.current = retryable ? location : null;
         setState((current) => ({ ...current, error: errorMessage(error, 'Could not share the latest GPS position.') }));
       } finally {
         sending.current = false;

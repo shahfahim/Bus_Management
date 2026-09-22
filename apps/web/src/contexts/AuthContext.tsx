@@ -1,5 +1,6 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ApiError, api, setAccessToken, unwrap } from '../lib/api';
+import { clearPersonalApiCache } from '../lib/offline-cache';
 import type { AuthResponse, RegistrationResponse, User } from '../types';
 
 interface LoginInput {
@@ -32,6 +33,20 @@ function normalizeAuth(payload: AuthResponse | { data: AuthResponse }) {
   return unwrap(payload);
 }
 
+// Stop this browser receiving the signed-out user's push alerts (and free it for the next user).
+async function removePushSubscription() {
+  try {
+    if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return;
+    const registration = await navigator.serviceWorker.getRegistration();
+    const subscription = await registration?.pushManager.getSubscription();
+    if (!subscription) return;
+    await api.delete('/notifications/push/subscriptions', { endpoint: subscription.endpoint }).catch(() => undefined);
+    await subscription.unsubscribe();
+  } catch {
+    // Push cleanup is best effort and must never block signing out.
+  }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,6 +60,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         setAccessToken();
+        clearPersonalApiCache();
         setUser(null);
         return null;
       }
@@ -62,6 +78,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const payload = await api.post<AuthResponse | { data: AuthResponse }>('/auth/login', input);
     const auth = normalizeAuth(payload);
     setAccessToken();
+    clearPersonalApiCache();
     setUser(auth.user);
     return auth.user;
   }, []);
@@ -75,9 +92,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const logout = useCallback(async () => {
     try {
+      await removePushSubscription();
       await api.post('/auth/logout');
     } finally {
       setAccessToken();
+      clearPersonalApiCache();
       setUser(null);
     }
   }, []);

@@ -19,8 +19,13 @@ export function ExpensesPage() {
     setLoading(true);
     setError('');
     try {
-      // Fetch up to 1000 recent bookings to generate meaningful charts
-      const data = asItems<Booking>(await api.get<unknown>('/student/bookings?pageSize=1000'));
+      // The API pages bookings at most 100 at a time; gather up to 1000 recent ones for the charts.
+      const data: Booking[] = [];
+      for (let page = 1; page <= 10; page += 1) {
+        const batch = asItems<Booking>(await api.get<unknown>(`/bookings?page=${page}&pageSize=100`));
+        data.push(...batch);
+        if (batch.length < 100) break;
+      }
       setBookings(data);
     } catch (reason) {
       setError(errorMessage(reason, 'Could not load booking history.'));

@@ -52,6 +52,15 @@ export function LiveBusesPage() {
   }, [socket, load]);
 
   const activeBuses = trips.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'DELAYED');
+  const activeTripKey = activeBuses.map((trip) => trip.id).sort().join(',');
+
+  // Location updates are only delivered to trip rooms, so follow every active bus.
+  useEffect(() => {
+    if (!socket || !activeTripKey) return undefined;
+    const tripIds = activeTripKey.split(',');
+    tripIds.forEach((tripId) => socket.emit('trip:join', { tripId }));
+    return () => tripIds.forEach((tripId) => socket.emit('trip:leave', { tripId }));
+  }, [socket, connected, activeTripKey]);
 
   return (
     <div className="page-stack">

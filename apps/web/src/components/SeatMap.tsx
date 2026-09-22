@@ -11,7 +11,7 @@ export function SeatMap({ seats, selected, onSelect }: { seats: Seat[]; selected
       </div>
       <div aria-label="Choose a seat" className="seat-grid" role="group">
         {seats.map((seat, index) => {
-          const isTeacherSeat = index < 2;
+          const isTeacherSeat = Boolean(seat.reserved) && !seat.heldByCurrentUser;
           const unavailable = isTeacherSeat || (seat.status !== 'AVAILABLE' && !seat.heldByCurrentUser);
           return (
             <button
@@ -19,7 +19,7 @@ export function SeatMap({ seats, selected, onSelect }: { seats: Seat[]; selected
               aria-pressed={selected === seat.number}
               className={cx(
                 'seat',
-                isTeacherSeat ? 'seat--blocked' : `seat--${seat.status.toLowerCase()}`,
+                isTeacherSeat ? 'seat--reserved' : `seat--${seat.status.toLowerCase()}`,
                 !isTeacherSeat && selected === seat.number && 'seat--selected',
                 index % 4 === 2 && 'seat--aisle',
               )}
@@ -39,6 +39,7 @@ export function SeatMap({ seats, selected, onSelect }: { seats: Seat[]; selected
         <span><i className="seat-key seat-key--selected" /> Selected</span>
         <span><i className="seat-key seat-key--booked" /> Booked</span>
         <span><i className="seat-key seat-key--held" /> Held</span>
+        <span><i className="seat-key seat-key--reserved" /> Teachers only</span>
       </div>
     </div>
   );

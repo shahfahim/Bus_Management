@@ -72,7 +72,8 @@ export function NotificationsPage() {
       }
       const permission = await Notification.requestPermission();
       if (permission !== 'granted') throw new Error('Notification permission was not granted. You can change it in browser settings.');
-      const registration = await navigator.serviceWorker.register('/sw.js');
+      // The PWA plugin registers the service worker (sw.ts) on startup; reuse it here.
+      const registration = await navigator.serviceWorker.ready;
       const config = unwrap(await api.get<{ vapidPublicKey: string } | { data: { vapidPublicKey: string } }>('/notifications/push-config'));
       const existing = await registration.pushManager.getSubscription();
       const subscription = existing ?? await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: decodeVapidKey(config.vapidPublicKey) });

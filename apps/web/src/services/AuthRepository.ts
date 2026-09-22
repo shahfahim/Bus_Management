@@ -2,7 +2,7 @@ import { api, unwrap } from '../lib/api';
 
 export class AuthRepository {
   async getSession() {
-    const response = await api.get('/auth/session');
+    const response = await api.get('/auth/me');
     return unwrap(response);
   }
 
