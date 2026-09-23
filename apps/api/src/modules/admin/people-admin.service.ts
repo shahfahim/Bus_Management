@@ -9,7 +9,6 @@ import {
   NotificationType,
   PaymentStatus,
   Prisma,
-  QrCodeStatus,
   Role,
   SeatAllocationStatus,
   SeatStatus,
@@ -29,6 +28,7 @@ import { refundBookingPayments } from '../payments/payment.service.js';
 import { listRatings, moderateRating } from '../ratings/rating.service.js';
 import type { AuditContext } from './audit.service.js';
 import { writeAuditLog } from './audit.service.js';
+import { generateBoardingCode } from '../boarding/boarding.codes.js';
 import type {
   bookingQuerySchema,
   checkInQuerySchema,
@@ -160,7 +160,7 @@ export const createAdminUser = async (input: CreateUser, context: AuditContext) 
         emailVerifiedAt: input.status === UserStatus.ACTIVE ? new Date() : undefined,
         studentProfile:
           input.role === Role.STUDENT
-            ? { create: { studentNumber: input.identifier } }
+            ? { create: { studentNumber: input.identifier, boardingCode: generateBoardingCode(), boardingCodeIssuedAt: new Date() } }
             : undefined,
         driverProfile:
           input.role === Role.DRIVER
@@ -479,10 +479,6 @@ const cancelBookingInTransaction = async (
     where: { bookingId: booking.id, status: { in: [SeatAllocationStatus.HELD, SeatAllocationStatus.CONFIRMED] } },
     data: { status: SeatAllocationStatus.RELEASED, releasedAt: now, releaseReason: reason.slice(0, 255) },
   });
-  await tx.bookingQrCode.updateMany({
-    where: { bookingId: booking.id, status: QrCodeStatus.ACTIVE },
-    data: { status: QrCodeStatus.REVOKED, revokedAt: now, revokeReason: 'Booking cancelled by administrator' },
-  });
   if (paid) {
     await tx.payment.updateMany({
       where: { bookingId: booking.id, status: PaymentStatus.SUCCEEDED },
@@ -648,6 +644,7 @@ const checkInInclude = {
   trip: { include: { route: { select: { id: true, code: true, name: true } } } },
   bus: { select: { id: true, fleetNumber: true, registrationNumber: true } },
   scannedBy: { select: { id: true, name: true, role: true } },
+  doorReader: { select: { id: true, name: true } },
 } as const;
 
 type CheckInRecord = Prisma.CheckInGetPayload<{ include: typeof checkInInclude }>;
@@ -663,7 +660,12 @@ const checkInDto = (checkIn: CheckInRecord) => ({
   latitude: checkIn.latitude === null ? null : Number(checkIn.latitude),
   longitude: checkIn.longitude === null ? null : Number(checkIn.longitude),
   trip: { ...checkIn.trip, reference: checkIn.trip.publicCode, status: checkIn.trip.status.toLowerCase() },
-  scannedBy: { ...checkIn.scannedBy, role: checkIn.scannedBy.role.toLowerCase() },
+  // Door reader scans have no staff member; show the reader as the scanner instead.
+  scannedBy: checkIn.scannedBy
+    ? { ...checkIn.scannedBy, role: checkIn.scannedBy.role.toLowerCase() }
+    : checkIn.doorReader
+      ? { id: checkIn.doorReader.id, name: checkIn.doorReader.name, role: 'door_reader' }
+      : null,
   student: checkIn.booking
     ? { id: checkIn.booking.studentId, name: checkIn.booking.student.user.name, email: checkIn.booking.student.user.email }
     : null,
@@ -682,6 +684,7 @@ export const listAdminCheckIns = async (query: CheckInQuery) => {
             { booking: { student: { user: { name: { contains: query.search, mode: 'insensitive' } } } } },
             { trip: { publicCode: { contains: query.search, mode: 'insensitive' } } },
             { scannedBy: { name: { contains: query.search, mode: 'insensitive' } } },
+            { doorReader: { name: { contains: query.search, mode: 'insensitive' } } },
           ],
         }
       : {}),
@@ -709,7 +712,6 @@ export const getAdminCheckIn = async (id: string) => {
 
 export const createManualAdminCheckIn = async (input: CreateCheckIn, context: AuditContext) => {
   const now = new Date();
-  const token = randomBytes(48).toString('base64url');
   const result = await prisma.$transaction(
     async (tx) => {
       const booking = await tx.booking.findUnique({
@@ -722,26 +724,14 @@ export const createManualAdminCheckIn = async (input: CreateCheckIn, context: Au
         throw new AppError(409, 'CHECK_IN_CLOSED', 'Check-in is not open for this trip');
       }
       if (booking.checkIns.length > 0) throw new AppError(409, 'ALREADY_CHECKED_IN', 'This booking is already checked in');
-      const credential = await tx.bookingQrCode.create({
-        data: {
-          bookingId: booking.id,
-          tokenHash: sha256(token),
-          status: QrCodeStatus.USED,
-          singleUse: true,
-          issuedAt: now,
-          expiresAt: new Date(now.getTime() + 60_000),
-          usedAt: now,
-        },
-      });
       const checkIn = await tx.checkIn.create({
         data: {
           bookingId: booking.id,
-          qrCodeId: credential.id,
           tripId: booking.tripId,
           busId: booking.trip.busId,
           scannedById: context.actorId,
           result: CheckInResult.ACCEPTED,
-          scannedTokenFingerprint: sha256(token),
+          scannedTokenFingerprint: sha256(`manual:${booking.id}:${now.toISOString()}`),
           denialReason: `Manual override: ${input.reason}`.slice(0, 255),
           checkedInAt: now,
         },
@@ -773,13 +763,12 @@ export const revokeAdminCheckIn = async (id: string, context: AuditContext) => {
     async (tx) => {
       const before = await tx.checkIn.findUnique({ where: { id }, include: checkInInclude });
       if (!before) throw new AppError(404, 'CHECK_IN_NOT_FOUND', 'Check-in not found');
-      if (before.result !== CheckInResult.ACCEPTED || !before.bookingId || !before.qrCodeId) {
+      if (before.result !== CheckInResult.ACCEPTED || !before.bookingId) {
         throw new AppError(409, 'CHECK_IN_NOT_REVOCABLE', 'Only an accepted check-in can be revoked');
       }
       if (([TripStatus.COMPLETED, TripStatus.CANCELLED] as TripStatus[]).includes(before.trip.status)) {
         throw new AppError(409, 'TRIP_ENDED', 'A check-in cannot be revoked after the trip has ended');
       }
-      const now = new Date();
       const updated = await tx.checkIn.update({
         where: { id },
         data: { result: CheckInResult.REJECTED_REVOKED, denialReason: 'Revoked by an administrator' },
@@ -792,10 +781,6 @@ export const revokeAdminCheckIn = async (id: string, context: AuditContext) => {
       await tx.seatAllocation.updateMany({
         where: { bookingId: before.bookingId, status: SeatAllocationStatus.CHECKED_IN },
         data: { status: SeatAllocationStatus.CONFIRMED },
-      });
-      await tx.bookingQrCode.update({
-        where: { id: before.qrCodeId },
-        data: { status: QrCodeStatus.REVOKED, usedAt: null, revokedAt: now, revokeReason: 'Check-in revoked by administrator' },
       });
       await writeAuditLog({
         context,

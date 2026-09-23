@@ -8,7 +8,6 @@ export default defineConfig({
       DATABASE_URL: 'postgresql://test:test@localhost:5432/test',
       JWT_ACCESS_SECRET: 'test-access-secret-at-least-thirty-two-characters',
       JWT_REFRESH_SECRET: 'test-refresh-secret-at-least-thirty-two-characters',
-      QR_SIGNING_SECRET: 'test-qr-signing-secret-at-least-thirty-two-chars',
     },
     coverage: {
       provider: 'v8',

@@ -641,10 +641,6 @@ const reconcileStripeRefunds = async (paymentId: string, refunds: Stripe.Refund[
         },
         data: { status: SeatAllocationStatus.RELEASED, releasedAt: now, releaseReason: 'Payment fully refunded' },
       });
-      await tx.bookingQrCode.updateMany({
-        where: { bookingId: payment.bookingId, status: 'ACTIVE' },
-        data: { status: 'REVOKED', revokedAt: now, revokeReason: 'Payment fully refunded' },
-      });
     }
     if (fullyRefunded && payment.subscriptionId) {
       await tx.studentSubscription.updateMany({

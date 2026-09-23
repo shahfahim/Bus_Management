@@ -57,7 +57,10 @@ import {
   createStopSchema,
   createTripSchema,
   createUserSchema,
+  createDoorReaderSchema,
+  doorReaderQuerySchema,
   idSchema,
+  updateDoorReaderSchema,
   incidentQuerySchema,
   moderateAdminRatingSchema,
   notificationQuerySchema,
@@ -92,6 +95,14 @@ import {
 } from './assignment-admin.service.js';
 import { getAdminOverview, getAdminReports } from './analytics.service.js';
 import { auditContext } from './audit.service.js';
+import {
+  createDoorReader,
+  deleteDoorReader,
+  getDoorReader,
+  listDoorReaders,
+  rotateDoorReaderKey,
+  updateDoorReader,
+} from '../boarding/boarding.service.js';
 import { detectImageType } from '../../lib/image-signature.js';
 import { uploadRateLimit } from '../../lib/upload-rate-limit.js';
 import {
@@ -285,6 +296,20 @@ adminRouter.post('/trips/:id/cancel', asyncRoute(async (request, response) => {
 }));
 adminRouter.delete('/trips/:id', asyncRoute(async (request, response) => {
   await deleteAdminTrip(idSchema.parse(request.params.id), auditContext(request));
+  response.status(204).end();
+}));
+
+// Bus door readers (Code 128 boarding cards). Create and rotate return the API key once.
+adminRouter.get('/door-readers', asyncRoute(async (request, response) => {
+  const query = doorReaderQuerySchema.parse(request.query);
+  response.json(await listDoorReaders({ page: query.page, pageSize: query.pageSize ?? query.limit, search: query.search, busId: query.busId }));
+}));
+adminRouter.get('/door-readers/:id', asyncRoute(async (request, response) => response.json(await getDoorReader(idSchema.parse(request.params.id)))));
+adminRouter.post('/door-readers', asyncRoute(async (request, response) => response.status(201).json(await createDoorReader(createDoorReaderSchema.parse(request.body), auditContext(request)))));
+adminRouter.patch('/door-readers/:id', asyncRoute(async (request, response) => response.json(await updateDoorReader(idSchema.parse(request.params.id), updateDoorReaderSchema.parse(request.body), auditContext(request)))));
+adminRouter.post('/door-readers/:id/rotate-key', asyncRoute(async (request, response) => response.json(await rotateDoorReaderKey(idSchema.parse(request.params.id), auditContext(request)))));
+adminRouter.delete('/door-readers/:id', asyncRoute(async (request, response) => {
+  await deleteDoorReader(idSchema.parse(request.params.id), auditContext(request));
   response.status(204).end();
 }));
 

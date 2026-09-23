@@ -9,6 +9,7 @@ import { AppError } from '../../lib/errors.js';
 import { prisma } from '../../lib/prisma.js';
 import { normalizeEmail, randomToken, sha256 } from '../../lib/security.js';
 import { disconnectSessionSockets } from '../../realtime/hub.js';
+import { generateBoardingCode } from '../boarding/boarding.codes.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from './auth.tokens.js';
 import type { z } from 'zod';
 import type { changePasswordSchema, loginSchema, registerSchema } from './auth.schemas.js';
@@ -118,6 +119,9 @@ export const registerAccount = async (input: RegisterInput, request: Request, do
                 department: input.department,
                 verificationDocumentUrl: documentUrl,
                 emergencyContact: input.emergencyContact,
+                // The personal boarding card exists from the moment the account is created.
+                boardingCode: generateBoardingCode(),
+                boardingCodeIssuedAt: new Date(),
               },
             }
           : undefined,

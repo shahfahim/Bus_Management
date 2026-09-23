@@ -10,6 +10,7 @@ import {
   UserStatus,
 } from '@prisma/client';
 import { env } from '../src/config/env.js';
+import { generateBoardingCode } from '../src/modules/boarding/boarding.codes.js';
 
 const prisma = new PrismaClient();
 
@@ -99,7 +100,7 @@ const main = async () => {
   });
   await prisma.studentProfile.upsert({
     where: { userId: student.id },
-    create: { userId: student.id, studentNumber: 'STU-001', department: 'Computer Science' },
+    create: { userId: student.id, studentNumber: 'STU-001', department: 'Computer Science', boardingCode: generateBoardingCode(), boardingCodeIssuedAt: new Date() },
     update: { department: 'Computer Science' },
   });
 

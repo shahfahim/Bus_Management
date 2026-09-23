@@ -139,6 +139,7 @@ enum CheckInResult {
   REJECTED_EXPIRED
   REJECTED_REVOKED
   REJECTED_WRONG_TRIP
+  REJECTED_NO_BOOKING
 }
 
 enum SubscriptionStatus {
@@ -354,6 +355,9 @@ model StudentProfile {
   program                 String?               @db.VarChar(160)
   academicYear            Int?
   emergencyContact        String?               @db.VarChar(32)
+  // Personal Code 128 boarding card: one per student, reused for every booking, reissuable.
+  boardingCode            String?               @unique @db.VarChar(32)
+  boardingCodeIssuedAt    DateTime?             @db.Timestamptz(3)
   createdAt               DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime              @updatedAt @db.Timestamptz(3)
   user                    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -444,9 +448,30 @@ model Bus {
   tripSchedules        TripSchedule[]
   maintenanceRecords   MaintenanceRecord[]
   checkIns             CheckIn[]
+  doorReaders          DoorReader[]
 
   @@index([status])
   @@map("buses")
+}
+
+/// A networked barcode reader mounted at a bus door. It authenticates with its own API key
+/// (only the SHA-256 hash is stored) and checks riders in against the bus's current trip.
+model DoorReader {
+  id         String    @id @default(uuid()) @db.Uuid
+  name       String    @db.VarChar(120)
+  busId      String    @db.Uuid
+  keyHash    String    @unique @db.VarChar(128)
+  keyPrefix  String    @db.VarChar(16)
+  isActive   Boolean   @default(true)
+  lastSeenAt DateTime? @db.Timestamptz(3)
+  revokedAt  DateTime? @db.Timestamptz(3)
+  createdAt  DateTime  @default(now()) @db.Timestamptz(3)
+  updatedAt  DateTime  @updatedAt @db.Timestamptz(3)
+  bus        Bus       @relation(fields: [busId], references: [id], onDelete: Restrict)
+  checkIns   CheckIn[]
+
+  @@index([busId])
+  @@map("door_readers")
 }
 
 model BusSeat {
@@ -755,7 +780,9 @@ model CheckIn {
   qrCodeId                String?        @db.Uuid
   tripId                  String         @db.Uuid
   busId                   String         @db.Uuid
-  scannedById             String         @db.Uuid
+  // A check-in is recorded by a staff member or by a bus door reader.
+  scannedById             String?        @db.Uuid
+  doorReaderId            String?        @db.Uuid
   result                  CheckInResult
   scannedTokenFingerprint String         @db.VarChar(128)
   denialReason            String?        @db.VarChar(255)
@@ -766,9 +793,11 @@ model CheckIn {
   qrCode                  BookingQrCode? @relation(fields: [qrCodeId], references: [id], onDelete: SetNull)
   trip                    Trip           @relation(fields: [tripId], references: [id], onDelete: Restrict)
   bus                     Bus            @relation(fields: [busId], references: [id], onDelete: Restrict)
-  scannedBy               User           @relation("CheckInScanner", fields: [scannedById], references: [id], onDelete: Restrict)
+  scannedBy               User?          @relation("CheckInScanner", fields: [scannedById], references: [id], onDelete: Restrict)
+  doorReader              DoorReader?    @relation(fields: [doorReaderId], references: [id], onDelete: SetNull)
 
   @@index([tripId, result, checkedInAt])
+  @@index([doorReaderId, checkedInAt])
   @@index([bookingId, checkedInAt])
   @@index([qrCodeId, result])
   @@index([scannedById, checkedInAt])

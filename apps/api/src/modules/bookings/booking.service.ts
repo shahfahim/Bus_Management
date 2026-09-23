@@ -718,12 +718,6 @@ export const cancelBooking = async ({ bookingId, studentId, reason, isAdmin = fa
         data: {
           ...transition,
           status: nextStatus,
-          qrCodes: {
-            updateMany: {
-              where: { status: 'ACTIVE' },
-              data: { status: 'REVOKED', revokedAt: now, revokeReason: 'Booking cancelled' },
-            },
-          },
         },
       });
       if (booking.subscriptionId && booking.subscription?.remainingTrips !== null) {

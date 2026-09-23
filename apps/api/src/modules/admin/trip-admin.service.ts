@@ -6,7 +6,6 @@ import {
   NotificationType,
   PaymentStatus,
   Prisma,
-  QrCodeStatus,
   Role,
   RouteStatus,
   SeatAllocationStatus,
@@ -342,10 +341,6 @@ const cancelRelatedBookings = async (tx: Prisma.TransactionClient, tripId: strin
     await tx.seatAllocation.updateMany({
       where: { bookingId: booking.id, status: { in: [SeatAllocationStatus.HELD, SeatAllocationStatus.CONFIRMED, SeatAllocationStatus.CHECKED_IN] } },
       data: { status: SeatAllocationStatus.RELEASED, releasedAt: now, releaseReason: 'Trip cancelled' },
-    });
-    await tx.bookingQrCode.updateMany({
-      where: { bookingId: booking.id, status: QrCodeStatus.ACTIVE },
-      data: { status: QrCodeStatus.REVOKED, revokedAt: now, revokeReason: 'Trip cancelled' },
     });
     if (refundRequired) {
       await tx.payment.updateMany({

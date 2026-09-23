@@ -436,3 +436,22 @@ export const checkInResultForFilter = (status: 'valid' | 'rejected' | 'revoked')
     ],
   };
 };
+
+export const doorReaderQuerySchema = adminListQuerySchema.extend({
+  busId: idSchema.optional(),
+});
+
+export const createDoorReaderSchema = z.object({
+  name: z.string().trim().min(2).max(120),
+  busId: idSchema,
+});
+
+export const updateDoorReaderSchema = z
+  .object({
+    name: z.string().trim().min(2).max(120).optional(),
+    busId: idSchema.optional(),
+    // The workspace edit form sends status; readers are either active or inactive here.
+    status: z.preprocess((value) => (typeof value === 'string' ? value.toLowerCase() : value), z.enum(['active', 'inactive']).optional()),
+    isActive: z.boolean().optional(),
+  })
+  .transform(({ status, isActive, ...rest }) => ({ ...rest, isActive: isActive ?? (status ? status === 'active' : undefined) }));

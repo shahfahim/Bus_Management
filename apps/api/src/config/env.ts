@@ -24,7 +24,6 @@ const schema = z
     DATABASE_POOL_TIMEOUT_SECONDS: z.coerce.number().int().min(5).max(120).default(30),
     JWT_ACCESS_SECRET: z.string().min(32),
     JWT_REFRESH_SECRET: z.string().min(32),
-    QR_SIGNING_SECRET: z.string().min(32),
     ACCESS_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(60).default(15),
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
     BOOKING_HOLD_MINUTES: z.coerce.number().int().min(5).max(60).default(15),
@@ -72,16 +71,16 @@ const schema = z
         message: 'SUPABASE_URL, a Supabase secret/service-role key, and SUPABASE_STORAGE_BUCKET must be configured together',
       });
     }
-    if (new Set([value.JWT_ACCESS_SECRET, value.JWT_REFRESH_SECRET, value.QR_SIGNING_SECRET]).size !== 3) {
+    if (value.JWT_ACCESS_SECRET === value.JWT_REFRESH_SECRET) {
       context.addIssue({
         code: z.ZodIssueCode.custom,
         path: ['JWT_ACCESS_SECRET'],
-        message: 'Access, refresh, and QR signing secrets must be distinct',
+        message: 'Access and refresh token secrets must be distinct',
       });
     }
     if (value.NODE_ENV === 'production') {
       const insecure = ['ChangeMe', 'replace-with', 'CHANGE_THIS'];
-      for (const key of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET', 'QR_SIGNING_SECRET'] as const) {
+      for (const key of ['JWT_ACCESS_SECRET', 'JWT_REFRESH_SECRET'] as const) {
         if (insecure.some((fragment) => value[key].includes(fragment))) {
           context.addIssue({ code: z.ZodIssueCode.custom, path: [key], message: `${key} must be rotated in production` });
         }
