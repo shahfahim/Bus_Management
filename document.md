@@ -11,7 +11,7 @@ UniRide is a web application built as a monorepo (npm workspaces). It separates 
 **Frontend (`apps/web`)**
 - **Core Framework**: React 19 with Vite.
 - **Routing**: `react-router-dom` with lazy-loaded pages and role-guarded routes.
-- **State & Data**: Context API for global state (Auth, Theme, Socket), custom hooks, and small repository classes over a shared `fetch` client.
+- **State & Data**: Context API for global state (Auth, Socket), custom hooks, and a small booking repository over a shared `fetch` client.
 - **Real-time**: `socket.io-client` for live GPS, seat availability, trip status and notifications.
 - **Mapping**: `leaflet` and `react-leaflet` with OpenStreetMap tiles.
 - **Offline & PWA**: `vite-plugin-pwa` (injectManifest) with a Workbox service worker that caches assets and API responses and handles Web Push.
@@ -42,6 +42,7 @@ Bus_Management/
 │   │   └── src/
 │   │       ├── config/env.ts         # Zod-validated environment variables
 │   │       ├── lib/                  # Shared server utilities
+│   │       │   ├── campus-time.ts        # Campus (Dhaka) day boundaries
 │   │       │   ├── booking-lock.ts       # Row locks shared by booking workflows
 │   │       │   ├── bus-schedule-lock.ts  # Advisory locks for bus scheduling/maintenance
 │   │       │   ├── errors.ts             # AppError, 404 and error handlers
@@ -84,10 +85,10 @@ Bus_Management/
 │           │   │                     # ProtectedRoute, ErrorBoundary, ui.tsx (shared UI kit)
 │           │   ├── animations/       # withAnimation transition wrapper
 │           │   └── charts/           # ChartFactory (Recharts)
-│           ├── contexts/             # AuthContext, SocketContext, ThemeContext
-│           ├── hooks/                # useLocationSharing (driver GPS), useRemoteData, useSocketEvent
+│           ├── contexts/             # AuthContext, SocketContext (reconnects and restores trip rooms)
+│           ├── hooks/                # useLocationSharing (driver GPS), useRemoteData
 │           ├── lib/                  # api.ts (fetch client + session refresh), format.ts,
-│           │                         # offline-cache.ts, ExportFacade.ts (CSV/PDF), ThemeManager.ts
+│           │                         # offline-cache.ts, ExportFacade.ts (CSV/PDF)
 │           ├── pages/
 │           │   ├── admin/            # AdminWorkspacePage (/admin/:section), AdminSchedulesPage
 │           │   ├── driver/           # Trips, trip detail, create trip, QR scanner, incidents
@@ -95,7 +96,7 @@ Bus_Management/
 │           │   │                     # subscriptions, ratings
 │           │   ├── shared/           # Notifications, lost & found
 │           │   └── AuthPage.tsx ...  # Auth, dashboard, profile, change password, 404
-│           ├── services/             # Auth/Booking/Trip repositories over the API client
+│           ├── services/             # Booking repository over the API client
 │           ├── styles/               # base, layout, components, modules, pages, responsive CSS
 │           ├── types/index.ts        # Frontend types mirroring API responses
 │           ├── App.tsx               # Routes and role guards

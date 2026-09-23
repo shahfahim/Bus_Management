@@ -75,11 +75,11 @@ Bus_Management/
 │       ├── public/              # Static assets (favicon, web manifest)
 │       └── src/
 │           ├── components/      # Reusable UI components (shell, maps, seat map, charts)
-│           ├── contexts/        # React context providers (Auth, Socket, Theme)
+│           ├── contexts/        # React context providers (Auth, Socket)
 │           ├── hooks/           # Custom hooks (location sharing, remote data, socket events)
 │           ├── lib/             # API client, formatting, exports, offline cache helpers
 │           ├── pages/           # Pages organized by role (admin, driver, student, shared)
-│           ├── services/        # Repository classes over the API client
+│           ├── services/        # Booking repository over the API client
 │           ├── styles/          # Core CSS variables, layout, and component styles
 │           ├── sw.ts            # Service worker: offline caching and Web Push
 │           └── App.tsx          # Application routing (RBAC protected routes)

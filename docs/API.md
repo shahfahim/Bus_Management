@@ -55,7 +55,7 @@ The browser client authenticates with secure, HTTP-only, same-site cookies. Sess
 | GET | `/driver/trip-setup/options` | Active assigned buses and campus preset for custom-trip setup |
 | POST | `/driver/trips` | Create a custom scheduled trip between any two validated map coordinates using an assigned bus |
 | POST | `/driver/trips/:id/start` | Start an assigned trip, at most 60 minutes before its scheduled departure |
-| POST | `/driver/trips/:id/end` | Complete an assigned trip |
+| POST | `/driver/trips/:id/end` | Complete a trip that has actually departed (a `DELAYED` trip that never started cannot be completed) |
 | GET | `/driver/trips/:id/passengers` | Passenger/check-in manifest |
 | POST | `/driver/location` | Throttled GPS sample (supports offline replay metadata) |
 | POST | `/driver/check-ins/scan` | Atomically validate and consume a QR |
