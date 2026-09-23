@@ -592,6 +592,76 @@ body .schedules-grid > *:nth-child(n + 4) { animation-delay: .18s; }
   body::before { animation: none; }
 }
 
+/* ---------- Boarding card ---------- */
+.boarding-card {
+  position: relative;
+  overflow: hidden;
+  width: min(100%, 560px);
+  margin-inline: auto;
+  padding: 22px;
+  border: 1px solid rgb(255 255 255 / 18%);
+  border-radius: 26px;
+  background:
+    radial-gradient(90% 70% at 100% 0%, rgb(103 200 182 / 35%), transparent 60%),
+    radial-gradient(70% 60% at 0% 100%, rgb(242 173 66 / 18%), transparent 60%),
+    linear-gradient(145deg, #0f3c35, #0a2a26);
+  box-shadow: 0 30px 60px -28px rgb(4 24 20 / 70%), inset 0 1px 0 rgb(255 255 255 / 14%);
+  color: #eaf4f1;
+  animation: cardDeal .8s var(--ease-out-expo) backwards;
+}
+.boarding-card::after {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgb(255 255 255 / 12%) 45%, transparent 60%);
+  content: "";
+  pointer-events: none;
+  transform: translateX(-100%);
+  animation: cardSheen 6s 1s ease-in-out infinite;
+}
+@keyframes cardDeal { from { opacity: 0; transform: translateY(24px) rotateX(18deg) scale(.96); } }
+@keyframes cardSheen { 0%, 60% { transform: translateX(-100%); } 100% { transform: translateX(100%); } }
+.boarding-card__header { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.boarding-card .brand strong { color: #fff; }
+.boarding-card .brand small { color: #9cc7bf; }
+.boarding-card__chip { display: inline-flex; align-items: center; gap: 6px; padding: 6px 11px; border: 1px solid rgb(255 255 255 / 16%); border-radius: 30px; background: rgb(255 255 255 / 8%); color: #bfe3dc; font-size: .66rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.boarding-card__holder { display: grid; grid-template-columns: 1fr auto; gap: 12px; margin: 22px 0 16px; }
+.boarding-card__holder div { display: flex; flex-direction: column; }
+.boarding-card__holder span { color: #9cc7bf; font-size: .62rem; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.boarding-card__holder strong { margin-top: 3px; font-size: 1.05rem; letter-spacing: -.01em; }
+.boarding-card__holder div:last-child { text-align: right; }
+.boarding-card__barcode { display: grid; place-items: center; padding: 6px; border-radius: 16px; background: #fff; box-shadow: inset 0 0 0 1px rgb(0 0 0 / 6%); }
+.boarding-barcode { width: 100%; max-width: 480px; height: auto; }
+.boarding-card__footer { display: flex; align-items: center; gap: 8px; margin-top: 14px; color: #9cc7bf; font-size: .68rem; }
+.boarding-card-help h2 { display: flex; align-items: center; gap: 8px; font-size: 1rem; }
+.boarding-card-help ol { display: grid; gap: 8px; margin: 10px 0 12px; padding-left: 20px; color: var(--ink-soft); font-size: .8rem; line-height: 1.55; }
+.boarding-card-help ol a { color: var(--primary); font-weight: 700; }
+.boarding-card-help > p { display: flex; align-items: center; gap: 7px; margin: 0; font-size: .74rem; }
+.travel-pass__board { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px; padding: 20px 23px; border-top: 1px dashed #b8cbc6; background: rgb(241 250 248 / 55%); }
+.travel-pass__board > svg { width: 34px; height: 34px; color: var(--primary); }
+.travel-pass__board h3 { margin-bottom: 2px; }
+.travel-pass__board p { margin: 0; font-size: .74rem; }
+@media (max-width: 640px) {
+  .travel-pass__board { grid-template-columns: 1fr; }
+  .boarding-card { padding: 16px; }
+}
+@media print {
+  body:has(.boarding-card) .app-shell__body > :not(main), body:has(.boarding-card) .sidebar, body:has(.boarding-card) .page-header__actions, body:has(.boarding-card) .boarding-card-help { display: none; }
+}
+
+body .admin-key-reveal { display: grid; gap: 12px; }
+body .admin-key-reveal code {
+  display: block;
+  padding: 14px;
+  overflow-wrap: anywhere;
+  border: 1px dashed var(--admin-border-strong);
+  border-radius: 12px;
+  background: rgb(255 255 255 / 80%);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: .85rem;
+  user-select: all;
+}
+body .admin-key-reveal p { margin: 0; color: var(--admin-muted); font-size: .8rem; line-height: 1.55; }
+
 /* Printing while a dialog is open (e.g. a payment receipt) prints only that dialog. */
 @media print {
   body::before, body::after { display: none; }

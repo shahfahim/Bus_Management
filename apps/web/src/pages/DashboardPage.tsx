@@ -8,7 +8,7 @@ import {
   CircleDollarSign,
   Clock3,
   Navigation,
-  QrCode,
+  ScanBarcode,
   Route as RouteIcon,
   Star,
   UsersRound,
@@ -98,7 +98,7 @@ function StudentDashboard({ bookings, summary }: { bookings: Booking[]; summary:
             </div>
             <div className="next-ride__meta"><span><BusFront aria-hidden="true" /> {upcoming.trip.bus?.registrationNumber ?? 'Bus pending'}</span><span>Seat <b>{upcoming.seatNumber}</b></span></div>
             <div className="card-actions">
-              <Link className="button button--primary button--md" to={`/student/bookings/${upcoming.id}`}><QrCode aria-hidden="true" size={17} /> View boarding pass</Link>
+              <Link className="button button--primary button--md" to={`/student/bookings/${upcoming.id}`}><ScanBarcode aria-hidden="true" size={17} /> View booking</Link>
               <Link className="button button--ghost button--md" to="/student/routes">Find another bus</Link>
             </div>
           </Card>
@@ -202,13 +202,12 @@ function QuickActions({ role }: { role: 'STUDENT' | 'DRIVER' | 'CONDUCTOR' | 'AD
   const actions = role === 'STUDENT'
     ? [
         { to: '/student/routes', icon: RouteIcon, title: 'Book a Ride', copy: 'Find trips and reserve seats' },
-        { to: '/student/bookings', icon: QrCode, title: 'My Passes', copy: 'Open your secure entry QR' },
+        { to: '/student/boarding-card', icon: ScanBarcode, title: 'Boarding card', copy: 'Your barcode for the bus door' },
         { to: '/student/subscriptions', icon: WalletCards, title: 'Travel passes', copy: 'Buy or review route passes' },
       ]
     : role === 'DRIVER' || role === 'CONDUCTOR'
       ? [
           { to: '/driver/trips', icon: Navigation, title: 'My Trips', copy: role === 'DRIVER' ? 'Start, track or end a trip' : 'See your assigned trips' },
-          { to: '/driver/check-in', icon: QrCode, title: 'Scanner', copy: 'Validate boarding passes' },
           // Incident reports are filed by the assigned driver only.
           ...(role === 'DRIVER' ? [{ to: '/driver/incidents', icon: AlertTriangle, title: 'Report Issue', copy: 'Log maintenance or delays' }] : []),
         ]

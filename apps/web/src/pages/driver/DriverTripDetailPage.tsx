@@ -1,8 +1,8 @@
-import { AlertTriangle, ArrowLeft, CheckCircle2, Flag, LocateFixed, Navigation, Play, QrCode, Square, UsersRound } from 'lucide-react';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, Flag, Keyboard, LocateFixed, Navigation, Play, Square, UsersRound } from 'lucide-react';
+import { type FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { RouteMap } from '../../components/LiveMap';
-import { Button, Card, EmptyState, InlineAlert, Modal, PageHeader, Pill, Skeleton, useToast } from '../../components/ui';
+import { Button, Card, EmptyState, Field, InlineAlert, Modal, PageHeader, Pill, Skeleton, useToast } from '../../components/ui';
 import { useSocket } from '../../contexts/SocketContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLocationSharing } from '../../hooks/useLocationSharing';
@@ -18,6 +18,9 @@ export function DriverTripDetailPage() {
   const [error, setError] = useState('');
   const [confirmAction, setConfirmAction] = useState<'start' | 'end'>();
   const [actionLoading, setActionLoading] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
+  const [manualError, setManualError] = useState('');
+  const [manualLoading, setManualLoading] = useState(false);
   const { notify } = useToast();
   const { user } = useAuth();
   const { socket } = useSocket();
@@ -78,6 +81,25 @@ export function DriverTripDetailPage() {
     finally { setActionLoading(false); }
   };
 
+  // Fallback for a broken door reader: type the code printed under the rider's barcode.
+  const manualCheckIn = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    setManualLoading(true); setManualError('');
+    try {
+      const result = await api.post<{ message: string }>(`/boarding/trips/${tripId}/check-ins`, { code: String(new FormData(form).get('code') ?? '') });
+      notify({ title: 'Passenger checked in', description: result.message, tone: 'success' });
+      form.reset();
+      setManualOpen(false);
+      const response = await api.get<unknown>(`/driver/trips/${tripId}/passengers?pageSize=200`);
+      setPassengers(asItems<Passenger>(response));
+    } catch (reason) {
+      setManualError(errorMessage(reason, 'This boarding card could not be checked in.'));
+    } finally {
+      setManualLoading(false);
+    }
+  };
+
   const checkedIn = useMemo(() => passengers.filter((passenger) => passenger.checkedInAt).length, [passengers]);
   if (loading) return <div className="page-stack"><Skeleton lines={2} /><Card><Skeleton lines={10} /></Card></div>;
   if (!trip) return <div className="page-stack"><Link className="back-link" to="/driver/trips"><ArrowLeft /> Assigned trips</Link><InlineAlert>{error || 'Trip not found.'}</InlineAlert></div>;
@@ -85,7 +107,7 @@ export function DriverTripDetailPage() {
   return (
     <div className="page-stack">
       <Link className="back-link" to="/driver/trips"><ArrowLeft aria-hidden="true" /> Assigned trips</Link>
-      <PageHeader actions={<div className="trip-control-actions">{isDriver && canStart && <Button disabled={tooEarly} icon={<Play aria-hidden="true" size={17} />} onClick={() => setConfirmAction('start')} title={tooEarly ? 'Trips open 60 minutes before departure' : undefined}>Start trip</Button>}{isDriver && underway && <Button icon={<Square aria-hidden="true" size={16} />} onClick={() => setConfirmAction('end')} variant="danger">End trip</Button>}{!finished && <Link className="button button--secondary button--md" to={`/driver/check-in?tripId=${trip.id}`}><QrCode aria-hidden="true" size={17} /> Scan passengers</Link>}</div>} description={`${formatDateTime(trip.departureTime)} · ${trip.bus?.registrationNumber}`} eyebrow="Active assignment" title={trip.route?.name ?? 'Trip controls'} />
+      <PageHeader actions={<div className="trip-control-actions">{isDriver && canStart && <Button disabled={tooEarly} icon={<Play aria-hidden="true" size={17} />} onClick={() => setConfirmAction('start')} title={tooEarly ? 'Trips open 60 minutes before departure' : undefined}>Start trip</Button>}{isDriver && underway && <Button icon={<Square aria-hidden="true" size={16} />} onClick={() => setConfirmAction('end')} variant="danger">End trip</Button>}{!finished && <Button icon={<Keyboard aria-hidden="true" size={17} />} onClick={() => { setManualError(''); setManualOpen(true); }} variant="secondary">Manual check-in</Button>}</div>} description={`${formatDateTime(trip.departureTime)} · ${trip.bus?.registrationNumber}`} eyebrow="Active assignment" title={trip.route?.name ?? 'Trip controls'} />
       {error && <InlineAlert>{error}</InlineAlert>}
       {isDriver && canStart && tooEarly && <InlineAlert tone="info">You can start this trip from 60 minutes before its scheduled departure.</InlineAlert>}
       {isDriver && underway && <InlineAlert tone={sharing.error ? 'warning' : 'success'}>{sharing.error ? <><strong>GPS warning:</strong> {sharing.error}</> : <><strong>Location is sharing.</strong> Updates adapt to movement to preserve device battery.{sharing.lastSentAt && ` Last sent ${formatTime(sharing.lastSentAt)}.`}</>}</InlineAlert>}
@@ -94,6 +116,13 @@ export function DriverTripDetailPage() {
         <Card className="passenger-manifest"><div className="card-heading"><div><h2>Passenger manifest</h2><p>{checkedIn} of {passengers.length} checked in</p></div><span className="manifest-count"><UsersRound aria-hidden="true" /> {passengers.length}</span></div><div className="manifest-progress"><span style={{ width: `${passengers.length ? (checkedIn / passengers.length) * 100 : 0}%` }} /></div>{passengers.length === 0 ? <EmptyState description="Confirmed passengers will appear here as bookings arrive." title="No passengers booked" /> : <div className="passenger-list">{passengers.map((passenger) => <div className="passenger-row" key={passenger.bookingId}><span className={passenger.checkedInAt ? 'check-avatar check-avatar--done' : 'check-avatar'}>{passenger.checkedInAt ? <CheckCircle2 aria-hidden="true" /> : passenger.seatNumber}</span><div><strong>{passenger.student.name}</strong><small>{passenger.student.studentId ?? passenger.reference}</small></div><span>Seat {passenger.seatNumber}</span>{passenger.checkedInAt ? <Pill tone="positive">Checked in</Pill> : <Pill>Waiting</Pill>}</div>)}</div>}</Card>
       </div>
       {isDriver && <Card className="trip-safety-bar"><AlertTriangle aria-hidden="true" /><div><strong>Hazard or emergency?</strong><span>Send the route, current GPS snapshot and severity to transport control.</span></div><Link className="button button--danger button--md" to={`/driver/incidents?tripId=${trip.id}`}><Flag aria-hidden="true" size={17} /> Report issue</Link></Card>}
+      <Modal description="Use this only if the door reader is not working. The code is printed under the rider's barcode." onClose={() => setManualOpen(false)} open={manualOpen} title="Manual check-in">
+        <form className="modal-form" onSubmit={(event) => void manualCheckIn(event)}>
+          {manualError && <InlineAlert>{manualError}</InlineAlert>}
+          <Field autoCapitalize="characters" autoComplete="off" label="Boarding code" name="code" placeholder="UR01 2345 6789 ABCD EF01 23" required spellCheck={false} />
+          <Button loading={manualLoading} type="submit">Check in passenger</Button>
+        </form>
+      </Modal>
       {isDriver && <Modal footer={<><Button onClick={() => setConfirmAction(undefined)} variant="ghost">Go back</Button><Button loading={actionLoading} onClick={() => void performAction()} variant={confirmAction === 'end' ? 'danger' : 'primary'}>{confirmAction === 'start' ? 'Start and share GPS' : 'End and finalise trip'}</Button></>} onClose={() => setConfirmAction(undefined)} open={Boolean(confirmAction)} title={confirmAction === 'start' ? 'Start this trip?' : 'End this trip?'}>{confirmAction === 'start' ? 'Passengers will see the live bus position. Keep location permission enabled until the trip ends.' : 'Only end the trip after the final stop. GPS sharing and further check-ins will stop.'}</Modal>}
     </div>
   );

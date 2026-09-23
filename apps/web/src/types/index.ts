@@ -111,8 +111,6 @@ export interface Booking {
   totalAmount: number;
   currency?: string;
   paymentStatus?: PaymentStatus;
-  qrToken?: string;
-  qrExpiresAt?: string;
   checkedInAt?: string;
   createdAt: string;
   cancelledAt?: string;
@@ -132,6 +130,13 @@ export interface Payment {
   receiptUrl?: string;
   paidAt?: string;
   createdAt: string;
+}
+
+export interface BoardingCard {
+  code: string;
+  issuedAt: string;
+  name: string;
+  studentId: string;
 }
 
 export interface PaymentReceipt {

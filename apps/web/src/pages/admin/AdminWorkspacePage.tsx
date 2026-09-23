@@ -31,6 +31,7 @@ type AdminSectionId =
   | 'incidents'
   | 'ratings'
   | 'notifications'
+  | 'door-readers'
 
 type FieldKind =
   | 'text'
@@ -564,6 +565,34 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { id: 'dismiss', label: 'Dismiss', tone: 'danger', visible: (row) => valueMatches(row.status, 'open', 'acknowledged') },
     ],
   },
+  'door-readers': {
+    id: 'door-readers',
+    title: 'Door readers',
+    singular: 'door reader',
+    description: 'Networked barcode readers at bus doors. Each reader checks riders in against its bus’s current trip using their personal boarding card.',
+    endpoint: '/admin/door-readers',
+    searchPlaceholder: 'Search reader or bus…',
+    columns: [
+      { key: 'name', label: 'Reader' },
+      { key: 'bus.fleetNumber', label: 'Bus' },
+      { key: 'keyHint', label: 'Key', mobileHidden: true },
+      { key: 'status', label: 'Status', kind: 'status' },
+      { key: 'lastSeenAt', label: 'Last scan', kind: 'datetime', mobileHidden: true },
+      { key: 'checkInCount', label: 'Scans', kind: 'number', mobileHidden: true },
+    ],
+    fields: [
+      { name: 'name', label: 'Reader name', kind: 'text', required: true, placeholder: 'e.g. BUS-04 front door' },
+      { name: 'busId', label: 'Bus', kind: 'select', required: true, lookup: '/admin/buses?pageSize=100', lookupLabel: ['fleetNumber', 'registrationNumber'] },
+      { name: 'status', label: 'Status', kind: 'select', required: true, options: [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }], defaultValue: 'active' },
+    ],
+    filters: [],
+    canCreate: true,
+    canEdit: true,
+    canDelete: true,
+    createLabel: 'Add door reader',
+    // Rotating also brings a revoked reader back with a fresh key.
+    actions: [{ id: 'rotate-key', label: 'Rotate key', tone: 'warning' }],
+  },
   ratings: {
     id: 'ratings',
     title: 'Driver ratings',
@@ -625,8 +654,8 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
 
 const SECTION_GROUPS: Array<{ label: string; items: Array<{ id: 'overview' | 'reports' | AdminSectionId; label: string }> }> = [
   { label: 'Monitor', items: [{ id: 'overview', label: 'Overview' }, { id: 'reports', label: 'Reports' }, { id: 'trips', label: 'Trips' }, { id: 'assignments', label: 'Driver assignments' }, { id: 'incidents', label: 'Incidents' }] },
-  { label: 'Network', items: [{ id: 'buses', label: 'Buses' }, { id: 'routes', label: 'Routes' }, { id: 'stops', label: 'Stops' }, { id: 'maintenance', label: 'Maintenance' }, { id: 'road-alerts', label: 'Road alerts' }] },
-  { label: 'People & service', items: [{ id: 'bookings', label: 'Bookings' }, { id: 'payments', label: 'Payments' }, { id: 'checkins', label: 'QR check-ins' }] },
+  { label: 'Network', items: [{ id: 'buses', label: 'Buses' }, { id: 'routes', label: 'Routes' }, { id: 'stops', label: 'Stops' }, { id: 'maintenance', label: 'Maintenance' }, { id: 'road-alerts', label: 'Road alerts' }, { id: 'door-readers', label: 'Door readers' }] },
+  { label: 'People & service', items: [{ id: 'bookings', label: 'Bookings' }, { id: 'payments', label: 'Payments' }, { id: 'checkins', label: 'Check-ins' }] },
   { label: 'Community', items: [{ id: 'lost-found', label: 'Lost & found' }, { id: 'ratings', label: 'Driver ratings' }, { id: 'notifications', label: 'Notifications' }] },
 ]
 
@@ -802,6 +831,7 @@ function AdminIcon({ name }: { name: string }) {
     incidents: <><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5m0 3h.01"/></>,
     ratings: <path d="m12 2 3 6 6.5 1-4.7 4.6 1.1 6.4-5.9-3.1L6.1 20l1.1-6.4L2.5 9 9 8l3-6Z"/>,
     notifications: <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></>,
+    'door-readers': <><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14"/><path d="M3 3h4M17 3h4M3 21h4M17 21h4"/></>,
   }
   return <svg className="admin-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">{paths[name] ?? paths.overview}</svg>
 }
@@ -837,7 +867,28 @@ function AdminModal({ title, description, onClose, children, footer }: { title: 
   )
 }
 
-function ResourceFormModal({ config, record, onClose, onSaved }: { config: ResourceConfig; record?: AdminRecord; onClose: () => void; onSaved: (message: string) => void }) {
+// Shown once after creating a reader or rotating its key: the server keeps only a hash.
+function ReaderKeyModal({ apiKey, onClose }: { apiKey: string; onClose: () => void }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(apiKey); setCopied(true) } catch { setCopied(false) }
+  }
+  return (
+    <AdminModal
+      title="Door reader API key"
+      description="Copy this key into the reader now. It will not be shown again."
+      onClose={onClose}
+      footer={<><button className="admin-button admin-button--ghost" type="button" onClick={onClose}>Done</button><button className="admin-button admin-button--primary" type="button" onClick={() => void copy()}>{copied ? 'Copied' : 'Copy key'}</button></>}
+    >
+      <div className="admin-key-reveal">
+        <code>{apiKey}</code>
+        <p>Configure the reader to send each scan as <strong>POST /api/boarding/check-ins</strong> with the header <strong>X-Door-Reader-Key</strong> set to this key and the scanned code as the body. See docs/DOOR_READERS.md.</p>
+      </div>
+    </AdminModal>
+  )
+}
+
+function ResourceFormModal({ config, record, onClose, onSaved }: { config: ResourceConfig; record?: AdminRecord; onClose: () => void; onSaved: (message: string, secret?: string) => void }) {
   const editing = Boolean(record)
   const fields = useMemo(() => config.fields.filter((field) => !(editing && field.createOnly)), [config.fields, editing])
   const [values, setValues] = useState<Record<string, FormValue>>(() => initialFormValues(fields, record))
@@ -905,9 +956,11 @@ function ResourceFormModal({ config, record, onClose, onSaved }: { config: Resou
         const existingUrl = filePreviews[f.name]
         if (existingUrl && !existingUrl.startsWith('blob:')) payload[f.name] = existingUrl
       })
-      if (editing && record) await api.patch(`${config.endpoint}/${encodeURIComponent(record.id)}`, payload)
-      else await api.post(config.endpoint, payload)
-      onSaved(`${humanize(config.singular)} ${editing ? 'updated' : 'created'} successfully.`)
+      const saved = editing && record
+        ? await api.patch<{ apiKey?: string }>(`${config.endpoint}/${encodeURIComponent(record.id)}`, payload)
+        : await api.post<{ apiKey?: string }>(config.endpoint, payload)
+      // Door readers return their API key once, on creation.
+      onSaved(`${humanize(config.singular)} ${editing ? 'updated' : 'created'} successfully.`, saved?.apiKey)
     } catch (submitError) {
       setError(getErrorMessage(submitError))
     } finally {
@@ -1263,9 +1316,11 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
     setSort((current) => current?.key === key ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' } : { key, direction: 'asc' })
   }
 
-  const closeAndReload = (message: string) => {
+  const [revealedKey, setRevealedKey] = useState<string | null>(null)
+  const closeAndReload = (message: string, secret?: string) => {
     setFormRecord(null)
     onToast({ tone: 'success', message })
+    if (secret) setRevealedKey(secret)
     void load()
   }
 
@@ -1291,7 +1346,10 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
   }
 
   const deleteRecord = async (record: AdminRecord) => {
-    if (!window.confirm(`Delete this ${config.singular}? This action cannot be undone.`)) return
+    const confirmation = config.id === 'door-readers'
+      ? 'Remove this door reader? A reader that has scanned riders is revoked (kept for the audit trail) instead of deleted.'
+      : `Delete this ${config.singular}? This action cannot be undone.`
+    if (!window.confirm(confirmation)) return
     setBusyRow(record.id)
     try {
       await api.delete(`${config.endpoint}/${encodeURIComponent(record.id)}`)
@@ -1314,6 +1372,7 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
       suspend: 'Suspend this user account? They will be signed out and unable to sign in.',
       hide: 'Hide this rating comment from public views?',
       reactivate: 'Reactivate this account? The user will be able to sign in again.',
+      'rotate-key': 'Issue a new key for this reader? The current key stops working immediately; update the device with the new key.',
       dismiss: 'Dismiss this incident? A reason will be recorded and the report will be closed.',
     }
     if (confirmations[action.id] && !window.confirm(confirmations[action.id])) return
@@ -1324,6 +1383,10 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
       else if (action.id === 'cancel') await api.post(`${config.endpoint}/${encodedId}/cancel`, {})
       else if (action.id === 'revoke') await api.post(`${config.endpoint}/${encodedId}/revoke`, {})
       else if (action.id === 'resend') await api.post(`${config.endpoint}/${encodedId}/resend`, { failedOnly: true })
+      else if (action.id === 'rotate-key') {
+        const rotated = await api.post<{ apiKey: string }>(`${config.endpoint}/${encodedId}/rotate-key`, {})
+        setRevealedKey(rotated.apiKey)
+      }
       else {
         const statusByAction: Record<string, string> = { approve: 'active', reactivate: 'active', delay: 'delayed', suspend: 'suspended', complete: 'completed', resolve: 'resolved', verify: 'verified', hide: 'hidden', publish: 'published', acknowledge: 'acknowledged', dismiss: 'dismissed' }
         const payload: Record<string, unknown> = { status: statusByAction[action.id] }
@@ -1413,6 +1476,7 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
 
       {formRecord && <ResourceFormModal config={activeConfig} record={formRecord === 'new' ? undefined : formRecord} onClose={() => setFormRecord(null)} onSaved={closeAndReload} />}
       {detailRecord && <RecordDetailsModal config={activeConfig} record={detailRecord} onClose={() => setDetailRecord(null)} onChanged={refreshDetail} onToast={onToast} />}
+      {revealedKey && <ReaderKeyModal apiKey={revealedKey} onClose={() => setRevealedKey(null)} />}
     </section>
   )
 }

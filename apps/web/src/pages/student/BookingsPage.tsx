@@ -1,4 +1,4 @@
-import { CalendarClock, ChevronLeft, ChevronRight, MapPin, QrCode, SearchX, TicketCheck, XCircle } from 'lucide-react';
+import { CalendarClock, ChevronLeft, ChevronRight, Eye, MapPin, SearchX, TicketCheck, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Card, EmptyState, InlineAlert, Modal, PageHeader, Pill, SelectField, Skeleton, useToast } from '../../components/ui';
@@ -83,7 +83,7 @@ function BookingCard({ booking, onCancel }: { booking: Booking; onCancel: () => 
     <Card className="booking-card">
       <div className="booking-card__date"><span>{new Date(booking.trip?.departureTime ?? booking.createdAt).toLocaleDateString(undefined, { month: 'short' })}</span><strong>{new Date(booking.trip?.departureTime ?? booking.createdAt).getDate()}</strong></div>
       <div className="booking-card__main"><div className="booking-card__title"><div><h2>{booking.trip?.route?.name ?? 'University shuttle'}</h2><p>{booking.reference}</p></div><Pill>{booking.status}</Pill></div><div className="booking-card__meta"><span><CalendarClock aria-hidden="true" /> {formatDateTime(booking.trip?.departureTime)}</span><span><MapPin aria-hidden="true" /> {booking.boardingStop?.name ?? booking.trip?.route?.origin}</span><span><TicketCheck aria-hidden="true" /> Seat {booking.seatNumber}</span><span>{formatMoney(booking.totalAmount, booking.currency)}{booking.paymentStatus ? ` · ${titleCase(booking.paymentStatus)}` : ''}</span></div></div>
-      <div className="booking-card__actions"><Link className="button button--secondary button--md" to={`/student/bookings/${booking.id}`}><QrCode aria-hidden="true" size={17} /> {booking.qrToken ? 'Open pass' : 'View details'}</Link>{canCancel && <Button icon={<XCircle aria-hidden="true" size={17} />} onClick={onCancel} variant="ghost">Cancel</Button>}</div>
+      <div className="booking-card__actions"><Link className="button button--secondary button--md" to={`/student/bookings/${booking.id}`}><Eye aria-hidden="true" size={17} /> View details</Link>{canCancel && <Button icon={<XCircle aria-hidden="true" size={17} />} onClick={onCancel} variant="ghost">Cancel</Button>}</div>
     </Card>
   );
 }

@@ -15,7 +15,7 @@ import {
   Navigation,
   PanelLeftClose,
   PanelLeftOpen,
-  QrCode,
+  ScanBarcode,
   Route as RouteIcon,
   PiggyBank,
   Shield,
@@ -54,6 +54,7 @@ const roleNavigation: Record<Role, NavItem[]> = {
   STUDENT: [
     { label: 'Book a Ride', to: '/student/routes', icon: RouteIcon },
     { label: 'Live Buses', to: '/student/live-buses', icon: MapIcon },
+    { label: 'Boarding card', to: '/student/boarding-card', icon: ScanBarcode },
     { label: 'My Bookings', to: '/student/bookings', icon: BookOpenCheck },
     { label: 'Travel passes', to: '/student/subscriptions', icon: WalletCards },
     { label: 'Payments', to: '/student/payments', icon: CreditCard },
@@ -62,13 +63,11 @@ const roleNavigation: Record<Role, NavItem[]> = {
   ],
   DRIVER: [
     { label: 'My Trips', to: '/driver/trips', icon: Navigation },
-    { label: 'Scanner', to: '/driver/check-in', icon: QrCode },
     { label: 'Report Issue', to: '/driver/incidents', icon: LifeBuoy },
   ],
   // Incident reports are driver-only (page and API), so conductors do not get that entry.
   CONDUCTOR: [
     { label: 'My Trips', to: '/driver/trips', icon: Navigation },
-    { label: 'Scanner', to: '/driver/check-in', icon: QrCode },
   ],
   ADMIN: [
     { label: 'Workspace', to: '/admin/overview', icon: Gauge },

@@ -18,13 +18,13 @@ const BookingDetailPage = lazy(() => import('./pages/student/BookingDetailPage')
 const PaymentsPage = lazy(() => import('./pages/student/PaymentsPage').then((module) => ({ default: module.PaymentsPage })));
 const ExpensesPage = lazy(() => import('./pages/student/ExpensesPage').then((module) => ({ default: module.ExpensesPage })));
 const SubscriptionsPage = lazy(() => import('./pages/student/SubscriptionsPage').then((module) => ({ default: module.SubscriptionsPage })));
+const BoardingCardPage = lazy(() => import('./pages/student/BoardingCardPage').then((module) => ({ default: module.BoardingCardPage })));
 const RatingsPage = lazy(() => import('./pages/student/RatingsPage').then((module) => ({ default: module.RatingsPage })));
 const NotificationsPage = lazy(() => import('./pages/shared/NotificationsPage').then((module) => ({ default: module.NotificationsPage })));
 const LostFoundPage = lazy(() => import('./pages/shared/LostFoundPage').then((module) => ({ default: module.LostFoundPage })));
 const DriverTripsPage = lazy(() => import('./pages/driver/DriverTripsPage').then((module) => ({ default: module.DriverTripsPage })));
 const CreateDriverTripPage = lazy(() => import('./pages/driver/CreateDriverTripPage').then((module) => ({ default: module.CreateDriverTripPage })));
 const DriverTripDetailPage = lazy(() => import('./pages/driver/DriverTripDetailPage').then((module) => ({ default: module.DriverTripDetailPage })));
-const QrScannerPage = lazy(() => import('./pages/driver/QrScannerPage').then((module) => ({ default: module.QrScannerPage })));
 const IncidentPage = lazy(() => import('./pages/driver/IncidentPage').then((module) => ({ default: module.IncidentPage })));
 const AdminWorkspacePage = lazy(() => import('./pages/admin/AdminWorkspacePage').then((module) => ({ default: module.AdminWorkspacePage })));
 const AdminSchedulesPage = lazy(() => import('./pages/admin/AdminSchedulesPage').then((module) => ({ default: module.AdminSchedulesPage })));
@@ -60,11 +60,11 @@ export default function App() {
           <Route element={<RoleGuard roles={['STUDENT']}><ExpensesPage /></RoleGuard>} path="student/expenses" />
           <Route element={<RoleGuard roles={['STUDENT']}><SubscriptionsPage /></RoleGuard>} path="student/subscriptions" />
           <Route element={<RoleGuard roles={['STUDENT']}><RatingsPage /></RoleGuard>} path="student/ratings" />
+          <Route element={<RoleGuard roles={['STUDENT']}><BoardingCardPage /></RoleGuard>} path="student/boarding-card" />
 
           <Route element={<RoleGuard roles={['DRIVER', 'CONDUCTOR']}><DriverTripsPage /></RoleGuard>} path="driver/trips" />
           <Route element={<RoleGuard roles={['DRIVER']}><CreateDriverTripPage /></RoleGuard>} path="driver/trips/new" />
           <Route element={<RoleGuard roles={['DRIVER', 'CONDUCTOR']}><DriverTripDetailPage /></RoleGuard>} path="driver/trips/:tripId" />
-          <Route element={<RoleGuard roles={['DRIVER', 'CONDUCTOR']}><QrScannerPage /></RoleGuard>} path="driver/check-in" />
           <Route element={<RoleGuard roles={['DRIVER']}><IncidentPage /></RoleGuard>} path="driver/incidents" />
 
           <Route element={<RoleGuard roles={['ADMIN']}><Navigate replace to="/admin/overview" /></RoleGuard>} path="admin" />

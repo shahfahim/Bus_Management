@@ -9,7 +9,6 @@ import { formatDateTime, formatMoney } from '../../lib/format';
 import type { Booking } from '../../types';
 
 interface CheckoutResponse { checkoutUrl?: string; url?: string; paymentId?: string }
-interface QrResponse { qrToken?: string; token?: string; expiresAt?: string }
 
 export function BookingDetailPage() {
   const { bookingId = '' } = useParams();
@@ -26,18 +25,7 @@ export function BookingDetailPage() {
     setLoading(true);
     setError('');
     try {
-      const current = unwrap(await api.get<Booking | { data: Booking }>(`/bookings/${bookingId}`));
-      if (current.status === 'CONFIRMED' && !current.checkedInAt) {
-        // The pass is optional: an ended trip has no QR, but the booking must still show.
-        try {
-          const qr = unwrap(await api.get<QrResponse | { data: QrResponse }>(`/bookings/${bookingId}/qr`));
-          setBooking({ ...current, qrToken: qr.qrToken ?? qr.token, qrExpiresAt: qr.expiresAt });
-        } catch {
-          setBooking(current);
-        }
-      } else {
-        setBooking(current);
-      }
+      setBooking(unwrap(await api.get<Booking | { data: Booking }>(`/bookings/${bookingId}`)));
     }
     catch (reason) { setError(errorMessage(reason, 'Could not load this booking.')); }
     finally { setLoading(false); }
