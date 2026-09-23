@@ -21,6 +21,12 @@ books and pays again.
 The barcode holds only a random identifier (`UR` + 20 hex digits). It contains no trip, stop or
 personal data; everything is looked up at scan time.
 
+Because of that, routes, stops and trips an administrator adds or changes work with every existing
+card immediately. The student's **Boarding card** page lists, live from their bookings, the upcoming
+trips the card will board (route, boarding and destination stop, time, bus and seat, and whether the
+booking is paid). It refreshes when a booking changes, when the student returns to the page, and
+every minute while it is open.
+
 ## Setting up a reader
 
 1. In **Admin → Door readers**, choose **Add door reader**, give it a name and pick its bus.

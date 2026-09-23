@@ -2,6 +2,7 @@ import { BusFront, Info, RefreshCcw, ScanBarcode, ShieldCheck } from 'lucide-rea
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { BoardingBarcode } from '../../components/BoardingBarcode';
+import { BoardingCardTrips } from '../../components/BoardingCardTrips';
 import { Brand } from '../../components/Brand';
 import { Button, Card, InlineAlert, Modal, PageHeader, Skeleton, useToast } from '../../components/ui';
 import { api, errorMessage } from '../../lib/api';
@@ -64,6 +65,7 @@ export function BoardingCardPage() {
           </footer>
         </article>
       )}
+      {card && <BoardingCardTrips />}
       <Card className="boarding-card-help">
         <h2><Info aria-hidden="true" size={18} /> How boarding works</h2>
         <ol>

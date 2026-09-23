@@ -645,8 +645,35 @@ body .schedules-grid > *:nth-child(n + 4) { animation-delay: .18s; }
   .boarding-card { padding: 16px; }
 }
 @media print {
-  body:has(.boarding-card) .app-shell__body > :not(main), body:has(.boarding-card) .sidebar, body:has(.boarding-card) .page-header__actions, body:has(.boarding-card) .boarding-card-help { display: none; }
+  body:has(.boarding-card) .app-shell__body > :not(main), body:has(.boarding-card) .sidebar, body:has(.boarding-card) .page-header__actions, body:has(.boarding-card) .boarding-card-help, body:has(.boarding-card) .card-trips { display: none; }
 }
+
+/* Trips the boarding card is good for, listed live under the card. */
+.card-trips { display: grid; gap: 14px; }
+.card-trips__updated { display: inline-flex; align-items: center; gap: 7px; color: var(--ink-faint); font-size: .66rem; white-space: nowrap; }
+.card-trips__list { display: grid; gap: 10px; margin: 0; padding: 0; list-style: none; }
+.card-trips__item {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  background: rgb(255 255 255 / 55%);
+  animation: itemRise .55s var(--ease-out-expo) backwards;
+}
+.card-trips__item:nth-child(2) { animation-delay: .06s; }
+.card-trips__item:nth-child(n + 3) { animation-delay: .12s; }
+.card-trips__main { display: grid; gap: 6px; min-width: 0; }
+.card-trips__title { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.card-trips__title strong { overflow: hidden; font-size: .86rem; text-overflow: ellipsis; white-space: nowrap; }
+.card-trips__stops { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin: 0; color: var(--ink); font-size: .76rem; font-weight: 650; }
+.card-trips__stops svg { color: var(--primary); }
+.card-trips__meta { display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--ink-faint); font-size: .68rem; }
+.card-trips__meta span { display: inline-flex; align-items: center; gap: 5px; }
+.card-trips__note { margin: 0; color: var(--ink-faint); font-size: .7rem; }
+@media (max-width: 640px) { .card-trips__item { grid-template-columns: 1fr; } }
 
 body .admin-key-reveal { display: grid; gap: 12px; }
 body .admin-key-reveal code {
