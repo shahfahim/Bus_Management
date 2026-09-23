@@ -4,7 +4,7 @@ import { Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { Brand } from '../components/Brand';
 import { Button, Field, InlineAlert } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
-import { errorMessage } from '../lib/api';
+import { api, errorMessage, unwrap } from '../lib/api';
 
 interface LocationState {
   from?: { pathname?: string };
@@ -53,22 +53,13 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
           if (value !== undefined) formData.append(key, value);
         }
         
-        const documentFile = form.get('document');
-        if (documentFile instanceof File && documentFile.size > 0) {
-          formData.append('document', documentFile);
-        }
+        // The picked or dropped file lives in state (a dropped file never reaches the hidden input).
+        if (!docFile) throw new Error('Upload your student ID card or payment slip so an administrator can verify you.');
+        if (docFile.size > 5 * 1024 * 1024) throw new Error('The document must be 5 MB or smaller.');
+        formData.append('document', docFile);
 
-        const response = await fetch('/api/auth/register', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.error?.message || 'Registration failed');
-        }
-        
-        const registration = await response.json();
+        // Through the API client so the configured API origin and detailed validation errors apply.
+        const registration = unwrap(await api.post<{ approvalRequired?: boolean } | { data: { approvalRequired?: boolean } }>('/auth/register', formData));
         if (registration.approvalRequired) {
           setMode('login');
           setNotice('Account submitted. A transport administrator must verify and activate it before you can sign in.');
@@ -184,7 +175,7 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
                             padding: '4px 10px', borderRadius: '6px',
                             border: '1px solid rgba(192,57,43,0.35)', color: '#c0392b',
                             fontSize: '0.67rem', fontWeight: 700, cursor: 'pointer',
-                          }} onClick={(e) => { e.stopPropagation(); setDocFile(null); setDocPreview(''); }}>
+                          }} onClick={(e) => { e.stopPropagation(); setDocFile(null); setDocPreview(''); const input = document.getElementById('document') as HTMLInputElement | null; if (input) input.value = ''; }}>
                             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6"/></svg>
                             Remove
                           </span>
@@ -203,7 +194,6 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
                     accept="image/jpeg,image/png,image/webp,application/pdf"
                     id="document"
                     name="document"
-                    required
                     style={{ display: 'none' }}
                     type="file"
                     onChange={(e) => {

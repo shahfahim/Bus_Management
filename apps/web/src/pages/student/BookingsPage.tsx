@@ -3,7 +3,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Button, Card, EmptyState, InlineAlert, Modal, PageHeader, Pill, SelectField, Skeleton, useToast } from '../../components/ui';
 import { api, asItems, errorMessage, unwrap, withQuery } from '../../lib/api';
-import { formatDateTime, formatMoney } from '../../lib/format';
+import { formatDateTime, formatMoney, titleCase } from '../../lib/format';
 import type { Booking, BookingStatus } from '../../types';
 
 export function BookingsPage() {
@@ -77,11 +77,12 @@ export function BookingsPage() {
 }
 
 function BookingCard({ booking, onCancel }: { booking: Booking; onCancel: () => void }) {
-  const canCancel = ['PENDING', 'CONFIRMED'].includes(booking.status) && !booking.checkedInAt && (new Date(booking.trip?.departureTime ?? 0).getTime() > Date.now() || ['SCHEDULED', 'BOARDING', 'IN_PROGRESS', 'DELAYED'].includes(booking.trip?.status ?? ''));
+  // Mirrors the server rule: riders can cancel only until the trip departs.
+  const canCancel = statusCanCancel(booking.status) && !booking.checkedInAt && ['SCHEDULED', 'BOARDING', 'DELAYED'].includes(booking.trip?.status ?? '');
   return (
     <Card className="booking-card">
       <div className="booking-card__date"><span>{new Date(booking.trip?.departureTime ?? booking.createdAt).toLocaleDateString(undefined, { month: 'short' })}</span><strong>{new Date(booking.trip?.departureTime ?? booking.createdAt).getDate()}</strong></div>
-      <div className="booking-card__main"><div className="booking-card__title"><div><h2>{booking.trip?.route?.name ?? 'University shuttle'}</h2><p>{booking.reference}</p></div><Pill>{booking.status}</Pill></div><div className="booking-card__meta"><span><CalendarClock aria-hidden="true" /> {formatDateTime(booking.trip?.departureTime)}</span><span><MapPin aria-hidden="true" /> {booking.boardingStop?.name ?? booking.trip?.route?.origin}</span><span><TicketCheck aria-hidden="true" /> Seat {booking.seatNumber}</span><span>{formatMoney(booking.totalAmount, booking.currency)} · {booking.paymentStatus}</span></div></div>
+      <div className="booking-card__main"><div className="booking-card__title"><div><h2>{booking.trip?.route?.name ?? 'University shuttle'}</h2><p>{booking.reference}</p></div><Pill>{booking.status}</Pill></div><div className="booking-card__meta"><span><CalendarClock aria-hidden="true" /> {formatDateTime(booking.trip?.departureTime)}</span><span><MapPin aria-hidden="true" /> {booking.boardingStop?.name ?? booking.trip?.route?.origin}</span><span><TicketCheck aria-hidden="true" /> Seat {booking.seatNumber}</span><span>{formatMoney(booking.totalAmount, booking.currency)}{booking.paymentStatus ? ` · ${titleCase(booking.paymentStatus)}` : ''}</span></div></div>
       <div className="booking-card__actions"><Link className="button button--secondary button--md" to={`/student/bookings/${booking.id}`}><QrCode aria-hidden="true" size={17} /> {booking.qrToken ? 'Open pass' : 'View details'}</Link>{canCancel && <Button icon={<XCircle aria-hidden="true" size={17} />} onClick={onCancel} variant="ghost">Cancel</Button>}</div>
     </Card>
   );

@@ -56,7 +56,7 @@ async function parseResponse(response: Response) {
 
 let refreshRequest: Promise<boolean> | null = null;
 
-async function refreshSession() {
+export async function refreshSession() {
   if (!refreshRequest) {
     refreshRequest = fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
@@ -128,6 +128,16 @@ export function asItems<T>(payload: unknown): T[] {
 }
 
 export function errorMessage(error: unknown, fallback = 'Something went wrong. Please try again.') {
+  // Validation failures carry per-field reasons; show the first one instead of a generic message.
+  if (error instanceof ApiError && error.code === 'VALIDATION_ERROR') {
+    const details = error.details as { fieldErrors?: Record<string, string[] | undefined>; formErrors?: string[] } | undefined;
+    const [field, messages] = Object.entries(details?.fieldErrors ?? {}).find(([, value]) => value?.length) ?? [];
+    if (field && messages?.[0]) {
+      const label = field.replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+      return `${label.charAt(0).toUpperCase()}${label.slice(1)}: ${messages[0]}`;
+    }
+    if (details?.formErrors?.[0]) return details.formErrors[0];
+  }
   if (error instanceof ApiError && error.status >= 500) {
     return 'The transport service is temporarily unavailable. Please try again shortly.';
   }

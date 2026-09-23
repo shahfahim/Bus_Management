@@ -34,6 +34,14 @@ describe('API client', () => {
     expect(sessionStorage.getItem('uniride.access-token')).toBeNull();
   });
 
+  it('shows the first field reason for validation failures', () => {
+    const error = new ApiError('Request validation failed', 400, 'VALIDATION_ERROR', {
+      formErrors: [],
+      fieldErrors: { newPassword: ['String must contain at least 12 character(s)'] },
+    });
+    expect(errorMessage(error)).toBe('New password: String must contain at least 12 character(s)');
+  });
+
   it('turns service and network failures into actionable messages', () => {
     expect(errorMessage(new ApiError('Internal error', 503))).toBe(
       'The transport service is temporarily unavailable. Please try again shortly.',

@@ -1,6 +1,6 @@
 import { ArrowLeft, CreditCard, Download, MapPin, RefreshCcw, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { BookingPass } from '../../components/BookingPass';
 import { LiveTripMap } from '../../components/LiveMap';
 import { Button, Card, InlineAlert, Modal, PageHeader, Pill, Skeleton, useToast } from '../../components/ui';
@@ -13,6 +13,7 @@ interface QrResponse { qrToken?: string; token?: string; expiresAt?: string }
 
 export function BookingDetailPage() {
   const { bookingId = '' } = useParams();
+  const [searchParams] = useSearchParams();
   const { notify } = useToast();
   const [booking, setBooking] = useState<Booking>();
   const [loading, setLoading] = useState(true);
@@ -27,8 +28,13 @@ export function BookingDetailPage() {
     try {
       const current = unwrap(await api.get<Booking | { data: Booking }>(`/bookings/${bookingId}`));
       if (current.status === 'CONFIRMED' && !current.checkedInAt) {
-        const qr = unwrap(await api.get<QrResponse | { data: QrResponse }>(`/bookings/${bookingId}/qr`));
-        setBooking({ ...current, qrToken: qr.qrToken ?? qr.token, qrExpiresAt: qr.expiresAt });
+        // The pass is optional: an ended trip has no QR, but the booking must still show.
+        try {
+          const qr = unwrap(await api.get<QrResponse | { data: QrResponse }>(`/bookings/${bookingId}/qr`));
+          setBooking({ ...current, qrToken: qr.qrToken ?? qr.token, qrExpiresAt: qr.expiresAt });
+        } catch {
+          setBooking(current);
+        }
       } else {
         setBooking(current);
       }
@@ -37,6 +43,22 @@ export function BookingDetailPage() {
     finally { setLoading(false); }
   }, [bookingId]);
   useEffect(() => { void load(); }, [load]);
+
+  // Back from Stripe: the webhook confirms the payment moments later, so re-check briefly.
+  const checkout = searchParams.get('checkout');
+  const awaitingConfirmation = checkout === 'success' && booking?.status === 'PENDING';
+  useEffect(() => {
+    if (!awaitingConfirmation) return undefined;
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      void api.get<Booking | { data: Booking }>(`/bookings/${bookingId}`)
+        .then((response) => { if (unwrap(response).status !== 'PENDING') void load(); })
+        .catch(() => undefined);
+      if (attempts >= 10) window.clearInterval(timer);
+    }, 3000);
+    return () => window.clearInterval(timer);
+  }, [awaitingConfirmation, bookingId, load]);
 
   const pay = async () => {
     setActionLoading(true);
@@ -72,14 +94,17 @@ export function BookingDetailPage() {
 
   if (loading) return <div className="page-stack"><Skeleton lines={2} /><Card><Skeleton lines={9} /></Card></div>;
   if (!booking) return <div className="page-stack"><Link className="back-link" to="/student/bookings"><ArrowLeft /> All bookings</Link><InlineAlert>{error || 'Booking not found.'}</InlineAlert></div>;
-  const canCancel = ['PENDING', 'CONFIRMED'].includes(booking.status) && !booking.checkedInAt && (new Date(booking.trip?.departureTime ?? 0).getTime() > Date.now() || ['SCHEDULED', 'BOARDING', 'IN_PROGRESS', 'DELAYED'].includes(booking.trip?.status ?? ''));
+  // Mirrors the server rule: riders can cancel only until the trip departs.
+  const canCancel = ['PENDING', 'CONFIRMED'].includes(booking.status) && !booking.checkedInAt && ['SCHEDULED', 'BOARDING', 'DELAYED'].includes(booking.trip?.status ?? '');
 
   return (
     <div className="page-stack">
       <Link className="back-link" to="/student/bookings"><ArrowLeft aria-hidden="true" /> All bookings</Link>
       <PageHeader actions={<Button icon={<RefreshCcw aria-hidden="true" size={16} />} onClick={() => void load()} size="sm" variant="secondary">Refresh</Button>} description={`Reference ${booking.reference} · created ${formatDateTime(booking.createdAt)}`} eyebrow="Booking details" title={booking.trip?.route?.name ?? 'University shuttle'} />
       {error && <InlineAlert>{error}</InlineAlert>}
-      {booking.paymentStatus !== 'SUCCESS' && booking.status === 'PENDING' && <Card className="payment-callout"><span><CreditCard aria-hidden="true" /></span><div><h2>Complete payment to activate your QR pass</h2><p>Your booking remains pending until the server verifies the payment provider’s confirmation.</p></div><Button loading={actionLoading} onClick={() => void pay()}>Pay {formatMoney(booking.totalAmount, booking.currency)}</Button></Card>}
+      {awaitingConfirmation && <InlineAlert tone="info">Payment received. We are confirming it with the payment provider; your pass appears here in a few seconds.</InlineAlert>}
+      {checkout === 'cancelled' && booking.status === 'PENDING' && <InlineAlert tone="warning">Checkout was cancelled. Your seat stays held until the timer runs out, so you can try again.</InlineAlert>}
+      {!awaitingConfirmation && booking.paymentStatus !== 'SUCCESS' && booking.status === 'PENDING' && <Card className="payment-callout"><span><CreditCard aria-hidden="true" /></span><div><h2>Complete payment to activate your QR pass</h2><p>Your booking remains pending until the server verifies the payment provider’s confirmation.</p></div><Button loading={actionLoading} onClick={() => void pay()}>Pay {formatMoney(booking.totalAmount, booking.currency)}</Button></Card>}
       <div className="booking-detail-grid">
         <BookingPass booking={booking} />
         <aside className="booking-detail-sidebar">

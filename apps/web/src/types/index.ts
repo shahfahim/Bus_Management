@@ -50,7 +50,8 @@ export interface Bus {
   label?: string;
   model?: string;
   capacity: number;
-  status: EntityStatus;
+  // The bus catalog reports MAINTENANCE; trip payloads carry the raw UNDER_MAINTENANCE / RETIRED.
+  status: EntityStatus | 'UNDER_MAINTENANCE' | 'RETIRED';
   amenities?: string[];
   currentLocation?: Coordinates & { recordedAt?: string; heading?: number; speedKph?: number };
   expectedAvailableAt?: string;
@@ -71,6 +72,7 @@ export interface Trip {
   bus?: Bus;
   driver?: DriverSummary;
   departureTime: string;
+  bookingClosesAt?: string;
   estimatedArrivalTime: string;
   actualDepartureTime?: string;
   actualArrivalTime?: string;
@@ -118,16 +120,34 @@ export interface Booking {
 
 export interface Payment {
   id: string;
+  paymentNumber?: string;
   transactionId?: string;
   bookingId?: string;
   booking?: Pick<Booking, 'reference'> & { bookingNumber?: string };
+  subscription?: { subscriptionNumber: string } | null;
   amount: number;
   currency?: string;
   status: PaymentStatus;
-  method?: string;
+  methodType?: string | null;
   receiptUrl?: string;
   paidAt?: string;
   createdAt: string;
+}
+
+export interface PaymentReceipt {
+  receiptNumber: string;
+  issuedAt: string;
+  paymentNumber: string;
+  payer?: { name: string; email: string };
+  bookingNumber?: string;
+  subscriptionNumber?: string;
+  amount: number;
+  refundedAmount: number;
+  currency: string;
+  status: string;
+  method?: string | null;
+  card?: string | null;
+  paidAt?: string;
 }
 
 export interface SubscriptionPlan {
@@ -157,9 +177,10 @@ export interface AppNotification {
   id: string;
   title: string;
   message: string;
-  type?: 'BOOKING' | 'PAYMENT' | 'ETA' | 'MAINTENANCE' | 'ROAD_ALERT' | 'TRIP' | 'LOST_FOUND' | 'SYSTEM';
+  type?: string;
   readAt?: string;
   actionUrl?: string;
+  data?: Record<string, unknown> | null;
   createdAt: string;
 }
 
@@ -193,6 +214,7 @@ export interface MaintenanceRecord {
 }
 
 export interface LostFoundReport {
+  reporterId?: string;
   id: string;
   type: 'LOST' | 'FOUND';
   title: string;

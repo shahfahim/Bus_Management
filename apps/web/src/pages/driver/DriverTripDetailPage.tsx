@@ -22,7 +22,15 @@ export function DriverTripDetailPage() {
   const { user } = useAuth();
   const { socket } = useSocket();
   const isDriver = user?.role === 'DRIVER';
-  const sharing = useLocationSharing(tripId, isDriver && trip?.status === 'IN_PROGRESS');
+  // A trip marked DELAYED may be before departure or already under way; the actual
+  // departure time tells them apart, so GPS and the End button keep working when delayed.
+  const departed = Boolean(trip?.actualDepartureTime) || trip?.status === 'IN_PROGRESS';
+  const underway = departed && ['IN_PROGRESS', 'DELAYED'].includes(trip?.status ?? '');
+  const canStart = !departed && ['SCHEDULED', 'BOARDING', 'DELAYED'].includes(trip?.status ?? '');
+  const finished = ['COMPLETED', 'CANCELLED'].includes(trip?.status ?? '');
+  // Matches the server rule: a trip opens at most 60 minutes before departure.
+  const tooEarly = Boolean(trip) && new Date(trip!.departureTime).getTime() - Date.now() > 60 * 60_000;
+  const sharing = useLocationSharing(tripId, isDriver && underway);
 
   const load = useCallback(async () => {
     setLoading(true); setError('');
@@ -77,9 +85,10 @@ export function DriverTripDetailPage() {
   return (
     <div className="page-stack">
       <Link className="back-link" to="/driver/trips"><ArrowLeft aria-hidden="true" /> Assigned trips</Link>
-      <PageHeader actions={<div className="trip-control-actions">{isDriver && ['SCHEDULED', 'BOARDING', 'DELAYED'].includes(trip.status) && <Button icon={<Play aria-hidden="true" size={17} />} onClick={() => setConfirmAction('start')}>Start trip</Button>}{isDriver && trip.status === 'IN_PROGRESS' && <Button icon={<Square aria-hidden="true" size={16} />} onClick={() => setConfirmAction('end')} variant="danger">End trip</Button>}<Link className="button button--secondary button--md" to={`/driver/check-in?tripId=${trip.id}`}><QrCode aria-hidden="true" size={17} /> Scan passengers</Link></div>} description={`${formatDateTime(trip.departureTime)} · ${trip.bus?.registrationNumber}`} eyebrow="Active assignment" title={trip.route?.name ?? 'Trip controls'} />
+      <PageHeader actions={<div className="trip-control-actions">{isDriver && canStart && <Button disabled={tooEarly} icon={<Play aria-hidden="true" size={17} />} onClick={() => setConfirmAction('start')} title={tooEarly ? 'Trips open 60 minutes before departure' : undefined}>Start trip</Button>}{isDriver && underway && <Button icon={<Square aria-hidden="true" size={16} />} onClick={() => setConfirmAction('end')} variant="danger">End trip</Button>}{!finished && <Link className="button button--secondary button--md" to={`/driver/check-in?tripId=${trip.id}`}><QrCode aria-hidden="true" size={17} /> Scan passengers</Link>}</div>} description={`${formatDateTime(trip.departureTime)} · ${trip.bus?.registrationNumber}`} eyebrow="Active assignment" title={trip.route?.name ?? 'Trip controls'} />
       {error && <InlineAlert>{error}</InlineAlert>}
-      {trip.status === 'IN_PROGRESS' && <InlineAlert tone={sharing.error ? 'warning' : 'success'}>{sharing.error ? <><strong>GPS warning:</strong> {sharing.error}</> : <><strong>Location is sharing.</strong> Updates adapt to movement to preserve device battery.{sharing.lastSentAt && ` Last sent ${formatTime(sharing.lastSentAt)}.`}</>}</InlineAlert>}
+      {isDriver && canStart && tooEarly && <InlineAlert tone="info">You can start this trip from 60 minutes before its scheduled departure.</InlineAlert>}
+      {isDriver && underway && <InlineAlert tone={sharing.error ? 'warning' : 'success'}>{sharing.error ? <><strong>GPS warning:</strong> {sharing.error}</> : <><strong>Location is sharing.</strong> Updates adapt to movement to preserve device battery.{sharing.lastSentAt && ` Last sent ${formatTime(sharing.lastSentAt)}.`}</>}</InlineAlert>}
       <div className="driver-control-grid">
         <Card className="trip-map-card"><div className="card-heading"><div><h2>Route & live position</h2><p>{trip.route?.origin} → {trip.route?.destination}</p></div><Pill>{trip.status}</Pill></div><RouteMap busLocation={sharing.latest ?? trip.currentLocation} route={trip.route} /><div className="driver-map-meta"><span><LocateFixed aria-hidden="true" /> {sharing.latest ? `Accuracy ±${Math.round(sharing.latest.accuracy)}m` : 'Waiting for GPS'}</span><span><Navigation aria-hidden="true" /> ETA {formatTime(trip.estimatedArrivalTime)}</span></div></Card>
         <Card className="passenger-manifest"><div className="card-heading"><div><h2>Passenger manifest</h2><p>{checkedIn} of {passengers.length} checked in</p></div><span className="manifest-count"><UsersRound aria-hidden="true" /> {passengers.length}</span></div><div className="manifest-progress"><span style={{ width: `${passengers.length ? (checkedIn / passengers.length) * 100 : 0}%` }} /></div>{passengers.length === 0 ? <EmptyState description="Confirmed passengers will appear here as bookings arrive." title="No passengers booked" /> : <div className="passenger-list">{passengers.map((passenger) => <div className="passenger-row" key={passenger.bookingId}><span className={passenger.checkedInAt ? 'check-avatar check-avatar--done' : 'check-avatar'}>{passenger.checkedInAt ? <CheckCircle2 aria-hidden="true" /> : passenger.seatNumber}</span><div><strong>{passenger.student.name}</strong><small>{passenger.student.studentId ?? passenger.reference}</small></div><span>Seat {passenger.seatNumber}</span>{passenger.checkedInAt ? <Pill tone="positive">Checked in</Pill> : <Pill>Waiting</Pill>}</div>)}</div>}</Card>

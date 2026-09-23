@@ -68,7 +68,7 @@ export function DashboardPage() {
       {loading ? <DashboardSkeleton /> : (
         <>
           {user.role === 'STUDENT' && <StudentDashboard bookings={data?.bookings ?? []} summary={data?.summary ?? {}} />}
-          {(user.role === 'DRIVER' || user.role === 'CONDUCTOR') && <DriverDashboard summary={data?.summary ?? {}} trips={data?.trips ?? []} />}
+          {(user.role === 'DRIVER' || user.role === 'CONDUCTOR') && <DriverDashboard role={user.role} summary={data?.summary ?? {}} trips={data?.trips ?? []} />}
           {user.role === 'ADMIN' && <AdminDashboard summary={data?.summary ?? {}} />}
           <AlertsPanel alerts={data?.alerts ?? []} />
         </>
@@ -84,7 +84,7 @@ function StudentDashboard({ bookings, summary }: { bookings: Booking[]; summary:
       <div className="stat-grid stat-grid--3">
         <StatCard icon={BookOpenCheck} label="Upcoming rides" tone="teal" value={summary.upcomingBookings ?? bookings.length} />
         <StatCard icon={Bell} label="Unread alerts" tone="amber" value={summary.unreadNotifications ?? 0} />
-        <StatCard icon={Star} label="Trips this term" tone="violet" value={summary.completedTrips ?? 0} />
+        <StatCard icon={Star} label="Completed trips" tone="violet" value={summary.completedTrips ?? 0} />
       </div>
       {upcoming?.trip ? (
         <section className="dashboard-grid dashboard-grid--map">
@@ -112,7 +112,7 @@ function StudentDashboard({ bookings, summary }: { bookings: Booking[]; summary:
   );
 }
 
-function DriverDashboard({ summary, trips }: { summary: DashboardSummary; trips: Trip[] }) {
+function DriverDashboard({ role, summary, trips }: { role: 'DRIVER' | 'CONDUCTOR'; summary: DashboardSummary; trips: Trip[] }) {
   return (
     <>
       <div className="stat-grid stat-grid--3">
@@ -147,7 +147,7 @@ function DriverDashboard({ summary, trips }: { summary: DashboardSummary; trips:
               <Card><EmptyState description="You have completed all your assigned trips for today!" title="All caught up" /></Card>
             )}
             {trips.some(t => t.status === 'COMPLETED' || t.status === 'CANCELLED') && (
-              <details className="past-trips-section" style={{ background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--border)', marginTop: '8px' }}>
+              <details className="past-trips-section" style={{ background: 'var(--surface)', borderRadius: '12px', border: '1px solid var(--line)', marginTop: '8px' }}>
                 <summary style={{ padding: '16px', fontWeight: 600, cursor: 'pointer', listStyle: 'none', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <span>Past Trips ({trips.filter(t => t.status === 'COMPLETED' || t.status === 'CANCELLED').length})</span>
                   <span aria-hidden="true" style={{ fontSize: '0.8em', color: 'var(--ink-soft)' }}>▼</span>
@@ -179,7 +179,7 @@ function DriverDashboard({ summary, trips }: { summary: DashboardSummary; trips:
         )}
       </section>
 
-      <QuickActions role="DRIVER" />
+      <QuickActions role={role} />
     </>
   );
 }
@@ -198,18 +198,19 @@ function AdminDashboard({ summary }: { summary: DashboardSummary }) {
   );
 }
 
-function QuickActions({ role }: { role: 'STUDENT' | 'DRIVER' | 'ADMIN' }) {
+function QuickActions({ role }: { role: 'STUDENT' | 'DRIVER' | 'CONDUCTOR' | 'ADMIN' }) {
   const actions = role === 'STUDENT'
     ? [
         { to: '/student/routes', icon: RouteIcon, title: 'Book a Ride', copy: 'Find trips and reserve seats' },
         { to: '/student/bookings', icon: QrCode, title: 'My Passes', copy: 'Open your secure entry QR' },
-        { to: '/student/subscriptions', icon: WalletCards, title: 'Payments', copy: 'Manage your subscriptions' },
+        { to: '/student/subscriptions', icon: WalletCards, title: 'Travel passes', copy: 'Buy or review route passes' },
       ]
-    : role === 'DRIVER'
+    : role === 'DRIVER' || role === 'CONDUCTOR'
       ? [
-          { to: '/driver/trips', icon: Navigation, title: 'My Trips', copy: 'Start, track or end a trip' },
+          { to: '/driver/trips', icon: Navigation, title: 'My Trips', copy: role === 'DRIVER' ? 'Start, track or end a trip' : 'See your assigned trips' },
           { to: '/driver/check-in', icon: QrCode, title: 'Scanner', copy: 'Validate boarding passes' },
-          { to: '/driver/incidents', icon: AlertTriangle, title: 'Report Issue', copy: 'Log maintenance or delays' },
+          // Incident reports are filed by the assigned driver only.
+          ...(role === 'DRIVER' ? [{ to: '/driver/incidents', icon: AlertTriangle, title: 'Report Issue', copy: 'Log maintenance or delays' }] : []),
         ]
       : [
           { to: '/admin/overview', icon: Navigation, title: 'Workspace', copy: 'Manage the entire fleet' },

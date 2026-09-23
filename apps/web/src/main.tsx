@@ -8,7 +8,6 @@ import { ToastProvider } from './components/ui';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { AuthProvider } from './contexts/AuthContext';
 import { SocketProvider } from './contexts/SocketContext';
-import { ThemeProvider } from './contexts/ThemeContext';
 import './styles.css';
 import { registerSW } from 'virtual:pwa-register';
 
@@ -21,8 +20,7 @@ createRoot(document.getElementById('root')!).render(
   <StrictMode>
     {/* Honour the operating system's reduced-motion setting for every animation. */}
     <MotionConfig reducedMotion="user">
-    <ErrorBoundary>
-      <ThemeProvider>
+      <ErrorBoundary>
         <BrowserRouter>
           <ToastProvider>
             <AuthProvider>
@@ -32,8 +30,7 @@ createRoot(document.getElementById('root')!).render(
             </AuthProvider>
           </ToastProvider>
         </BrowserRouter>
-      </ThemeProvider>
-    </ErrorBoundary>
+      </ErrorBoundary>
     </MotionConfig>
   </StrictMode>,
 );

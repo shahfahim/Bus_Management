@@ -38,6 +38,19 @@ export function SubscriptionsPage() {
   }, []);
   useEffect(() => { void load(); }, [load]);
 
+  // Back from Stripe: the pass activates when the webhook lands, so refresh a few times.
+  const returnedFromCheckout = searchParams.get('checkout') === 'success';
+  useEffect(() => {
+    if (!returnedFromCheckout) return undefined;
+    let attempts = 0;
+    const timer = window.setInterval(() => {
+      attempts += 1;
+      void load();
+      if (attempts >= 4) window.clearInterval(timer);
+    }, 4000);
+    return () => window.clearInterval(timer);
+  }, [returnedFromCheckout, load]);
+
   const buy = async (plan: SubscriptionPlan) => {
     setBuying(plan.id);
     let attemptKey = attemptKeys.current.get(plan.id);

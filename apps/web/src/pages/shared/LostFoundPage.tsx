@@ -1,5 +1,6 @@
 import { Camera, Filter, HandHeart, ImagePlus, MapPin, PackageOpen, Plus, Search } from 'lucide-react';
 import { type FormEvent, useCallback, useEffect, useState } from 'react';
+import { useAuth } from '../../contexts/AuthContext';
 import { Button, Card, EmptyState, Field, InlineAlert, Modal, PageHeader, Pill, SelectField, Skeleton, TextAreaField, useToast } from '../../components/ui';
 import { api, asItems, errorMessage, unwrap, withQuery } from '../../lib/api';
 import { formatDateTime, localDateTimeInputValue, titleCase } from '../../lib/format';
@@ -19,6 +20,7 @@ export function LostFoundPage() {
   const [submitting, setSubmitting] = useState(false);
   const [preview, setPreview] = useState('');
   const { notify } = useToast();
+  const { user } = useAuth();
 
   useEffect(() => () => {
     if (preview.startsWith('blob:')) URL.revokeObjectURL(preview);
@@ -39,7 +41,7 @@ export function LostFoundPage() {
       const created = unwrap(await api.post<LostFoundReport | { data: LostFoundReport }>('/lost-found', form));
       setReports((current) => [created, ...current]);
       setReportOpen(false); setPreview('');
-      notify({ title: 'Report published', description: 'We’ll notify you if the matching service finds a likely match.', tone: 'success' });
+      notify({ title: 'Report submitted', description: 'Transport staff verify reports before they are public. We’ll notify you about likely matches.', tone: 'success' });
     } catch (reason) { notify({ title: 'Report not published', description: errorMessage(reason), tone: 'error' }); }
     finally { setSubmitting(false); }
   };
@@ -61,7 +63,7 @@ export function LostFoundPage() {
       <Card className="lost-search-card"><div className="lost-search"><Field icon={<Search aria-hidden="true" size={17} />} label="Search reports" onChange={(event) => setSearch(event.target.value)} placeholder="Item, color, location…" value={search} /><SelectField label="Report type" onChange={(event) => setType(event.target.value)} options={[{ value: '', label: 'Lost and found' }, { value: 'LOST', label: 'Lost items' }, { value: 'FOUND', label: 'Found items' }]} value={type} /><SelectField label="Category" onChange={(event) => setCategory(event.target.value)} options={[{ value: '', label: 'All categories' }, ...categories.map((item) => ({ value: item, label: item }))]} value={category} /><Button icon={<Filter aria-hidden="true" size={17} />} onClick={() => void load()} variant="secondary">Apply</Button></div></Card>
       {error && <InlineAlert>{error}</InlineAlert>}
       {loading ? <div className="lost-grid"><Card><Skeleton lines={5} /></Card><Card><Skeleton lines={5} /></Card><Card><Skeleton lines={5} /></Card></div> : reports.length === 0 ? <Card><EmptyState action={<Button onClick={() => setReportOpen(true)}>Create a report</Button>} description="Try broader search terms, or report the item so matching can begin." icon={<PackageOpen />} title="No matching reports" /></Card> : (
-        <div className="lost-grid">{reports.map((report) => <Card className="lost-card" key={report.id}>{report.imageUrl ? <img alt={report.title} className="lost-card__image" loading="lazy" src={report.imageUrl} /> : <div className="lost-card__image lost-card__image--empty"><ImagePlus aria-hidden="true" /></div>}<div className="lost-card__body"><div className="lost-card__labels"><Pill tone={report.type === 'FOUND' ? 'positive' : 'warning'}>{report.type}</Pill><Pill>{report.status}</Pill></div><h2>{report.title}</h2><p>{report.description}</p><div className="lost-card__meta"><span><MapPin aria-hidden="true" /> {report.location}</span><span><Camera aria-hidden="true" /> {formatDateTime(report.occurredAt)}</span></div>{report.type === 'FOUND' && report.status === 'OPEN' && <Button icon={<HandHeart aria-hidden="true" size={17} />} onClick={() => setClaiming(report)} size="sm" variant="secondary">This may be mine</Button>}{report.matchCount ? <small className="match-note">{report.matchCount} potential {report.matchCount === 1 ? 'match' : 'matches'} under review</small> : null}</div></Card>)}</div>
+        <div className="lost-grid">{reports.map((report) => <Card className="lost-card" key={report.id}>{report.imageUrl ? <img alt={report.title} className="lost-card__image" loading="lazy" src={report.imageUrl} /> : <div className="lost-card__image lost-card__image--empty"><ImagePlus aria-hidden="true" /></div>}<div className="lost-card__body"><div className="lost-card__labels"><Pill tone={report.type === 'FOUND' ? 'positive' : 'warning'}>{report.type}</Pill><Pill>{report.status}</Pill></div><h2>{report.title}</h2><p>{report.description}</p><div className="lost-card__meta"><span><MapPin aria-hidden="true" /> {report.location}</span><span><Camera aria-hidden="true" /> {formatDateTime(report.occurredAt)}</span></div>{report.type === 'FOUND' && report.status === 'OPEN' && user?.role === 'STUDENT' && report.reporterId !== user.id && <Button icon={<HandHeart aria-hidden="true" size={17} />} onClick={() => setClaiming(report)} size="sm" variant="secondary">This may be mine</Button>}{report.matchCount ? <small className="match-note">{report.matchCount} potential {report.matchCount === 1 ? 'match' : 'matches'} under review</small> : null}</div></Card>)}</div>
       )}
       <Modal onClose={() => { setReportOpen(false); setPreview(''); }} open={reportOpen} title="Report a lost or found item" description="Avoid publishing sensitive serial numbers or personal information.">
         <form className="modal-form" onSubmit={createReport}>
@@ -74,7 +76,7 @@ export function LostFoundPage() {
         </form>
       </Modal>
       <Modal onClose={() => setClaiming(undefined)} open={Boolean(claiming)} title={`Claim “${claiming?.title ?? ''}”`} description="Your evidence is visible only to authorised administrators.">
-        <form className="modal-form" onSubmit={submitClaim}><TextAreaField label="Proof of ownership" name="evidence" placeholder="Describe a detail not visible in the report, such as contents, a mark or serial suffix." required rows={4} /><Field label="Contact number" name="contact" required type="tel" /><Button loading={submitting} type="submit">Submit private claim</Button></form>
+        <form className="modal-form" onSubmit={submitClaim}><TextAreaField label="Proof of ownership" maxLength={5000} minLength={10} name="evidence" placeholder="Describe a detail not visible in the report, such as contents, a mark or serial suffix." required rows={4} /><Field label="Contact number" maxLength={100} minLength={5} name="contact" required type="tel" /><Button loading={submitting} type="submit">Submit private claim</Button></form>
       </Modal>
     </div>
   );

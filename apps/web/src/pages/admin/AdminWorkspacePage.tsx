@@ -331,7 +331,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
     id: 'users',
     title: 'Users',
     singular: 'user',
-    description: 'Administer student, teacher, driver, conductor, and administrator access.',
+    description: 'Administer student, driver, conductor, and administrator access.',
     endpoint: '/admin/users',
     searchPlaceholder: 'Search name, email, student ID, or employee ID…',
     canCreate: true,
@@ -364,6 +364,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
     actions: [
       { id: 'approve', label: 'Verify & activate', tone: 'success', visible: (row) => valueMatches(row.status, 'pending', 'pending_verification') },
       { id: 'suspend', label: 'Suspend', tone: 'danger', visible: (row) => valueMatches(row.status, 'active') },
+      { id: 'reactivate', label: 'Reactivate', tone: 'success', visible: (row) => valueMatches(row.status, 'suspended', 'locked') },
     ],
   },
   bookings: {
@@ -583,7 +584,10 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { name: 'rating', label: 'All ratings', options: [{ label: '5 stars', value: '5' }, { label: '4 stars', value: '4' }, { label: '3 stars', value: '3' }, { label: '2 stars', value: '2' }, { label: '1 star', value: '1' }] },
       { name: 'status', label: 'All moderation states', options: [{ label: 'Published', value: 'published' }, { label: 'Flagged', value: 'flagged' }, { label: 'Hidden', value: 'hidden' }] },
     ],
-    actions: [{ id: 'hide', label: 'Hide comment', tone: 'warning', visible: (row) => !valueMatches(row.status, 'hidden') && row.isVisible !== false }],
+    actions: [
+      { id: 'hide', label: 'Hide comment', tone: 'warning', visible: (row) => !valueMatches(row.status, 'hidden') && row.isVisible !== false },
+      { id: 'publish', label: 'Show again', tone: 'success', visible: (row) => valueMatches(row.status, 'hidden') || row.isVisible === false },
+    ],
   },
   notifications: {
     id: 'notifications',
@@ -1309,6 +1313,7 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
       approve: 'Verify and activate this account? The user will be allowed to sign in immediately.',
       suspend: 'Suspend this user account? They will be signed out and unable to sign in.',
       hide: 'Hide this rating comment from public views?',
+      reactivate: 'Reactivate this account? The user will be able to sign in again.',
       dismiss: 'Dismiss this incident? A reason will be recorded and the report will be closed.',
     }
     if (confirmations[action.id] && !window.confirm(confirmations[action.id])) return
@@ -1320,7 +1325,7 @@ function ResourcePage({ config, onToast }: { config: ResourceConfig; onToast: (t
       else if (action.id === 'revoke') await api.post(`${config.endpoint}/${encodedId}/revoke`, {})
       else if (action.id === 'resend') await api.post(`${config.endpoint}/${encodedId}/resend`, { failedOnly: true })
       else {
-        const statusByAction: Record<string, string> = { approve: 'active', delay: 'delayed', suspend: 'suspended', complete: 'completed', resolve: 'resolved', verify: 'verified', hide: 'hidden', acknowledge: 'acknowledged', dismiss: 'dismissed' }
+        const statusByAction: Record<string, string> = { approve: 'active', reactivate: 'active', delay: 'delayed', suspend: 'suspended', complete: 'completed', resolve: 'resolved', verify: 'verified', hide: 'hidden', publish: 'published', acknowledge: 'acknowledged', dismiss: 'dismissed' }
         const payload: Record<string, unknown> = { status: statusByAction[action.id] }
         if (config.id === 'incidents' && (action.id === 'resolve' || action.id === 'dismiss')) {
           const notes = window.prompt(`Enter ${action.id === 'resolve' ? 'resolution' : 'dismissal'} notes.`)

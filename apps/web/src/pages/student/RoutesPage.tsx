@@ -28,7 +28,7 @@ export function RoutesPage() {
       const [year, month, day] = date.split('-').map(Number);
       const start = new Date(year, month - 1, day, 0, 0, 0);
       const end = new Date(year, month - 1, day, 23, 59, 59, 999);
-      const response = await api.get<unknown>(withQuery('/trips', { from: start.toISOString(), to: end.toISOString(), originStopId: origin, destinationStopId: destination, status: ['SCHEDULED', 'BOARDING', 'DELAYED'], _t: Date.now() }));
+      const response = await api.get<unknown>(withQuery('/trips', { from: start.toISOString(), to: end.toISOString(), originStopId: origin, destinationStopId: destination, status: ['SCHEDULED', 'BOARDING', 'DELAYED'], pageSize: 100, _t: Date.now() }));
       setTrips(asItems<Trip>(response));
     } catch (reason) {
       setError(errorMessage(reason, 'Could not load scheduled trips.'));
@@ -45,21 +45,28 @@ export function RoutesPage() {
   }, []);
   useEffect(() => { void searchTrips(); }, [searchTrips]);
 
+  // Follow the listed trips so seat counts and status stay live. Seat events only say that
+  // something changed, so refresh the results (debounced) rather than guessing counts.
+  const tripKey = trips.map((trip) => trip.id).sort().join(',');
   useEffect(() => {
-    if (!socket) return undefined;
-    const updateSeats = (payload: { tripId: string; availableSeats: number }) => {
-      setTrips((current) => current.map((trip) => trip.id === payload.tripId ? { ...trip, availableSeats: payload.availableSeats } : trip));
+    if (!socket || !tripKey) return undefined;
+    const tripIds = tripKey.split(',');
+    tripIds.forEach((tripId) => socket.emit('trip:join', { tripId }));
+    let refresh: number | undefined;
+    const scheduleRefresh = (payload: { tripId?: string; id?: string }) => {
+      if (!tripIds.includes(payload.tripId ?? payload.id ?? '')) return;
+      window.clearTimeout(refresh);
+      refresh = window.setTimeout(() => void searchTrips(), 800);
     };
-    const updateTrip = (payload: Partial<Trip> & { id: string }) => {
-      setTrips((current) => current.map((trip) => trip.id === payload.id ? { ...trip, ...payload } : trip));
-    };
-    socket.on('trip:seats', updateSeats);
-    socket.on('trip:updated', updateTrip);
+    socket.on('trip:seats', scheduleRefresh);
+    socket.on('trip:updated', scheduleRefresh);
     return () => {
-      socket.off('trip:seats', updateSeats);
-      socket.off('trip:updated', updateTrip);
+      window.clearTimeout(refresh);
+      socket.off('trip:seats', scheduleRefresh);
+      socket.off('trip:updated', scheduleRefresh);
+      tripIds.forEach((tripId) => socket.emit('trip:leave', { tripId }));
     };
-  }, [socket]);
+  }, [socket, tripKey, searchTrips]);
 
   const submitSearch = (event: FormEvent) => {
     event.preventDefault();
@@ -104,8 +111,9 @@ function alertAffectsRoute(alert: RoadAlert, routeId: string) {
 
 function TripResult({ trip, alerts, expanded, onExpand }: { trip: Trip; alerts: RoadAlert[]; expanded: boolean; onExpand: () => void }) {
   const soldOut = trip.availableSeats <= 0;
-  const underMaintenance = trip.bus?.status === 'MAINTENANCE';
-  const unavailable = soldOut || underMaintenance || trip.status === 'CANCELLED';
+  const underMaintenance = trip.bus?.status === 'MAINTENANCE' || trip.bus?.status === 'UNDER_MAINTENANCE';
+  const bookingClosed = new Date(trip.bookingClosesAt ?? trip.departureTime).getTime() <= Date.now();
+  const unavailable = soldOut || underMaintenance || bookingClosed || trip.status === 'CANCELLED';
   return (
     <Card className="trip-result">
       <div className="trip-result__main">
@@ -116,10 +124,10 @@ function TripResult({ trip, alerts, expanded, onExpand }: { trip: Trip; alerts: 
           <div><span className="route-point route-point--end" /><strong>{trip.route?.destination}</strong></div>
           <small><Clock3 aria-hidden="true" /> Approx. {trip.route?.durationMinutes ?? '—'} min · {trip.route?.stops?.length ?? 0} stops</small>
         </div>
-        <div className="trip-bus"><strong>{trip.bus?.label ?? trip.bus?.registrationNumber}</strong><span>{trip.bus?.registrationNumber}</span>{underMaintenance && <Pill>MAINTENANCE</Pill>}</div>
+        <div className="trip-bus"><strong>{trip.bus?.label ?? trip.bus?.registrationNumber}</strong><span>{trip.bus?.registrationNumber}</span>{underMaintenance && <Pill tone="warning">MAINTENANCE</Pill>}</div>
         <div className={cx('seat-count', trip.availableSeats < 6 && 'seat-count--low')}><UsersRound aria-hidden="true" /><strong>{trip.availableSeats}</strong><span>seats left</span></div>
         <div className="trip-price"><strong>{formatMoney(trip.fare, trip.currency)}</strong><span>per ride</span></div>
-        <div className="trip-result__actions"><Link aria-disabled={unavailable} className={cx('button button--primary button--md', unavailable && 'button--disabled')} onClick={(event) => unavailable && event.preventDefault()} to={`/student/trips/${trip.id}/book`}>{soldOut ? 'Sold out' : underMaintenance ? 'Unavailable' : 'Choose seat'} {!unavailable && <ArrowRight aria-hidden="true" size={16} />}</Link><button aria-expanded={expanded} aria-label="Show trip details" className="icon-button" onClick={onExpand} type="button"><ChevronDown aria-hidden="true" className={expanded ? 'rotate-180' : ''} /></button></div>
+        <div className="trip-result__actions"><Link aria-disabled={unavailable} className={cx('button button--primary button--md', unavailable && 'button--disabled')} onClick={(event) => unavailable && event.preventDefault()} to={`/student/trips/${trip.id}/book`}>{soldOut ? 'Sold out' : underMaintenance ? 'Unavailable' : bookingClosed ? 'Booking closed' : 'Choose seat'} {!unavailable && <ArrowRight aria-hidden="true" size={16} />}</Link><button aria-expanded={expanded} aria-label="Show trip details" className="icon-button" onClick={onExpand} type="button"><ChevronDown aria-hidden="true" className={expanded ? 'rotate-180' : ''} /></button></div>
       </div>
       {trip.status === 'DELAYED' && <InlineAlert tone="warning">This trip is delayed by approximately {trip.delayMinutes ?? 0} minutes.</InlineAlert>}
       {alerts.length > 0 && <div className="trip-alert"><AlertTriangle aria-hidden="true" /><span>{alerts[0].title}</span><small>{alerts[0].category.toLowerCase()}</small></div>}

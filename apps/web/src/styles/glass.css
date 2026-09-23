@@ -591,3 +591,12 @@ body .schedules-grid > *:nth-child(n + 4) { animation-delay: .18s; }
 @media (prefers-reduced-motion: reduce) {
   body::before { animation: none; }
 }
+
+/* Printing while a dialog is open (e.g. a payment receipt) prints only that dialog. */
+@media print {
+  body::before, body::after { display: none; }
+  body.modal-open #root { display: none; }
+  body.modal-open .modal-backdrop { position: static; padding: 0; background: none; backdrop-filter: none; }
+  body.modal-open .modal { max-height: none; border: 0; box-shadow: none; backdrop-filter: none; background: #fff; }
+  body.modal-open .modal__footer, body.modal-open .modal__header .icon-button { display: none; }
+}

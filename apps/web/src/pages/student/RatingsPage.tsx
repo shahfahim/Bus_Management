@@ -34,7 +34,7 @@ export function RatingsPage() {
     setSubmitting(true);
     const form = new FormData(event.currentTarget);
     try {
-      const response = await api.post<Rating | { data: Rating }>('/ratings', { tripId: selected.tripId, driverId: selected.trip?.driver?.id, score, comment: form.get('comment') });
+      const response = await api.post<Rating | { data: Rating }>('/ratings', { bookingId: selected.id, tripId: selected.tripId, driverId: selected.trip?.driver?.id, score, comment: form.get('comment') });
       setRatings((current) => [unwrap(response), ...current]);
       setEligible((current) => current.filter((booking) => booking.id !== selected.id));
       setSelected(undefined); setScore(0);

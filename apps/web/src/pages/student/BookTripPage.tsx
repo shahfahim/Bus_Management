@@ -93,6 +93,15 @@ export function BookTripPage() {
     };
   }, [socket, tripId]);
 
+  // Leaving the page without booking frees the seat instead of blocking it until the hold expires.
+  // A hold that became a booking is no longer HELD, so the server ignores the release.
+  const holdRef = useRef<SeatHold | undefined>(undefined);
+  holdRef.current = hold;
+  useEffect(() => () => {
+    const abandoned = holdRef.current;
+    if (abandoned) void bookingRepository.releaseSeat(abandoned.id, tripId).catch(() => undefined);
+  }, [tripId]);
+
   useEffect(() => {
     if (!hold) { setSecondsRemaining(0); return undefined; }
     const update = () => {
@@ -169,6 +178,7 @@ export function BookTripPage() {
     ? orderedStops.filter((_, index) => index > boardingIndex)
     : [];
   const selectedSeatNumber = pendingSeatNumber ?? hold?.seatNumber;
+  const openSeats = seats.filter((seat) => seat.status === 'AVAILABLE').length;
   const eligibleSubscriptions = subscriptions.filter((subscription) => {
     if (!trip || subscription.status !== 'ACTIVE') return false;
     const routes = subscription.plan.routes.map((item) => ('route' in item ? item.route : item));
@@ -188,7 +198,7 @@ export function BookTripPage() {
       {error && <InlineAlert>{error}</InlineAlert>}
       <div className="booking-layout">
         <Card className="seat-card">
-          <div className="card-heading"><div><h2>Seat selection</h2><p>Availability changes in real time.</p></div><Pill tone={trip.availableSeats < 6 ? 'warning' : 'positive'}>{trip.availableSeats} left</Pill></div>
+          <div className="card-heading"><div><h2>Seat selection</h2><p>Availability changes in real time.</p></div><Pill tone={openSeats < 6 ? 'warning' : 'positive'}>{`${openSeats} left`}</Pill></div>
           {holding && <div className="seat-loading"><span className="spin-small" /> Securing your seat…</div>}
           <SeatMap onSelect={(seat) => void selectSeat(seat)} seats={seats} selected={selectedSeatNumber} />
         </Card>

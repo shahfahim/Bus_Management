@@ -6,24 +6,6 @@ import { motion, HTMLMotionProps } from 'framer-motion';
 // without modifying the original component's internal logic.
 
 /**
- * Decorates a component to fade in and slide up slightly when it mounts.
- */
-export function withFadeIn<T extends object>(WrappedComponent: React.ComponentType<T>) {
-  return function FadeInWrapper(props: T) {
-    return (
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: -10 }}
-        transition={{ duration: 0.3, ease: 'easeOut' }}
-      >
-        <WrappedComponent {...props} />
-      </motion.div>
-    );
-  };
-}
-
-/**
  * Decorates a component to scale up on hover and scale down on tap.
  * Useful for buttons or interactive cards.
  */

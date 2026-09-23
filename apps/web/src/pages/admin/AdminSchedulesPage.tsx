@@ -1,6 +1,6 @@
 import { Clock, Plus, Bus, User, MapPin, Calendar, Route as RouteIcon, Save, X, Settings2, Trash2, Edit, Power } from 'lucide-react';
 import { useEffect, useState } from 'react';
-import { api, asItems } from '../../lib/api';
+import { api, asItems, errorMessage } from '../../lib/api';
 import { PageHeader, Button, Card, SelectField, Field, cx, useToast, Skeleton } from '../../components/ui';
 import { AnimatedList, AnimatedListItem, withHoverScale } from '../../components/animations/withAnimation';
 import './AdminSchedulesPage.css';
@@ -26,7 +26,7 @@ interface Schedule {
 interface Route { id: string; name: string; code: string; }
 interface BusData { id: string; fleetNumber: string; registrationNumber: string; }
 interface UserData { id: string; name: string; email: string; }
-interface Stop { id: string; stopId?: string; name: string; }
+interface Stop { id: string; stopId?: string; name: string; latitude?: number; longitude?: number; }
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
@@ -76,17 +76,21 @@ export function AdminSchedulesPage() {
   };
 
   const loadLookups = () => {
+    // Lists default to 20 rows; ask for the maximum so every route, bus, driver and stop can be picked.
     Promise.all([
-      api.get<{data: Route[]}>('/admin/routes'),
-      api.get<{data: BusData[]}>('/admin/buses'),
-      api.get<{data: UserData[]}>('/admin/users?role=driver&status=active'),
-      api.get<{data: Stop[]}>('/admin/stops')
+      api.get<{data: Route[]}>('/admin/routes?pageSize=100'),
+      api.get<{data: BusData[]}>('/admin/buses?pageSize=100'),
+      api.get<{data: UserData[]}>('/admin/users?role=driver&status=active&pageSize=100'),
+      api.get<{data: Stop[]}>('/admin/stops?pageSize=100')
     ]).then(([rRes, bRes, dRes, sRes]) => {
       setRoutes(asItems<Route>(rRes));
       setBuses(asItems<BusData>(bRes));
       setDrivers(asItems<UserData>(dRes));
-      setStops(asItems<Stop>(sRes));
-    });
+      // Route stops repeat a stop once per route it serves; list each place once.
+      const uniqueStops = new Map<string, Stop>();
+      asItems<Stop>(sRes).forEach((stop) => uniqueStops.set(stop.stopId ?? stop.id, stop));
+      setStops([...uniqueStops.values()].sort((left, right) => left.name.localeCompare(right.name)));
+    }).catch((reason: unknown) => notify({ title: 'Could not load options', description: errorMessage(reason), tone: 'error' }));
   };
 
   const toggleDay = (dayIndex: number) => {
@@ -124,13 +128,23 @@ export function AdminSchedulesPage() {
            return;
         }
         
-        // Create custom route
+        if (wizardState.customFromStopId === wizardState.customToStopId) {
+          notify({ title: 'Validation', description: 'Origin and destination must be different locations', tone: 'error' });
+          setSubmitting(false);
+          return;
+        }
+        // Create custom route with distance and duration measured from the two stops
+        // (they drive generated trips' arrival times and stop ETAs).
+        const from = stops.find((stop) => (stop.stopId ?? stop.id) === wizardState.customFromStopId);
+        const to = stops.find((stop) => (stop.stopId ?? stop.id) === wizardState.customToStopId);
+        const distanceKm = from && to ? Math.max(0.1, roadDistanceKm(from, to)) : 5;
         const code = `CR-${Date.now().toString().slice(-6)}`;
         const routePayload = {
           code,
-          name: `Custom Route ${code}`,
-          distanceKm: 5,
-          estimatedDurationMinutes: 30,
+          name: from && to ? `${from.name} → ${to.name}`.slice(0, 160) : `Custom Route ${code}`,
+          distanceKm: Math.round(distanceKm * 10) / 10,
+          // Roughly 20 km/h through city traffic, never less than 10 minutes.
+          estimatedDurationMinutes: Math.max(10, Math.round((distanceKm / 20) * 60)),
           stopIds: [wizardState.customFromStopId, wizardState.customToStopId]
         };
         const newRoute = await api.post<Route>('/admin/routes', routePayload);
@@ -162,9 +176,8 @@ export function AdminSchedulesPage() {
       setEditingScheduleId(null);
       setWizardState(initialWizardState);
       loadSchedules();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      notify({ title: 'Error', description: err.message || 'Failed to save schedule', tone: 'error' });
+    } catch (err: unknown) {
+      notify({ title: 'Error', description: errorMessage(err, 'Failed to save schedule'), tone: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -190,14 +203,13 @@ export function AdminSchedulesPage() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this schedule?')) return;
+    if (!confirm('Delete this schedule? Its upcoming trips will be cancelled, riders notified and any payments refunded.')) return;
     try {
       await api.delete(`/admin/schedules/${id}`);
       notify({ title: 'Success', description: 'Schedule deleted', tone: 'success' });
       loadSchedules();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      notify({ title: 'Error', description: err.message || 'Failed to delete', tone: 'error' });
+    } catch (err: unknown) {
+      notify({ title: 'Error', description: errorMessage(err, 'Failed to delete'), tone: 'error' });
     }
   };
 
@@ -206,9 +218,8 @@ export function AdminSchedulesPage() {
       await api.patch(`/admin/schedules/${schedule.id}`, { isActive: !schedule.isActive });
       notify({ title: 'Success', description: `Schedule ${!schedule.isActive ? 'activated' : 'deactivated'}`, tone: 'success' });
       loadSchedules();
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    } catch (err: any) {
-      notify({ title: 'Error', description: err.message || 'Failed to update status', tone: 'error' });
+    } catch (err: unknown) {
+      notify({ title: 'Error', description: errorMessage(err, 'Failed to update status'), tone: 'error' });
     }
   };
 
@@ -419,4 +430,14 @@ export function AdminSchedulesPage() {
       )}
     </div>
   );
+}
+
+// Straight-line distance between two stops, stretched by a typical road-network factor.
+function roadDistanceKm(from: Stop, to: Stop): number {
+  if (from.latitude === undefined || from.longitude === undefined || to.latitude === undefined || to.longitude === undefined) return 5;
+  const radians = (degrees: number) => (degrees * Math.PI) / 180;
+  const dLat = radians(to.latitude - from.latitude);
+  const dLon = radians(to.longitude - from.longitude);
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(radians(from.latitude)) * Math.cos(radians(to.latitude)) * Math.sin(dLon / 2) ** 2;
+  return 6371 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)) * 1.3;
 }

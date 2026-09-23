@@ -1,27 +1,17 @@
 import { type ReactNode, createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { ApiError, api, setAccessToken, unwrap } from '../lib/api';
 import { clearPersonalApiCache } from '../lib/offline-cache';
-import type { AuthResponse, RegistrationResponse, User } from '../types';
+import type { AuthResponse, User } from '../types';
 
 interface LoginInput {
   email: string;
   password: string;
 }
 
-type RegisterInput = {
-  name: string;
-  email: string;
-  password: string;
-  phone?: string;
-} & (
-  | { role: 'STUDENT'; studentId: string; department: string }
-);
-
 interface AuthContextValue {
   user: User | null;
   loading: boolean;
   login: (input: LoginInput) => Promise<User>;
-  register: (input: RegisterInput) => Promise<RegistrationResponse>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<User | null>;
   updateUser: (user: User) => void;
@@ -83,13 +73,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return auth.user;
   }, []);
 
-  const register = useCallback(async (input: RegisterInput) => {
-    const payload = await api.post<RegistrationResponse | { data: RegistrationResponse }>('/auth/register', input);
-    const auth = unwrap(payload);
-    setAccessToken();
-    return auth;
-  }, []);
-
   const logout = useCallback(async () => {
     try {
       await removePushSubscription();
@@ -102,8 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const value = useMemo(
-    () => ({ user, loading, login, register, logout, refreshUser, updateUser: setUser }),
-    [loading, login, logout, refreshUser, register, user],
+    () => ({ user, loading, login, logout, refreshUser, updateUser: setUser }),
+    [loading, login, logout, refreshUser, user],
   );
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

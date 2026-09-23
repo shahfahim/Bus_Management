@@ -1,5 +1,6 @@
-import { Save, ShieldCheck, UserRound } from 'lucide-react';
+import { KeyRound, Save, ShieldCheck, UserRound } from 'lucide-react';
 import { type FormEvent, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { Button, Card, Field, InlineAlert, PageHeader, useToast } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { api, errorMessage, unwrap } from '../lib/api';
@@ -22,7 +23,8 @@ export function ProfilePage() {
       const response = await api.patch<User | { data: User }>('/users/me', {
         name: form.get('name'),
         phone: form.get('phone'),
-        department: form.get('department'),
+        // Only students have a department field; null would fail validation for everyone else.
+        department: form.get('department') ?? undefined,
       });
       updateUser(unwrap(response));
       notify({ title: 'Profile updated', description: 'Your contact details were saved.', tone: 'success' });
@@ -54,6 +56,7 @@ export function ProfilePage() {
       <Card className="security-card">
         <ShieldCheck aria-hidden="true" />
         <div><h3>Account security</h3><p>Password and session management are handled through encrypted server endpoints. Signing out invalidates your active refresh session.</p></div>
+        <Link className="button button--secondary button--md" to="/change-password"><KeyRound aria-hidden="true" size={16} /> Change password</Link>
       </Card>
     </div>
   );
