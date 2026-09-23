@@ -38,8 +38,6 @@ services:
         generateValue: true
       - key: JWT_REFRESH_SECRET
         generateValue: true
-      - key: QR_SIGNING_SECRET
-        generateValue: true
       - key: SEED_ADMIN_PASSWORD
         generateValue: true
       - key: SEED_DRIVER_PASSWORD
