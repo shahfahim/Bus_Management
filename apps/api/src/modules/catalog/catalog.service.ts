@@ -124,6 +124,8 @@ export const listStops = async (search?: string) =>
     await prisma.stop.findMany({
       where: {
         isActive: true,
+        // One-off pickup points created for drivers' custom trips are not network stops.
+        NOT: { code: { startsWith: 'DRV-' } },
         ...(search
           ? {
               OR: [
@@ -211,6 +213,7 @@ const tripDto = (trip: CatalogTripRecord) => {
     },
     departureTime: trip.scheduledStartAt,
     estimatedArrivalTime: trip.scheduledEndAt,
+    bookingClosesAt: trip.bookingClosesAt ?? trip.scheduledStartAt,
     actualDepartureTime: trip.actualStartAt,
     actualArrivalTime: trip.actualEndAt,
     availableSeats: Math.max(0, capacity - trip.seatAllocations.length),

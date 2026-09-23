@@ -58,7 +58,8 @@ lostFoundRouter.get(
 lostFoundRouter.post(
   '/',
   requireAuth,
-  requireRole(Role.STUDENT, Role.ADMIN),
+  // Drivers and conductors are often the ones who find items left on a bus.
+  requireRole(Role.STUDENT, Role.DRIVER, Role.CONDUCTOR, Role.ADMIN),
   uploadRateLimit,
   lostFoundUpload,
   asyncRoute(async (request, response) => {

@@ -20,7 +20,7 @@ vi.mock('../../lib/prisma.js', () => {
 vi.mock('../../realtime/hub.js', () => ({ emitToTrip: mocks.emitToTrip, emitToRole: vi.fn() }));
 vi.mock('../notifications/notification.service.js', () => ({ notifyUser: vi.fn(), notifyUsers: vi.fn() }));
 
-import { recordLocation } from './tracking.service.js';
+import { endTrip, recordLocation } from './tracking.service.js';
 
 const tripId = '00000000-0000-4000-8000-000000000010';
 const driver = { userId: 'driver-1', role: Role.DRIVER };
@@ -82,5 +82,11 @@ describe('driver GPS ingestion', () => {
       code: 'IMPLAUSIBLE_LOCATION',
     });
     expect(mocks.createLocation).not.toHaveBeenCalled();
+  });
+
+  it('refuses to complete a delayed trip that never departed', async () => {
+    mocks.findTrip.mockResolvedValueOnce({ ...tripWithPrevious(new Date(now)), status: TripStatus.DELAYED, actualStartAt: null });
+
+    await expect(endTrip(tripId, driver)).rejects.toMatchObject({ code: 'TRIP_NOT_IN_PROGRESS' });
   });
 });

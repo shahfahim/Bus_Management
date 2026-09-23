@@ -8,7 +8,8 @@ let timer: NodeJS.Timeout | undefined;
 const monitor = async (): Promise<void> => {
   const now = new Date();
   const active = await prisma.trip.findMany({
-    where: { status: { in: [TripStatus.IN_PROGRESS, TripStatus.DELAYED] } },
+    // DELAYED also covers trips that have not departed yet; those are not expected to send GPS.
+    where: { status: { in: [TripStatus.IN_PROGRESS, TripStatus.DELAYED] }, actualStartAt: { not: null } },
     select: { id: true, publicCode: true, lastLocationAt: true, locationIntervalSeconds: true, trackingStatus: true, driverId: true },
   });
   for (const trip of active) {

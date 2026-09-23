@@ -425,7 +425,9 @@ export const endTrip = async (tripId: string, actor: { userId: string; role: Rol
   if (!trip) throw new AppError(404, 'TRIP_NOT_FOUND', 'Trip not found');
   assertAssigned(trip, actor);
   if (actor.role === Role.CONDUCTOR) throw new AppError(403, 'DRIVER_REQUIRED', 'Only the assigned driver may end a trip');
-  if (!([TripStatus.IN_PROGRESS, TripStatus.DELAYED] as TripStatus[]).includes(trip.status)) {
+  // DELAYED also applies before departure; only a trip that actually started can be completed,
+  // otherwise its riders' bookings would be stranded on a trip that never ran.
+  if (!([TripStatus.IN_PROGRESS, TripStatus.DELAYED] as TripStatus[]).includes(trip.status) || !trip.actualStartAt) {
     throw new AppError(409, 'TRIP_NOT_IN_PROGRESS', 'This trip is not currently in progress');
   }
   const now = new Date();
@@ -718,6 +720,5 @@ export const reportIncident = async (
       dedupePrefix: `incident:${incident.id}`,
     },
   );
-  emitToRole(Role.ADMIN, 'notification:new', { type: 'INCIDENT', incident });
   return incident;
 };

@@ -2,19 +2,13 @@ import { Router } from 'express';
 import { BookingStatus, BusStatus, PaymentStatus, Role, SeatAllocationStatus, TripStatus } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import { asyncRoute } from '../../lib/async-route.js';
+import { campusDayEnd, campusDayStart } from '../../lib/campus-time.js';
 import { prisma } from '../../lib/prisma.js';
 import { requireAuth } from '../auth/auth.middleware.js';
 
 export const dashboardRouter = Router();
 dashboardRouter.use(requireAuth);
 
-const startOfDay = (): Date => {
-  const date = new Date();
-  date.setHours(0, 0, 0, 0);
-  return date;
-};
-
-const endOfDay = (): Date => new Date(startOfDay().getTime() + 86_400_000);
 
 const dashboardTripInclude = {
   route: { include: { stops: { include: { stop: true }, orderBy: { sequence: 'asc' } } } },
@@ -76,8 +70,9 @@ dashboardRouter.get(
   asyncRoute(async (request, response) => {
     const userId = request.auth!.userId;
     const role = request.auth!.role;
-    const today = startOfDay();
-    const tomorrow = endOfDay();
+    // "Today" is the campus day in Dhaka, not the server's (UTC) calendar day.
+    const today = campusDayStart();
+    const tomorrow = campusDayEnd();
     if (role === Role.STUDENT) {
       const [upcomingBookings, unreadNotifications, completedTrips] = await prisma.$transaction([
         prisma.booking.count({

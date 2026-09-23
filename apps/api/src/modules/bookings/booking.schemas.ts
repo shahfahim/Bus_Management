@@ -33,12 +33,15 @@ export const finalizeSeatHoldSchema = z.object({
   subscriptionId: z.string().uuid().optional(),
 });
 
+// z.coerce.boolean() would read the query string "false" as true.
+const queryFlag = z.enum(['true', 'false']).transform((value) => value === 'true').optional();
+
 export const bookingListSchema = z.object({
   page: z.coerce.number().int().positive().default(1),
   pageSize: z.coerce.number().int().min(1).max(100).default(20),
   status: bookingFilterStatusSchema.optional(),
-  upcoming: z.coerce.boolean().optional(),
-  unrated: z.coerce.boolean().optional(),
+  upcoming: queryFlag,
+  unrated: queryFlag,
   limit: z.coerce.number().int().min(1).max(100).optional(),
   from: z.coerce.date().optional(),
   to: z.coerce.date().optional(),
