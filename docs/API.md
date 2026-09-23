@@ -43,7 +43,8 @@ The browser client authenticates with secure, HTTP-only, same-site cookies. Sess
 | GET/POST | `/bookings` | Own booking history / confirm a hold or create a booking |
 | GET | `/bookings/:id` | Own booking details |
 | POST or DELETE | `/bookings/:id/cancel` or `/bookings/:id` | Cancel and release a booking before the trip departs (`TRIP_ALREADY_DEPARTED` afterwards) |
-| GET or POST | `/bookings/:id/qr` | Get/rotate the active boarding QR |
+| GET | `/boarding/card` | The student's personal Code 128 boarding card (created with the account) |
+| POST | `/boarding/card/reissue` | Replace a lost or leaked card; the old barcode stops working |
 | GET/POST/PATCH/DELETE | `/ratings` | Eligible journeys and own driver reviews |
 
 ## Driver and entry
@@ -58,7 +59,8 @@ The browser client authenticates with secure, HTTP-only, same-site cookies. Sess
 | POST | `/driver/trips/:id/end` | Complete a trip that has actually departed (a `DELAYED` trip that never started cannot be completed) |
 | GET | `/driver/trips/:id/passengers` | Passenger/check-in manifest |
 | POST | `/driver/location` | Throttled GPS sample (supports offline replay metadata) |
-| POST | `/driver/check-ins/scan` | Atomically validate and consume a QR |
+| POST | `/boarding/trips/:tripId/check-ins` | Manual fallback: the assigned driver/conductor types a rider's boarding code |
+| POST | `/boarding/check-ins` | **Door reader** (header `X-Door-Reader-Key`): check a rider in against the reader's bus. See [DOOR_READERS.md](DOOR_READERS.md) |
 | POST | `/driver/incidents` | Driver incident report; multipart with optional `image` |
 
 ## Admin driver assignments
@@ -100,6 +102,7 @@ All `/admin/*` endpoints require `ADMIN`. Resource families include:
 - `/admin/maintenance`, `/admin/road-alerts`, `/admin/lost-found`, `/admin/incidents`
 - `/admin/ratings`, `/admin/notifications`
 - `/admin/schedules` (recurring trip schedules)
+- `/admin/door-readers` (bus door readers; create and `POST /:id/rotate-key` return the API key once)
 
 Each family provides the safe operations valid for that resource. Financial and accepted check-in records are immutable; corrections use refund/revoke actions rather than destructive edits.
 

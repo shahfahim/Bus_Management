@@ -30,7 +30,7 @@
 
 ## ✨ Features
 
-- **🎓 Student Portal:** Seat booking (the two front seats of each bus are reserved for teachers), digital bus passes, and QR code boarding.
+- **🎓 Student Portal:** Seat booking (the two front seats of each bus are reserved for teachers), digital bus passes, and one personal barcode boarding card scanned by door readers on every bus.
 - **🗺️ Live Tracking & GPS:** Real-time bus tracking and ETA updates via WebSockets.
 - **📅 Automated Scheduling:** Set up recurring trips and let the background worker generate future schedules automatically.
 - **🛡️ Admin Workspace:** RBAC-protected dashboard with dynamic role-based forms for managing users, trips, vehicles, incidents, and approvals.
@@ -46,7 +46,7 @@ UniRide is designed as a modern **Monorepo** using npm workspaces. It separates 
 - **Framework**: React 19 + Vite
 - **Styling**: Vanilla CSS with comprehensive CSS variable theming (light mode)
 - **Mapping**: Leaflet for live GPS tracking of the bus fleet
-- **Capabilities**: QR code scanning (ZXing), PWA support (workbox), real-time WebSockets (Socket.IO client).
+- **Capabilities**: Code 128 boarding cards (JsBarcode), PWA support (workbox), real-time WebSockets (Socket.IO client).
 
 ### Backend (`apps/api`)
 - **Framework**: Node.js + Express 5

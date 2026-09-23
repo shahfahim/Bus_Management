@@ -15,7 +15,7 @@ UniRide is a web application built as a monorepo (npm workspaces). It separates 
 - **Real-time**: `socket.io-client` for live GPS, seat availability, trip status and notifications.
 - **Mapping**: `leaflet` and `react-leaflet` with OpenStreetMap tiles.
 - **Offline & PWA**: `vite-plugin-pwa` (injectManifest) with a Workbox service worker that caches assets and API responses and handles Web Push.
-- **Utilities**: `@zxing/browser` for QR scanning, `recharts` for charts, `jspdf`/`papaparse` for exports, `framer-motion` for transitions.
+- **Utilities**: `jsbarcode` for Code 128 boarding cards, `recharts` for charts, `jspdf`/`papaparse` for exports, `framer-motion` for transitions.
 
 **Backend (`apps/api`)**
 - **Server**: Node.js 22 with Express 5.
@@ -64,7 +64,7 @@ Bus_Management/
 │   │       │   ├── maintenance/      # Maintenance records and reconciliation monitor
 │   │       │   ├── notifications/    # In-app + Web Push delivery strategies and retry monitor
 │   │       │   ├── payments/         # Stripe Checkout, webhooks, receipts, refunds
-│   │       │   ├── qr/               # Signed boarding QR codes and driver check-in
+│   │       │   ├── boarding/         # Boarding cards, door readers and barcode check-in
 │   │       │   ├── ratings/          # Driver ratings
 │   │       │   ├── road-alerts/      # Road alerts and affected-rider notifications
 │   │       │   ├── subscriptions/    # Travel-pass plans and student subscriptions
@@ -91,8 +91,8 @@ Bus_Management/
 │           │                         # offline-cache.ts, ExportFacade.ts (CSV/PDF)
 │           ├── pages/
 │           │   ├── admin/            # AdminWorkspacePage (/admin/:section), AdminSchedulesPage
-│           │   ├── driver/           # Trips, trip detail, create trip, QR scanner, incidents
-│           │   ├── student/          # Live buses, routes, booking, bookings, payments, expenses,
+│           │   ├── driver/           # Trips, trip detail (manual check-in), create trip, incidents
+│           │   ├── student/          # Boarding card, live buses, routes, booking, bookings, payments, expenses,
 │           │   │                     # subscriptions, ratings
 │           │   ├── shared/           # Notifications, lost & found
 │           │   └── AuthPage.tsx ...  # Auth, dashboard, profile, change password, 404
