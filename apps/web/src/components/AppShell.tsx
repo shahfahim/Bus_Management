@@ -50,6 +50,11 @@ const commonNavigation: NavItem[] = [
   { label: 'Lost & found', to: '/lost-found', icon: LifeBuoy },
 ];
 
+// The admin workspace's sections (/admin/buses, /admin/credits, …) and their filters are one page:
+// keeping it mounted stops the section bar from jumping back to the start on every click.
+const pageTransitionKey = (pathname: string, search: string) =>
+  /^\/admin\/(?!schedules(?:\/|$))[^/]+\/?$/.test(pathname) ? '/admin' : pathname + search;
+
 const roleNavigation: Record<Role, NavItem[]> = {
   STUDENT: [
     { label: 'Book a Ride', to: '/student/routes', icon: RouteIcon },
@@ -263,7 +268,7 @@ export function AppShell() {
         </header>
         <main className="main-content" id="main-content">
           <AnimatePresence mode="wait">
-            <AnimatedPage key={location.pathname + location.search}>
+            <AnimatedPage key={pageTransitionKey(location.pathname, location.search)}>
               <Outlet />
             </AnimatedPage>
           </AnimatePresence>

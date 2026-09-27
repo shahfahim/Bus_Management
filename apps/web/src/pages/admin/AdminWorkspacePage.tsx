@@ -1705,6 +1705,22 @@ export function AdminWorkspacePage() {
     navigate(`/admin/${nextSection}`)
   }
 
+  // Bring the active section into view inside the bar (e.g. after arriving from a link) without
+  // moving the bar when it is already visible.
+  const sectionLinks = useRef<HTMLDivElement>(null)
+  const firstScroll = useRef(true)
+  useEffect(() => {
+    const container = sectionLinks.current
+    const active = container?.querySelector<HTMLElement>('.admin-section-nav__active')
+    if (!container || !active) return
+    const box = container.getBoundingClientRect()
+    const item = active.getBoundingClientRect()
+    if (item.left < box.left || item.right > box.right) {
+      container.scrollBy({ left: item.left - box.left - (box.width - item.width) / 2, behavior: firstScroll.current ? 'auto' : 'smooth' })
+    }
+    firstScroll.current = false
+  }, [section])
+
   return (
     <div className="admin-workspace">
       <nav className="admin-section-nav" aria-label="Administration workspace sections">
@@ -1715,11 +1731,11 @@ export function AdminWorkspacePage() {
             {SECTION_GROUPS.map((group) => <optgroup key={group.label} label={group.label}>{group.items.map((item) => <option key={item.id} value={item.id}>{item.label}</option>)}</optgroup>)}
           </select>
         </label>
-        <div className="admin-section-nav__links">
+        <div className="admin-section-nav__links" ref={sectionLinks}>
           {SECTION_GROUPS.flatMap((group) => group.items).map((item) => <button className={section === item.id ? 'admin-section-nav__active' : undefined} type="button" key={item.id} onClick={() => goTo(item.id)} aria-current={section === item.id ? 'page' : undefined}><AdminIcon name={item.id} /><span>{item.label}</span></button>)}
         </div>
       </nav>
-      <div className="admin-main">
+      <div className="admin-main" key={section}>
         {section === 'overview' ? <OverviewPage navigate={goTo} /> : section === 'reports' ? <ReportsPage onToast={setToast} /> : <ResourcePage config={RESOURCE_CONFIGS[section as AdminSectionId]} onToast={setToast} />}
       </div>
       {toast && <div className={`admin-toast admin-toast--${toast.tone}`} role="status" aria-live="polite"><span aria-hidden="true">{toast.tone === 'success' ? '✓' : toast.tone === 'error' ? '!' : 'i'}</span><p>{toast.message}</p><button type="button" onClick={() => setToast(null)} aria-label="Dismiss notification">×</button></div>}
