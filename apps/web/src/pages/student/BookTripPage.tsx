@@ -1,13 +1,14 @@
 /* eslint-disable */
-import { ArrowLeft, BusFront, Clock3, CreditCard, MapPin, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, BusFront, Clock3, Coins, CreditCard, MapPin, ShieldCheck } from 'lucide-react';
 import { type FormEvent, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { RouteMap } from '../../components/LiveMap';
 import { SeatMap } from '../../components/SeatMap';
 import { Button, Card, InlineAlert, PageHeader, Pill, SelectField, Skeleton, useToast } from '../../components/ui';
 import { useSocket } from '../../contexts/SocketContext';
+import { formatCredits, useCredits } from '../../hooks/useCredits';
 import { api, asItems, errorMessage, unwrap } from '../../lib/api';
-import { formatDateTime, formatMoney } from '../../lib/format';
+import { formatDateTime } from '../../lib/format';
 import { bookingRepository } from '../../services/BookingRepository';
 import type { Seat, StudentSubscription, Trip } from '../../types';
 
@@ -28,6 +29,7 @@ export function BookTripPage() {
   const navigate = useNavigate();
   const { notify } = useToast();
   const { socket } = useSocket();
+  const { balance } = useCredits(1);
   const [trip, setTrip] = useState<Trip>();
   const [seats, setSeats] = useState<Seat[]>([]);
   const [subscriptions, setSubscriptions] = useState<StudentSubscription[]>([]);
@@ -158,9 +160,11 @@ export function BookTripPage() {
       setHold(undefined);
       notify({
         title: 'Seat booked',
-        description: booking.status === 'CONFIRMED'
-          ? `Booking ${booking.reference} is confirmed with your bus pass.`
-          : `Booking ${booking.reference} is awaiting payment.`,
+        description: booking.status !== 'CONFIRMED'
+          ? `Booking ${booking.reference} is awaiting payment.`
+          : subscriptionId
+            ? `Booking ${booking.reference} is confirmed with your bus pass.`
+            : `Booking ${booking.reference} is confirmed and paid from your credits.`,
         tone: 'success',
       });
       navigate(`/student/bookings/${booking.id}`, { replace: true });
@@ -184,7 +188,10 @@ export function BookTripPage() {
     const routes = subscription.plan.routes.map((item) => ('route' in item ? item.route : item));
     return routes.some(({ id }) => id === trip.routeId);
   });
-  const canSubmit = Boolean(hold && boardingStopId && destinationStopId && secondsRemaining > 0);
+  const fare = trip?.fare ?? 0;
+  const paysWithCredits = !subscriptionId && fare > 0;
+  const shortOfCredits = paysWithCredits && balance !== undefined && balance < fare;
+  const canSubmit = Boolean(hold && boardingStopId && destinationStopId && secondsRemaining > 0) && !shortOfCredits;
   const formattedTimer = `${String(Math.floor(secondsRemaining / 60)).padStart(2, '0')}:${String(secondsRemaining % 60).padStart(2, '0')}`;
   const routePath = useMemo(() => trip?.route, [trip]);
 
@@ -212,11 +219,14 @@ export function BookTripPage() {
               {eligibleSubscriptions.length > 0 && <SelectField label="Fare option" onChange={(event) => setSubscriptionId(event.target.value)} options={[{ value: '', label: 'Pay single-trip fare' }, ...eligibleSubscriptions.map((subscription) => ({ value: subscription.id, label: `${subscription.plan.name} · ${subscription.remainingTrips == null ? 'unlimited' : `${subscription.remainingTrips} left`}` }))]} value={subscriptionId} />}
               <div className="summary-lines">
                 <div><span><MapPin aria-hidden="true" /> Seat</span><strong>{hold?.seatNumber ?? 'Choose one'}</strong></div>
-                <div><span><CreditCard aria-hidden="true" /> Fare</span><strong>{subscriptionId ? 'Covered by pass' : formatMoney(trip.fare, trip.currency)}</strong></div>
+                <div><span><CreditCard aria-hidden="true" /> Fare</span><strong>{subscriptionId ? 'Covered by pass' : formatCredits(trip.fare)}</strong></div>
               </div>
+              {paysWithCredits && balance !== undefined && (shortOfCredits
+                ? <div className="credit-line credit-line--short"><span><Coins aria-hidden="true" size={15} /> You have {formatCredits(balance)}; this trip needs {formatCredits(fare)}.</span><Link to="/student/credits">Add credits</Link></div>
+                : <div className="credit-line"><span><Coins aria-hidden="true" size={15} /> Credits after booking</span><strong>{formatCredits(balance - fare)}</strong></div>)}
               {hold && <div className="hold-timer"><Clock3 aria-hidden="true" /><span>Seat held for</span><strong>{formattedTimer}</strong></div>}
               <Button className="booking-submit" disabled={!canSubmit} loading={submitting} size="lg" type="submit">Confirm booking</Button>
-              <p className="secure-note"><ShieldCheck aria-hidden="true" /> {subscriptionId ? 'One eligible trip credit is reserved atomically.' : 'Payment is completed securely on the next step.'}</p>
+              <p className="secure-note"><ShieldCheck aria-hidden="true" /> {subscriptionId ? 'One trip on your pass is used for this booking.' : 'The fare is paid from your credits when you confirm.'}</p>
             </form>
           </Card>
         </aside>

@@ -65,6 +65,7 @@
   .booking-card__actions { grid-column: 1 / -1; justify-content: flex-end; border-top: 1px solid var(--line); padding-top: 11px; }
   .payment-callout { grid-template-columns: auto 1fr; }
   .payment-callout .button { grid-column: 1 / -1; }
+  .credit-overview { grid-template-columns: 1fr; }
   .booking-detail-sidebar { grid-template-columns: 1fr; }
   .travel-pass__details { grid-template-columns: repeat(2, 1fr); }
   .travel-pass__qr { grid-template-columns: 1fr; justify-items: center; text-align: center; }

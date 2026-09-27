@@ -1,19 +1,20 @@
-import { ArrowLeft, CreditCard, Download, MapPin, RefreshCcw, XCircle } from 'lucide-react';
+import { ArrowLeft, Coins, Download, MapPin, RefreshCcw, XCircle } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { BookingPass } from '../../components/BookingPass';
 import { LiveTripMap } from '../../components/LiveMap';
 import { Button, Card, InlineAlert, Modal, PageHeader, Pill, Skeleton, useToast } from '../../components/ui';
+import { formatCredits, useCredits } from '../../hooks/useCredits';
 import { api, errorMessage, unwrap } from '../../lib/api';
-import { formatDateTime, formatMoney } from '../../lib/format';
+import { formatDateTime } from '../../lib/format';
 import type { Booking } from '../../types';
 
-interface CheckoutResponse { checkoutUrl?: string; url?: string; paymentId?: string }
+interface CreditPaymentResponse { paymentId?: string | null; balance?: number }
 
 export function BookingDetailPage() {
   const { bookingId = '' } = useParams();
-  const [searchParams] = useSearchParams();
   const { notify } = useToast();
+  const { balance } = useCredits(1);
   const [booking, setBooking] = useState<Booking>();
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
@@ -32,40 +33,20 @@ export function BookingDetailPage() {
   }, [bookingId]);
   useEffect(() => { void load(); }, [load]);
 
-  // Back from Stripe: the webhook confirms the payment moments later, so re-check briefly.
-  const checkout = searchParams.get('checkout');
-  const awaitingConfirmation = checkout === 'success' && booking?.status === 'PENDING';
-  useEffect(() => {
-    if (!awaitingConfirmation) return undefined;
-    let attempts = 0;
-    const timer = window.setInterval(() => {
-      attempts += 1;
-      void api.get<Booking | { data: Booking }>(`/bookings/${bookingId}`)
-        .then((response) => { if (unwrap(response).status !== 'PENDING') void load(); })
-        .catch(() => undefined);
-      if (attempts >= 10) window.clearInterval(timer);
-    }, 3000);
-    return () => window.clearInterval(timer);
-  }, [awaitingConfirmation, bookingId, load]);
-
   const pay = async () => {
     setActionLoading(true);
     try {
-      const response = unwrap(await api.post<CheckoutResponse | { data: CheckoutResponse }>(
-        '/payments/checkout',
-        {
-          bookingId,
-          successUrl: `${window.location.origin}/student/bookings/${bookingId}?checkout=success`,
-          cancelUrl: `${window.location.origin}/student/bookings/${bookingId}?checkout=cancelled`,
-        },
+      const response = unwrap(await api.post<CreditPaymentResponse | { data: CreditPaymentResponse }>(
+        '/payments/pay',
+        { bookingId },
         { 'Idempotency-Key': paymentAttemptKey.current },
       ));
-      const checkoutUrl = response.checkoutUrl ?? response.url;
-      if (!checkoutUrl) throw new Error('The payment provider did not return a checkout link.');
-      window.location.assign(checkoutUrl);
+      notify({ title: 'Booking paid', description: response.balance !== undefined ? `Credits left: ${formatCredits(response.balance)}.` : undefined, tone: 'success' });
+      await load();
     } catch (reason) {
+      notify({ title: 'Payment failed', description: errorMessage(reason), tone: 'error' });
+    } finally {
       paymentAttemptKey.current = crypto.randomUUID();
-      notify({ title: 'Payment could not start', description: errorMessage(reason), tone: 'error' });
       setActionLoading(false);
     }
   };
@@ -90,18 +71,19 @@ export function BookingDetailPage() {
       <Link className="back-link" to="/student/bookings"><ArrowLeft aria-hidden="true" /> All bookings</Link>
       <PageHeader actions={<Button icon={<RefreshCcw aria-hidden="true" size={16} />} onClick={() => void load()} size="sm" variant="secondary">Refresh</Button>} description={`Reference ${booking.reference} · created ${formatDateTime(booking.createdAt)}`} eyebrow="Booking details" title={booking.trip?.route?.name ?? 'University shuttle'} />
       {error && <InlineAlert>{error}</InlineAlert>}
-      {awaitingConfirmation && <InlineAlert tone="info">Payment received. We are confirming it with the payment provider; your pass appears here in a few seconds.</InlineAlert>}
-      {checkout === 'cancelled' && booking.status === 'PENDING' && <InlineAlert tone="warning">Checkout was cancelled. Your seat stays held until the timer runs out, so you can try again.</InlineAlert>}
-      {!awaitingConfirmation && booking.paymentStatus !== 'SUCCESS' && booking.status === 'PENDING' && <Card className="payment-callout"><span><CreditCard aria-hidden="true" /></span><div><h2>Complete payment to activate your QR pass</h2><p>Your booking remains pending until the server verifies the payment provider’s confirmation.</p></div><Button loading={actionLoading} onClick={() => void pay()}>Pay {formatMoney(booking.totalAmount, booking.currency)}</Button></Card>}
+      {booking.paymentStatus !== 'SUCCESS' && booking.status === 'PENDING' && (() => {
+        const short = balance !== undefined && balance < booking.totalAmount;
+        return <Card className="payment-callout"><span><Coins aria-hidden="true" /></span><div><h2>Pay with your credits to confirm this seat</h2><p>{balance === undefined ? 'The fare is taken from your credit balance.' : short ? `You have ${formatCredits(balance)}; this booking needs ${formatCredits(booking.totalAmount)}. Add credits at the university office before the hold ends.` : `You have ${formatCredits(balance)}. The seat stays held until the timer ends.`}</p></div>{short ? <Link className="button button--secondary button--md" to="/student/credits">Add credits</Link> : <Button loading={actionLoading} onClick={() => void pay()}>Pay {formatCredits(booking.totalAmount)}</Button>}</Card>;
+      })()}
       <div className="booking-detail-grid">
         <BookingPass booking={booking} />
         <aside className="booking-detail-sidebar">
-          <Card><div className="card-heading"><h2>Journey details</h2><Pill>{booking.paymentStatus ?? 'PENDING'}</Pill></div><dl className="detail-list"><div><dt>Boarding stop</dt><dd><MapPin aria-hidden="true" /> {booking.boardingStop?.name ?? booking.trip?.route?.origin}</dd></div><div><dt>Destination</dt><dd>{booking.destinationStop?.name ?? booking.trip?.route?.destination}</dd></div><div><dt>Driver</dt><dd>{booking.trip?.driver?.name ?? 'Assigned before departure'}</dd></div><div><dt>Fare</dt><dd>{formatMoney(booking.totalAmount, booking.currency)}</dd></div></dl>{canCancel && <Button icon={<XCircle aria-hidden="true" size={17} />} onClick={() => setConfirmCancel(true)} variant="danger">Cancel booking</Button>}</Card>
+          <Card><div className="card-heading"><h2>Journey details</h2><Pill>{booking.paymentStatus ?? 'PENDING'}</Pill></div><dl className="detail-list"><div><dt>Boarding stop</dt><dd><MapPin aria-hidden="true" /> {booking.boardingStop?.name ?? booking.trip?.route?.origin}</dd></div><div><dt>Destination</dt><dd>{booking.destinationStop?.name ?? booking.trip?.route?.destination}</dd></div><div><dt>Driver</dt><dd>{booking.trip?.driver?.name ?? 'Assigned before departure'}</dd></div><div><dt>Fare</dt><dd>{formatCredits(booking.totalAmount)}</dd></div></dl>{canCancel && <Button icon={<XCircle aria-hidden="true" size={17} />} onClick={() => setConfirmCancel(true)} variant="danger">Cancel booking</Button>}</Card>
           {booking.trip && ['BOARDING', 'IN_PROGRESS', 'DELAYED'].includes(booking.trip.status) && <LiveTripMap trip={booking.trip} />}
-          {booking.paymentStatus === 'SUCCESS' && <Link className="button button--secondary button--md full-width" to="/student/payments"><Download aria-hidden="true" size={17} /> Payment receipt</Link>}
+          {booking.paymentStatus === 'SUCCESS' && <Link className="button button--secondary button--md full-width" to="/student/credits"><Download aria-hidden="true" size={17} /> Receipt</Link>}
         </aside>
       </div>
-      <Modal footer={<><Button onClick={() => setConfirmCancel(false)} variant="ghost">Keep booking</Button><Button loading={actionLoading} onClick={() => void cancel()} variant="danger">Yes, cancel</Button></>} onClose={() => setConfirmCancel(false)} open={confirmCancel} title="Release this seat?">Cancellation cannot be undone. If this booking was paid, an eligible refund is initiated server-side.</Modal>
+      <Modal footer={<><Button onClick={() => setConfirmCancel(false)} variant="ghost">Keep booking</Button><Button loading={actionLoading} onClick={() => void cancel()} variant="danger">Yes, cancel</Button></>} onClose={() => setConfirmCancel(false)} open={confirmCancel} title="Release this seat?">Cancellation cannot be undone. If you paid with credits, the fare goes straight back to your balance.</Modal>
     </div>
   );
 }

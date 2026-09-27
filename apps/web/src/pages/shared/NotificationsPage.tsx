@@ -116,7 +116,7 @@ function notificationLink(message: AppNotification, role?: Role): string | undef
   if (explicit?.startsWith('/')) return explicit;
   if (role === 'STUDENT') {
     if (text('bookingId')) return `/student/bookings/${text('bookingId')}`;
-    if (text('paymentId')) return '/student/payments';
+    if (text('paymentId') || text('creditTransactionId')) return '/student/credits';
     if (text('subscriptionId')) return '/student/subscriptions';
   }
   if ((role === 'DRIVER' || role === 'CONDUCTOR') && text('tripId')) return `/driver/trips/${text('tripId')}`;

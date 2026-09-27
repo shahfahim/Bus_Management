@@ -132,6 +132,28 @@ export interface Payment {
   createdAt: string;
 }
 
+export type CreditTransactionType = 'TOP_UP' | 'BOOKING_PAYMENT' | 'PASS_PURCHASE' | 'REFUND' | 'ADJUSTMENT';
+
+export interface CreditTransaction {
+  id: string;
+  type: CreditTransactionType;
+  /** Signed: positive added credits, negative spent them. */
+  amount: number;
+  balanceAfter: number;
+  reference?: string | null;
+  note?: string | null;
+  paymentId?: string | null;
+  recordedBy?: string | null;
+  createdAt: string;
+}
+
+export interface CreditWallet {
+  balance: number;
+  currency: string;
+  items: CreditTransaction[];
+  pagination?: { page: number; pageSize: number; total: number; pages: number };
+}
+
 export interface BoardingCard {
   code: string;
   issuedAt: string;

@@ -1,18 +1,20 @@
-import { BadgeCheck, CalendarClock, RefreshCcw, Ticket } from 'lucide-react';
+import { BadgeCheck, CalendarClock, Coins, RefreshCcw, Ticket } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useSearchParams } from 'react-router-dom';
-import { Button, Card, EmptyState, InlineAlert, PageHeader, Pill, Skeleton, useToast } from '../../components/ui';
+import { Link } from 'react-router-dom';
+import { Button, Card, EmptyState, InlineAlert, Modal, PageHeader, Pill, Skeleton, useToast } from '../../components/ui';
+import { formatCredits, useCredits } from '../../hooks/useCredits';
 import { api, asItems, errorMessage, unwrap } from '../../lib/api';
-import { formatDateTime, formatMoney } from '../../lib/format';
+import { formatDateTime } from '../../lib/format';
 import type { StudentSubscription, SubscriptionPlan } from '../../types';
 
-interface CheckoutResponse { checkoutUrl?: string; url?: string }
+interface CreditPaymentResponse { balance?: number }
 
 const planRoutes = (plan: SubscriptionPlan) => plan.routes.map((item) => ('route' in item ? item.route : item));
 
 export function SubscriptionsPage() {
-  const [searchParams] = useSearchParams();
   const { notify } = useToast();
+  const { balance } = useCredits(1);
+  const [confirmPlan, setConfirmPlan] = useState<SubscriptionPlan>();
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [subscriptions, setSubscriptions] = useState<StudentSubscription[]>([]);
   const [loading, setLoading] = useState(true);
@@ -38,19 +40,6 @@ export function SubscriptionsPage() {
   }, []);
   useEffect(() => { void load(); }, [load]);
 
-  // Back from Stripe: the pass activates when the webhook lands, so refresh a few times.
-  const returnedFromCheckout = searchParams.get('checkout') === 'success';
-  useEffect(() => {
-    if (!returnedFromCheckout) return undefined;
-    let attempts = 0;
-    const timer = window.setInterval(() => {
-      attempts += 1;
-      void load();
-      if (attempts >= 4) window.clearInterval(timer);
-    }, 4000);
-    return () => window.clearInterval(timer);
-  }, [returnedFromCheckout, load]);
-
   const buy = async (plan: SubscriptionPlan) => {
     setBuying(plan.id);
     let attemptKey = attemptKeys.current.get(plan.id);
@@ -59,38 +48,33 @@ export function SubscriptionsPage() {
       attemptKeys.current.set(plan.id, attemptKey);
     }
     try {
-      const checkout = unwrap(await api.post<CheckoutResponse | { data: CheckoutResponse }>(
-        '/payments/checkout',
-        {
-          subscriptionPlanId: plan.id,
-          successUrl: `${window.location.origin}/student/subscriptions?checkout=success`,
-          cancelUrl: `${window.location.origin}/student/subscriptions?checkout=cancelled`,
-        },
+      const result = unwrap(await api.post<CreditPaymentResponse | { data: CreditPaymentResponse }>(
+        '/payments/pay',
+        { subscriptionPlanId: plan.id },
         { 'Idempotency-Key': attemptKey },
       ));
-      const checkoutUrl = checkout.checkoutUrl ?? checkout.url;
-      if (!checkoutUrl) throw new Error('The payment provider did not return a checkout link.');
-      window.location.assign(checkoutUrl);
+      notify({ title: `${plan.name} is active`, description: result.balance !== undefined ? `Credits left: ${formatCredits(result.balance)}.` : undefined, tone: 'success' });
+      setConfirmPlan(undefined);
+      await load();
     } catch (reason) {
+      notify({ title: 'Could not buy this pass', description: errorMessage(reason), tone: 'error' });
+    } finally {
       attemptKeys.current.delete(plan.id);
-      notify({ title: 'Pass checkout could not start', description: errorMessage(reason), tone: 'error' });
       setBuying(undefined);
     }
   };
 
   const activePlanIds = new Set(subscriptions.filter(({ status }) => status === 'ACTIVE').map(({ plan }) => plan.id));
-  const callback = searchParams.get('checkout');
 
   return (
     <div className="page-stack">
       <PageHeader
         actions={<Button icon={<RefreshCcw aria-hidden="true" size={16} />} onClick={() => void load()} size="sm" variant="secondary">Refresh</Button>}
-        description="Purchase route passes securely and track active or previous subscriptions."
+        description="Buy route passes with your credits and track active or previous passes."
         eyebrow="Student travel"
         title="Bus passes"
       />
-      {callback === 'success' && <InlineAlert tone="success">Payment returned successfully. The pass activates only after verified server confirmation.</InlineAlert>}
-      {callback === 'cancelled' && <InlineAlert tone="warning">Pass checkout was cancelled; no card details were stored.</InlineAlert>}
+      {balance !== undefined && <div className="credit-line"><span><Coins aria-hidden="true" size={15} /> Your credits</span><strong>{formatCredits(balance)}</strong></div>}
       {error && <InlineAlert>{error}</InlineAlert>}
       {loading ? <Card><Skeleton lines={8} /></Card> : (
         <>
@@ -112,8 +96,10 @@ export function SubscriptionsPage() {
                   <span style={{ display: 'flex', alignItems: 'center', gap: '4px', maxWidth: '100%' }}>{routes.length ? routes.map(({ code }) => code).join(', ') : 'No routes assigned'}</span>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '4px', paddingTop: '16px', borderTop: '1px solid var(--line)' }}>
-                  <strong style={{ fontSize: '1.1rem', color: 'var(--ink)' }}>{formatMoney(Number(plan.price), plan.currency)}</strong>
-                  <Button disabled={active || routes.length === 0} loading={buying === plan.id} onClick={() => void buy(plan)}>{active ? 'Already active' : 'Buy pass'}</Button>
+                  <strong style={{ fontSize: '1.1rem', color: 'var(--ink)' }}>{formatCredits(Number(plan.price))}</strong>
+                  {!active && balance !== undefined && balance < Number(plan.price)
+                    ? <Link className="button button--secondary button--md" to="/student/credits">Add credits</Link>
+                    : <Button disabled={active || routes.length === 0} loading={buying === plan.id} onClick={() => setConfirmPlan(plan)}>{active ? 'Already active' : 'Buy pass'}</Button>}
                 </div>
               </Card>;
             })}</div>}
@@ -136,6 +122,17 @@ export function SubscriptionsPage() {
           </section>
         </>
       )}
+      <Modal
+        description={confirmPlan ? `${confirmPlan.durationDays} days · ${confirmPlan.tripLimit == null ? 'unlimited trips' : `${confirmPlan.tripLimit} trips`}` : undefined}
+        footer={<><Button onClick={() => setConfirmPlan(undefined)} variant="ghost">Not now</Button><Button loading={Boolean(confirmPlan && buying === confirmPlan.id)} onClick={() => confirmPlan && void buy(confirmPlan)}>Pay {confirmPlan ? formatCredits(Number(confirmPlan.price)) : ''}</Button></>}
+        onClose={() => setConfirmPlan(undefined)}
+        open={Boolean(confirmPlan)}
+        title={confirmPlan ? `Buy ${confirmPlan.name}?` : 'Buy pass'}
+      >
+        {confirmPlan && balance !== undefined
+          ? `${formatCredits(Number(confirmPlan.price))} will be taken from your credits, leaving ${formatCredits(balance - Number(confirmPlan.price))}. The pass starts right away.`
+          : 'The price will be taken from your credits and the pass starts right away.'}
+      </Modal>
     </div>
   );
 }

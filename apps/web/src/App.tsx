@@ -56,7 +56,8 @@ export default function App() {
           <Route element={<RoleGuard roles={['STUDENT']}><BookTripPage /></RoleGuard>} path="student/trips/:tripId/book" />
           <Route element={<RoleGuard roles={['STUDENT']}><BookingsPage /></RoleGuard>} path="student/bookings" />
           <Route element={<RoleGuard roles={['STUDENT']}><BookingDetailPage /></RoleGuard>} path="student/bookings/:bookingId" />
-          <Route element={<RoleGuard roles={['STUDENT']}><PaymentsPage /></RoleGuard>} path="student/payments" />
+          <Route element={<RoleGuard roles={['STUDENT']}><PaymentsPage /></RoleGuard>} path="student/credits" />
+          <Route element={<Navigate replace to="/student/credits" />} path="student/payments" />
           <Route element={<RoleGuard roles={['STUDENT']}><ExpensesPage /></RoleGuard>} path="student/expenses" />
           <Route element={<RoleGuard roles={['STUDENT']}><SubscriptionsPage /></RoleGuard>} path="student/subscriptions" />
           <Route element={<RoleGuard roles={['STUDENT']}><RatingsPage /></RoleGuard>} path="student/ratings" />

@@ -24,6 +24,7 @@ type AdminSectionId =
   | 'users'
   | 'bookings'
   | 'payments'
+  | 'credits'
   | 'checkins'
   | 'maintenance'
   | 'road-alerts'
@@ -400,20 +401,48 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
     id: 'payments',
     title: 'Payments',
     singular: 'payment',
-    description: 'Review verified gateway transactions, receipts, failures, and refunds.',
+    description: 'Bookings and passes paid with student credits, with receipts and refunds.',
     endpoint: '/admin/payments',
     searchPlaceholder: 'Search transaction, receipt, or payer…',
     columns: [
       { key: 'paymentNumber|transactionId', label: 'Transaction', sortable: true },
       { key: 'payer.name|user.name', label: 'Payer' },
       { key: 'amount', label: 'Amount', kind: 'currency', sortable: true },
-      { key: 'provider|gateway', label: 'Gateway', mobileHidden: true },
+      { key: 'methodType|provider', label: 'Paid with', mobileHidden: true },
       { key: 'status', label: 'Status', kind: 'status' },
       { key: 'paidAt', label: 'Processed', kind: 'datetime', sortable: true },
     ],
     fields: [],
     filters: [{ name: 'status', label: 'All payment statuses', options: [{ label: 'Pending', value: 'pending' }, { label: 'Successful', value: 'success' }, { label: 'Failed', value: 'failed' }, { label: 'Refunded', value: 'refunded' }] }],
-    actions: [{ id: 'refund', label: 'Issue refund', tone: 'danger', visible: (row) => valueMatches(row.status, 'success', 'succeeded') }],
+    actions: [{ id: 'refund', label: 'Refund to credits', tone: 'danger', visible: (row) => valueMatches(row.status, 'success', 'succeeded') }],
+  },
+  credits: {
+    id: 'credits',
+    title: 'Credits',
+    singular: 'credit entry',
+    description: 'Add credits when a student pays at the office, and see every top-up, fare, pass and refund.',
+    endpoint: '/admin/credits',
+    searchPlaceholder: 'Search student, ID, or receipt number…',
+    canCreate: true,
+    createLabel: 'Add credits',
+    columns: [
+      { key: 'createdAt', label: 'Date', kind: 'datetime' },
+      { key: 'student.name', label: 'Student' },
+      { key: 'student.studentNumber', label: 'Student ID', mobileHidden: true },
+      { key: 'type', label: 'Activity', kind: 'status' },
+      { key: 'amount', label: 'Credits', kind: 'number' },
+      { key: 'balanceAfter', label: 'Balance', kind: 'number' },
+      { key: 'reference', label: 'Receipt / reference', mobileHidden: true },
+      { key: 'recordedBy', label: 'Recorded by', mobileHidden: true },
+    ],
+    fields: [
+      { name: 'studentId', label: 'Student', kind: 'select', required: true, lookup: '/admin/users?role=student&status=active', lookupLabel: ['name', 'identifier'] },
+      { name: 'action', label: 'Action', kind: 'select', required: true, defaultValue: 'top_up', options: [{ label: 'Add credits (student paid the office)', value: 'top_up' }, { label: 'Remove credits (correct a mistake)', value: 'deduct' }] },
+      { name: 'amount', label: 'Credits (1 credit = ৳1)', kind: 'number', required: true, min: 1, max: 100000, step: 0.01 },
+      { name: 'reference', label: 'Money receipt number', kind: 'text', placeholder: 'e.g. TR-2026-00451', help: 'The number on the university money receipt. Each receipt can be credited only once.', visibleWhen: { field: 'action', value: 'top_up' } },
+      { name: 'note', label: 'Note', kind: 'textarea', fullWidth: true, help: 'Required when removing credits: explain the correction. The student sees it.' },
+    ],
+    filters: [{ name: 'type', label: 'All activity', options: [{ label: 'Top-ups', value: 'top_up' }, { label: 'Bus bookings', value: 'booking_payment' }, { label: 'Bus passes', value: 'pass_purchase' }, { label: 'Refunds', value: 'refund' }, { label: 'Corrections', value: 'adjustment' }] }],
   },
   checkins: {
     id: 'checkins',
@@ -655,7 +684,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
 const SECTION_GROUPS: Array<{ label: string; items: Array<{ id: 'overview' | 'reports' | AdminSectionId; label: string }> }> = [
   { label: 'Monitor', items: [{ id: 'overview', label: 'Overview' }, { id: 'reports', label: 'Reports' }, { id: 'trips', label: 'Trips' }, { id: 'assignments', label: 'Driver assignments' }, { id: 'incidents', label: 'Incidents' }] },
   { label: 'Network', items: [{ id: 'buses', label: 'Buses' }, { id: 'routes', label: 'Routes' }, { id: 'stops', label: 'Stops' }, { id: 'maintenance', label: 'Maintenance' }, { id: 'road-alerts', label: 'Road alerts' }, { id: 'door-readers', label: 'Door readers' }] },
-  { label: 'People & service', items: [{ id: 'bookings', label: 'Bookings' }, { id: 'payments', label: 'Payments' }, { id: 'checkins', label: 'Check-ins' }] },
+  { label: 'People & service', items: [{ id: 'bookings', label: 'Bookings' }, { id: 'payments', label: 'Payments' }, { id: 'credits', label: 'Credits' }, { id: 'checkins', label: 'Check-ins' }] },
   { label: 'Community', items: [{ id: 'lost-found', label: 'Lost & found' }, { id: 'ratings', label: 'Driver ratings' }, { id: 'notifications', label: 'Notifications' }] },
 ]
 
@@ -824,6 +853,7 @@ function AdminIcon({ name }: { name: string }) {
     users: <><circle cx="9" cy="8" r="4"/><path d="M2 21a7 7 0 0 1 14 0M16 4a4 4 0 0 1 0 8m2 3a6 6 0 0 1 4 6"/></>,
     bookings: <><path d="M4 3h16v18l-4-2-4 2-4-2-4 2V3Z"/><path d="m8 11 2 2 5-5"/></>,
     payments: <><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h3"/></>,
+    credits: <><ellipse cx="12" cy="6" rx="8" ry="3"/><path d="M4 6v6c0 1.7 3.6 3 8 3s8-1.3 8-3V6"/><path d="M4 12v6c0 1.7 3.6 3 8 3s8-1.3 8-3v-6"/></>,
     checkins: <><path d="M3 9V4a1 1 0 0 1 1-1h5M15 3h5a1 1 0 0 1 1 1v5M21 15v5a1 1 0 0 1-1 1h-5M9 21H4a1 1 0 0 1-1-1v-5"/><path d="m8 12 3 3 5-6"/></>,
     maintenance: <><path d="m14.7 6.3 3-3a4 4 0 0 1-5 5l-8 8a2.1 2.1 0 0 0 3 3l8-8a4 4 0 0 1 5-5l-3 3Z"/></>,
     'road-alerts': <><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v5m0 3h.01"/></>,
