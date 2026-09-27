@@ -1,5 +1,37 @@
 # UniRide security and reliability audit
 
+## Re-audit — 2026-09-27
+
+Scope: everything added since the first audit (boarding cards and door readers, trip schedules, student
+verification documents, the teacher role, student credits), a re-check of the baseline, dependencies,
+the live deployment's headers, and read-only queries against the production database's configuration.
+
+| ID | Severity | Finding | Fix |
+| --- | --- | --- | --- |
+| SEC-09 | High | Supabase's Data API roles (`anon`, `authenticated`) had full privileges on all 43 tables and no table had row-level security, so the users table (password hashes), sessions and credit balances were reachable outside the API by anyone holding the project's publishable key. | Migration `20260928000000_lock_down_supabase_data_api` enables RLS on every table and revokes those roles' privileges, including default privileges for future tables. The API's role bypasses RLS, so behaviour is unchanged. Verified on a Supabase-like database: before, `anon` could read `users`; after, permission denied, and new tables are also denied. |
+| SEC-10 | High | Vulnerable production dependencies: `multer` (upload denial of service, file-size limit bypass) and `qs` (denial of service). | Updated to `multer` 2.4.0 and `qs` 6.16.0 (`npm audit --omit=dev`: 0 vulnerabilities). |
+| SEC-11 | Medium | Behind Render's Cloudflare edge, `request.ip` was always an internal proxy address, so per-address rate limits (sign-in, uploads, global limiter) were shared by all visitors — an attacker could trip them for everyone — and sessions and audit logs recorded no real address. | `CLIENT_IP_HEADER=cf-connecting-ip` (set in `render.yaml`) makes the API use Cloudflare's visitor address; a missing or malformed header falls back to the previous behaviour. |
+| SEC-12 | Medium | Door reader API keys (`X-Door-Reader-Key`) were written to request logs in plain text. | Header added to log redaction; regression test covers bearer, cookie and reader-key headers. |
+| SEC-13 | Medium | Admin CSV exports allowed spreadsheet formula injection through user-controlled text (names, titles, notes). | Exports escape cells starting with `=`, `+`, `-`, `@`. |
+| SEC-14 | Low | Successful self-registrations were unlimited, each able to store an identity document. | 10 registrations per hour per network, applied before the upload is read. |
+| SEC-15 | Low | The door-reader limit was keyed by the supplied key, so rotating made-up keys bypassed it. | Rejected keys are also limited per address (20 per 15 minutes); genuine readers' refused scans do not count. Regression test added. |
+| SEC-16 | Low | Public lost-and-found responses included administrators' internal verification notes and reviewer identity. | Only the reporter and administrators receive them. Regression test added. |
+| SEC-17 | Low | Unique-constraint conflicts returned database constraint and column names. | The details are logged, not returned. |
+
+Reviewed without a confirmed issue: JWT algorithm/issuer/audience pinning, HttpOnly SameSite cookies,
+refresh-token rotation with reuse detection, bcrypt with a dummy hash against user enumeration by
+timing, temporary-password enforcement, registration locked to the student role, last-administrator
+protection, admin-only verification documents with magic-byte checks, driver/conductor scoping of manual
+check-ins, 80-bit boarding codes and 192-bit hashed reader keys, credit ledger integrity (non-negative
+balance, single-use receipts, idempotent payments), profile updates limited to name/phone/department,
+Socket.IO origin and session checks, live security headers (HSTS, strict CSP, nosniff, frame and
+resource policies) and hostile-origin rejection (403).
+
+Remaining: `vitest` (development only) has a moderate advisory whose fix is a major upgrade; do it as
+separate work. Registration still reveals whether an email is already registered, an accepted
+usability trade-off now bounded by the registration limit.
+
+
 Audit date: 2026-08-25
 Scope: repository source, dependency/configuration state, local automated checks, and non-destructive public checks against `https://uniride-shahfahim.onrender.com`.
 
