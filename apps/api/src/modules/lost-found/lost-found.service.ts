@@ -53,10 +53,11 @@ const include = {
 type ReportWithRelations = Prisma.LostFoundReportGetPayload<{ include: typeof include }>;
 
 const dto = (report: ReportWithRelations, includeReporter = false) => {
-  const { reporter, reporterId, ...publicReport } = report;
+  // Reviewer notes and identity are internal: only the reporter and administrators see them.
+  const { reporter, reporterId, verificationNotes, verifiedBy, verifiedById, ...publicReport } = report;
   return {
   ...publicReport,
-  ...(includeReporter ? { reporter, reporterId } : {}),
+  ...(includeReporter ? { reporter, reporterId, verificationNotes, verifiedBy, verifiedById } : {}),
   latitude: report.latitude === null ? null : Number(report.latitude),
   longitude: report.longitude === null ? null : Number(report.longitude),
   reference: report.reportNumber,

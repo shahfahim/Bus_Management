@@ -53,8 +53,20 @@ const credentialLimiter = rateLimit({
   message: { error: { code: 'RATE_LIMITED', message: 'Too many sign-in attempts; please try again later' } },
 });
 
+// Every sign-up can store an identity document, so successful registrations are limited too,
+// and the limit runs before the upload is read into memory.
+const registrationLimiter = rateLimit({
+  windowMs: 60 * 60_000,
+  // Students on campus Wi-Fi share one public address, so this is per network, not per person.
+  limit: 10,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { error: { code: 'RATE_LIMITED', message: 'Too many sign-ups from this network; please try again later' } },
+});
+
 authRouter.post(
   '/register',
+  registrationLimiter,
   authenticationLimiter,
   verificationUpload,
   asyncRoute(async (request, response) => {

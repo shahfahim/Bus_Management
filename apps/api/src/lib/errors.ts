@@ -29,7 +29,8 @@ export const errorHandler: ErrorRequestHandler = (error: unknown, request, respo
   } else if (error instanceof ZodError) {
     normalized = new AppError(400, 'VALIDATION_ERROR', 'Request validation failed', error.flatten());
   } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
-    normalized = new AppError(409, 'CONFLICT', 'A record with those values already exists', error.meta);
+    // The constraint and column names in error.meta describe the schema; keep them in the log only.
+    normalized = new AppError(409, 'CONFLICT', 'A record with those values already exists');
   } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2025') {
     normalized = new AppError(404, 'NOT_FOUND', 'The requested record does not exist');
   } else if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2003') {

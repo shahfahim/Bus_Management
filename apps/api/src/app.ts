@@ -6,6 +6,7 @@ import rateLimit from 'express-rate-limit';
 import helmet from 'helmet';
 import { pinoHttp } from 'pino-http';
 import { env } from './config/env.js';
+import { clientIpFromHeader } from './lib/client-ip.js';
 import { AppError, errorHandler, notFoundHandler } from './lib/errors.js';
 import { logger } from './lib/logger.js';
 import { prisma } from './lib/prisma.js';
@@ -59,6 +60,7 @@ export const createApp = () => {
   const app = express();
   app.disable('x-powered-by');
   if (env.NODE_ENV === 'production') app.set('trust proxy', 1);
+  app.use(clientIpFromHeader(env.CLIENT_IP_HEADER));
   app.set('json replacer', (_key: string, value: unknown) => (typeof value === 'bigint' ? value.toString() : value));
 
   app.use(

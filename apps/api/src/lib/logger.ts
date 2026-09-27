@@ -7,6 +7,7 @@ const options: LoggerOptions = {
     paths: [
       'req.headers.authorization',
       'req.headers.cookie',
+      'req.headers["x-door-reader-key"]',
       'res.headers["set-cookie"]',
       'password',
       '*.password',

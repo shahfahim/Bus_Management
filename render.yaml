@@ -26,6 +26,9 @@ services:
         value: "10"
       - key: LOG_LEVEL
         value: info
+      # Render's edge is Cloudflare; without this every visitor appears as one internal proxy address.
+      - key: CLIENT_IP_HEADER
+        value: cf-connecting-ip
       - key: DATABASE_URL
         sync: false
       - key: SUPABASE_URL

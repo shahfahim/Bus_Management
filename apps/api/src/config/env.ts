@@ -38,6 +38,8 @@ const schema = z
     UPLOAD_DIR: z.string().default('uploads'),
     WEB_DIST_DIR: z.string().default('apps/web/dist'),
     SERVE_WEB_ASSETS: z.enum(['true', 'false']).default('false').transform((value) => value === 'true'),
+    // Header set by the hosting edge with the visitor's real address, e.g. cf-connecting-ip on Render.
+    CLIENT_IP_HEADER: z.preprocess(blankToUndefined, z.string().trim().toLowerCase().regex(/^[a-z0-9-]+$/).optional()),
     LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
     SEED_ADMIN_EMAIL: z.string().email().default('admin@example.edu'),
     SEED_ADMIN_PASSWORD: z.string().min(10).default('ChangeMe123!'),

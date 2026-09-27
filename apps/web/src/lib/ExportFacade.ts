@@ -31,7 +31,9 @@ export class ExportFacade {
     });
 
     // Use PapaParse for robust CSV escaping and formatting
-    const csv = Papa.unparse(formattedData);
+    // escapeFormulae prefixes cells starting with = + - @ so a name like "=HYPERLINK(…)" typed by
+    // a user is shown as text instead of running as a formula when an admin opens the file.
+    const csv = Papa.unparse(formattedData, { escapeFormulae: true });
 
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
     const url = URL.createObjectURL(blob);

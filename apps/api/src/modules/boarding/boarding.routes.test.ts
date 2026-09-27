@@ -68,4 +68,19 @@ describe('door reader endpoint', () => {
     expect(response.status).toBe(401);
     expect(mocks.checkInWithBoardingCode).not.toHaveBeenCalled();
   });
+
+  it('throttles an address that keeps sending made-up keys, even when every key differs', async () => {
+    mocks.authenticateDoorReader.mockRejectedValue(new AppError(401, 'READER_NOT_AUTHORISED', 'This door reader is not authorised'));
+
+    const statuses: number[] = [];
+    for (let attempt = 0; attempt < 25; attempt += 1) {
+      const response = await request(app).post('/api/boarding/check-ins').set('X-Door-Reader-Key', `drk_guess_${attempt}`).send({ code: 'UR0123456789ABCDEF0123' });
+      statuses.push(response.status);
+    }
+
+    expect(statuses).toContain(429);
+    expect(statuses.at(-1)).toBe(429);
+    expect(mocks.authenticateDoorReader.mock.calls.length).toBeLessThanOrEqual(20);
+  });
 });
+

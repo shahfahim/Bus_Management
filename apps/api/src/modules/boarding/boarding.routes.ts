@@ -48,9 +48,23 @@ const readerLimiter = rateLimit({
   message: { accepted: false, code: 'RATE_LIMITED', message: 'Too many scans; slow down' },
 });
 
+// The per-key limit above cannot stop someone sending a different made-up key each time, so
+// rejected keys are also counted per network address. Refused scans (no booking, etc.) from a
+// genuine reader do not count.
+const invalidReaderKeyLimiter = rateLimit({
+  windowMs: 15 * 60_000,
+  limit: 20,
+  skipSuccessfulRequests: true,
+  requestWasSuccessful: (_request, response) => response.statusCode !== 401,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: { accepted: false, code: 'RATE_LIMITED', message: 'Too many invalid reader keys; try again later' },
+});
+
 /** Bus door reader: authenticates with its own key and checks the scanned rider in. */
 boardingRouter.post(
   '/check-ins',
+  invalidReaderKeyLimiter,
   readerLimiter,
   text({ type: 'text/plain', limit: '1kb' }),
   asyncRoute(async (request, response) => {
