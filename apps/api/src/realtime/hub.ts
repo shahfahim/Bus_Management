@@ -16,6 +16,7 @@ interface ServerEvents {
   'trip:updated': (payload: unknown) => void;
   'checkin:created': (payload: unknown) => void;
   'notifications:read': (payload: unknown) => void;
+  'credits:updated': (payload: unknown) => void;
 }
 
 interface ClientEvents {

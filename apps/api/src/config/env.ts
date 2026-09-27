@@ -27,9 +27,6 @@ const schema = z
     ACCESS_TOKEN_TTL_MINUTES: z.coerce.number().int().min(5).max(60).default(15),
     REFRESH_TOKEN_TTL_DAYS: z.coerce.number().int().min(1).max(90).default(30),
     BOOKING_HOLD_MINUTES: z.coerce.number().int().min(5).max(60).default(15),
-    STRIPE_SECRET_KEY: z.preprocess(blankToUndefined, z.string().min(1).optional()),
-    STRIPE_WEBHOOK_SECRET: z.preprocess(blankToUndefined, z.string().min(1).optional()),
-    STRIPE_CURRENCY: z.string().length(3).default('bdt'),
     VAPID_PUBLIC_KEY: z.preprocess(blankToUndefined, z.string().optional()),
     VAPID_PRIVATE_KEY: z.preprocess(blankToUndefined, z.string().optional()),
     VAPID_SUBJECT: z.string().default('mailto:transport@example.edu'),
@@ -48,13 +45,6 @@ const schema = z
     SEED_STUDENT_PASSWORD: z.string().min(10).default('ChangeMe123!'),
   })
   .superRefine((value, context) => {
-    if ((value.STRIPE_SECRET_KEY && !value.STRIPE_WEBHOOK_SECRET) || (!value.STRIPE_SECRET_KEY && value.STRIPE_WEBHOOK_SECRET)) {
-      context.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ['STRIPE_SECRET_KEY'],
-        message: 'STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET must be configured together',
-      });
-    }
     if ((value.VAPID_PUBLIC_KEY && !value.VAPID_PRIVATE_KEY) || (!value.VAPID_PUBLIC_KEY && value.VAPID_PRIVATE_KEY)) {
       context.addIssue({
         code: z.ZodIssueCode.custom,

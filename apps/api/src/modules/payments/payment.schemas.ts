@@ -1,12 +1,9 @@
 import { z } from 'zod';
 
-export const checkoutSchema = z
+export const payWithCreditsSchema = z
   .object({
     bookingId: z.string().trim().uuid().optional(),
     subscriptionPlanId: z.string().trim().uuid().optional(),
-    successUrl: z.string().url().optional(),
-    cancelUrl: z.string().url().optional(),
-    returnUrl: z.string().url().optional(),
   })
   .refine((value) => Number(Boolean(value.bookingId)) + Number(Boolean(value.subscriptionPlanId)) === 1, {
     message: 'Supply exactly one of bookingId or subscriptionPlanId',

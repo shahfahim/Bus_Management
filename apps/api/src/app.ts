@@ -15,10 +15,11 @@ import { authRouter } from './modules/auth/auth.routes.js';
 import { boardingRouter } from './modules/boarding/boarding.routes.js';
 import { bookingRouter } from './modules/bookings/booking.routes.js';
 import { catalogRouter } from './modules/catalog/catalog.routes.js';
+import { creditRouter } from './modules/credits/credit.routes.js';
 import { lostFoundRouter } from './modules/lost-found/lost-found.routes.js';
 import { maintenanceRouter } from './modules/maintenance/maintenance.routes.js';
 import { notificationRouter } from './modules/notifications/notification.routes.js';
-import { paymentRouter, stripeWebhookRouter } from './modules/payments/payment.routes.js';
+import { paymentRouter } from './modules/payments/payment.routes.js';
 import { ratingRouter } from './modules/ratings/rating.routes.js';
 import { roadAlertRouter } from './modules/road-alerts/road-alert.routes.js';
 import { subscriptionRouter } from './modules/subscriptions/subscription.routes.js';
@@ -42,6 +43,7 @@ const buildApiRouter = (): Router => {
   api.use('/bookings', bookingRouter);
   api.use('/boarding', boardingRouter);
   api.use('/payments', paymentRouter);
+  api.use('/credits', creditRouter);
   api.use('/subscriptions', subscriptionRouter);
   api.use('/notifications', notificationRouter);
   api.use('/driver', driverRouter);
@@ -116,9 +118,6 @@ export const createApp = () => {
     }),
   );
 
-  // Stripe must receive the exact signed bytes, before any JSON parser runs.
-  app.use('/api/webhooks', stripeWebhookRouter);
-  app.use('/api/v1/webhooks', stripeWebhookRouter);
   app.use(express.json({ limit: '1mb' }));
   app.use(express.urlencoded({ extended: false, limit: '100kb' }));
   app.use(cookieParser());

@@ -20,7 +20,7 @@ import { prisma } from '../../lib/prisma.js';
 import { reservedSeatIds, seatOrder } from '../../lib/reserved-seats.js';
 import { emitToTrip, emitToUser } from '../../realtime/hub.js';
 import { notifyUser } from '../notifications/notification.service.js';
-import { refundBookingPayments } from '../payments/payment.service.js';
+import { payBookingWithCredits, refundBookingPayments } from '../payments/payment.service.js';
 import { BookingStateFactory } from './booking.state.js';
 import type { z } from 'zod';
 import type { bookingListSchema, createBookingSchema, finalizeSeatHoldSchema } from './booking.schemas.js';
@@ -429,14 +429,16 @@ export const finalizeSeatHold = async (studentId: string, input: FinalizeSeatHol
           dropoffTripStopId: dropoff.id,
           subscriptionId: subscription?.id,
           idempotencyKey,
-          status: requiresPayment ? BookingStatus.PENDING_PAYMENT : BookingStatus.CONFIRMED,
           fareAmount: subscription ? 0 : booking.fareAmount,
-          confirmedAt: requiresPayment ? null : now,
-          holdExpiresAt: requiresPayment ? booking.holdExpiresAt : null,
+          ...(requiresPayment ? {} : { status: BookingStatus.CONFIRMED, confirmedAt: now, holdExpiresAt: null }),
           version: { increment: 1 },
         },
       });
-      if (!requiresPayment) {
+      if (requiresPayment) {
+        // The fare comes straight out of the student's credits. Too few credits aborts the whole
+        // booking, and the seat stays held so the student can top up or choose a pass.
+        await payBookingWithCredits(tx, booking.id, studentId);
+      } else {
         await tx.seatAllocation.updateMany({
           where: { bookingId: booking.id, status: SeatAllocationStatus.HELD },
           data: { status: SeatAllocationStatus.CONFIRMED },
@@ -470,15 +472,16 @@ export const finalizeSeatHold = async (studentId: string, input: FinalizeSeatHol
   await notifyUser({
     userId: studentId,
     type: finalized.status === BookingStatus.CONFIRMED ? NotificationType.BOOKING_CONFIRMED : NotificationType.SYSTEM,
-    title: finalized.status === BookingStatus.CONFIRMED ? 'Booking confirmed' : 'Booking ready for payment',
+    title: finalized.status === BookingStatus.CONFIRMED ? 'Booking confirmed' : 'Booking awaiting payment',
     body:
       finalized.status === BookingStatus.CONFIRMED
-        ? `Booking ${finalized.bookingNumber} is confirmed.`
-        : `Complete payment for ${finalized.bookingNumber} before the hold expires.`,
+        ? `Booking ${finalized.bookingNumber} is confirmed${Number(finalized.fareAmount) > 0 ? ' and paid from your credits' : ''}.`
+        : `Pay for ${finalized.bookingNumber} with your credits before the hold expires.`,
     data: { bookingId: finalized.id, tripId: finalized.tripId },
     dedupeKey: `booking-finalized:${finalized.id}`,
   });
   emitToUser(studentId, 'booking:updated', result);
+  if (Number(finalized.fareAmount) > 0) emitToUser(studentId, 'credits:updated', {});
   return result;
 };
 
@@ -578,7 +581,7 @@ export const createBooking = async ({
               boardingTripStopId: boarding.id,
               dropoffTripStopId: dropoff.id,
               subscriptionId: subscription?.id,
-              status: requiresPayment ? BookingStatus.PENDING_PAYMENT : BookingStatus.CONFIRMED,
+              status: requiresPayment ? BookingStatus.HELD : BookingStatus.CONFIRMED,
               idempotencyKey,
               fareAmount: subscription ? 0 : trip.fareAmount,
               currency: trip.currency,
@@ -601,6 +604,7 @@ export const createBooking = async ({
             });
             if (decremented.count !== 1) throw new AppError(409, 'SUBSCRIPTION_EXHAUSTED', 'The subscription has no trips remaining');
           }
+          if (requiresPayment) await payBookingWithCredits(tx, booking.id, studentId);
           return tx.booking.findUniqueOrThrow({ where: { id: booking.id }, include: bookingInclude });
         },
         { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
@@ -628,8 +632,8 @@ export const createBooking = async ({
     type: confirmed ? NotificationType.BOOKING_CONFIRMED : NotificationType.SYSTEM,
     title: confirmed ? 'Booking confirmed' : 'Seat held for payment',
     body: confirmed
-      ? `Booking ${created.bookingNumber} is confirmed.`
-      : `Complete payment for ${created.bookingNumber} before ${created.holdExpiresAt?.toLocaleTimeString()}.`,
+      ? `Booking ${created.bookingNumber} is confirmed${Number(created.fareAmount) > 0 ? ' and paid from your credits' : ''}.`
+      : `Pay for ${created.bookingNumber} with your credits before ${created.holdExpiresAt?.toLocaleTimeString()}.`,
     data: { bookingId: created.id, tripId: created.tripId, actionUrl: `/student/bookings/${created.id}` },
     dedupeKey: `booking-created:${created.id}`,
   });
@@ -741,7 +745,7 @@ export const cancelBooking = async ({ bookingId, studentId, reason, isAdmin = fa
     userId: cancelled.studentId,
     type: NotificationType.BOOKING_CANCELLED,
     title: 'Booking cancelled',
-    body: `Booking ${cancelled.bookingNumber} was cancelled${cancelled.status === BookingStatus.REFUND_PENDING ? '; its refund is being processed' : ''}.`,
+    body: `Booking ${cancelled.bookingNumber} was cancelled${cancelled.status === BookingStatus.REFUND_PENDING ? '; the fare is being returned to your credits' : ''}.`,
     data: { bookingId: cancelled.id, tripId: cancelled.tripId },
     dedupeKey: `booking-cancelled:${cancelled.id}`,
   });

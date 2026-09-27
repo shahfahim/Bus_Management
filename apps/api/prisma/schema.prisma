@@ -166,6 +166,7 @@ enum PaymentMethodType {
   MOBILE_BANKING
   BANK_TRANSFER
   CASH
+  CREDITS
   OTHER
 }
 
@@ -182,6 +183,14 @@ enum PaymentTransactionStatus {
   PENDING
   SUCCEEDED
   FAILED
+}
+
+enum CreditTransactionType {
+  TOP_UP
+  BOOKING_PAYMENT
+  PASS_PURCHASE
+  REFUND
+  ADJUSTMENT
 }
 
 enum NotificationType {
@@ -339,6 +348,7 @@ model User {
   lostFoundClaimReviews   LostFoundClaim[]    @relation("LostFoundClaimReviewer")
   driverIncidentsResolved DriverIncident[]    @relation("IncidentResolver")
   auditLogs               AuditLog[]
+  creditTransactionsMade  CreditTransaction[] @relation("CreditTransactionCreator")
 
   @@index([role, status])
   @@index([status, createdAt])
@@ -358,12 +368,15 @@ model StudentProfile {
   // Personal Code 128 boarding card: one per student, reused for every booking, reissuable.
   boardingCode            String?               @unique @db.VarChar(32)
   boardingCodeIssuedAt    DateTime?             @db.Timestamptz(3)
+  // Prepaid travel credits bought at the university office (1 credit = 1 BDT). Never negative.
+  creditBalance           Decimal               @default(0) @db.Decimal(12, 2)
   createdAt               DateTime              @default(now()) @db.Timestamptz(3)
   updatedAt               DateTime              @updatedAt @db.Timestamptz(3)
   user                    User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
   bookings                Booking[]
   subscriptions           StudentSubscription[]
   ratingsGiven            DriverRating[]
+  creditTransactions      CreditTransaction[]
 
   @@index([department])
   @@map("student_profiles")
@@ -885,6 +898,7 @@ model Payment {
   transactions             PaymentTransaction[]
   receipt                  PaymentReceipt?
   gatewayEvents            PaymentGatewayEvent[]
+  creditTransactions       CreditTransaction[]
 
   @@unique([provider, providerPaymentReference])
   @@index([payerId, status, createdAt(sort: Desc)])
@@ -892,6 +906,30 @@ model Payment {
   @@index([subscriptionId, status])
   @@index([status, createdAt])
   @@map("payments")
+}
+
+/// Ledger of every change to a student's credit balance. amount is signed: positive adds
+/// credits (top-up, refund), negative spends them. A top-up's reference is the university's
+/// money receipt number and can be recorded only once (partial unique index in the migration).
+model CreditTransaction {
+  id           String                @id @default(uuid()) @db.Uuid
+  studentId    String                @db.Uuid
+  type         CreditTransactionType
+  amount       Decimal               @db.Decimal(12, 2)
+  balanceAfter Decimal               @db.Decimal(12, 2)
+  reference    String?               @db.VarChar(64)
+  note         String?               @db.Text
+  paymentId    String?               @db.Uuid
+  createdById  String?               @db.Uuid
+  createdAt    DateTime              @default(now()) @db.Timestamptz(3)
+  student      StudentProfile        @relation(fields: [studentId], references: [userId], onDelete: Restrict)
+  payment      Payment?              @relation(fields: [paymentId], references: [id], onDelete: SetNull)
+  createdBy    User?                 @relation("CreditTransactionCreator", fields: [createdById], references: [id], onDelete: SetNull)
+
+  @@index([studentId, createdAt(sort: Desc)])
+  @@index([type, createdAt])
+  @@index([paymentId])
+  @@map("credit_transactions")
 }
 
 model PaymentTransaction {

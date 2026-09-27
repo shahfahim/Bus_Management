@@ -156,6 +156,7 @@ import {
   updateAdminUser,
 } from './people-admin.service.js';
 import { cancelBooking } from '../bookings/booking.service.js';
+import { getCreditLedgerEntry, listCreditLedger, recordCreditAdjustment } from '../credits/credit.service.js';
 import {
   cancelAdminTrip,
   createAdminTrip,
@@ -424,6 +425,16 @@ adminRouter.post('/payments/:id/refund', asyncRoute(async (request, response) =>
 adminRouter.post('/payments', asyncRoute(() => unsupported('payment')));
 adminRouter.patch('/payments/:id', asyncRoute(() => unsupported('payment')));
 adminRouter.delete('/payments/:id', asyncRoute(() => unsupported('payment')));
+
+// Credits: students pay the university office, then an administrator records the top-up here.
+adminRouter.get('/credits', asyncRoute(async (request, response) => {
+  const query = Schemas.creditLedgerQuerySchema.parse(request.query);
+  response.json(await listCreditLedger({ ...query, pageSize: query.pageSize ?? query.limit }));
+}));
+adminRouter.get('/credits/:id', asyncRoute(async (request, response) => response.json(await getCreditLedgerEntry(idSchema.parse(request.params.id)))));
+adminRouter.post('/credits', asyncRoute(async (request, response) => response.status(201).json(await recordCreditAdjustment(Schemas.creditAdjustmentSchema.parse(request.body), auditContext(request)))));
+adminRouter.patch('/credits/:id', asyncRoute(() => unsupported('credit')));
+adminRouter.delete('/credits/:id', asyncRoute(() => unsupported('credit')));
 
 adminRouter.get('/checkins', asyncRoute(async (request, response) => response.json(await listAdminCheckIns(checkInQuerySchema.parse(request.query)))));
 adminRouter.get('/checkins/:id', asyncRoute(async (request, response) => response.json(await getAdminCheckIn(idSchema.parse(request.params.id)))));

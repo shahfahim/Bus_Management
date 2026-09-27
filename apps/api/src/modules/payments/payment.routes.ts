@@ -1,19 +1,10 @@
-import { Router, raw } from 'express';
+import { Router } from 'express';
 import { PaymentStatus, Role } from '@prisma/client';
 import { z } from 'zod';
 import { asyncRoute } from '../../lib/async-route.js';
 import { requireAuth, requireRole } from '../auth/auth.middleware.js';
-import { checkoutSchema, refundSchema } from './payment.schemas.js';
-import { createCheckout, getReceipt, handleStripeWebhook, listPayments, refundPayment } from './payment.service.js';
-
-export const stripeWebhookRouter = Router();
-stripeWebhookRouter.post(
-  '/stripe',
-  raw({ type: 'application/json', limit: '1mb' }),
-  asyncRoute(async (request, response) => {
-    response.json(await handleStripeWebhook(request.body as Buffer, request.get('stripe-signature')));
-  }),
-);
+import { payWithCreditsSchema, refundSchema } from './payment.schemas.js';
+import { getReceipt, listPayments, payWithCredits, refundPayment } from './payment.service.js';
 
 export const paymentRouter = Router();
 paymentRouter.use(requireAuth);
@@ -35,19 +26,19 @@ paymentRouter.get(
   }),
 );
 
+// Pays for a pending booking or buys a bus pass from the student's credits. /checkout is the
+// path older clients used for card checkout.
 paymentRouter.post(
-  '/checkout',
+  ['/pay', '/checkout'],
   requireRole(Role.STUDENT),
   asyncRoute(async (request, response) => {
-    const input = checkoutSchema.parse(request.body);
+    const input = payWithCreditsSchema.parse(request.body);
     response.status(201).json(
-      await createCheckout({
+      await payWithCredits({
         userId: request.auth!.userId,
         bookingId: input.bookingId,
         subscriptionPlanId: input.subscriptionPlanId,
         idempotencyKey: request.get('idempotency-key'),
-        successUrl: input.successUrl ?? input.returnUrl,
-        cancelUrl: input.cancelUrl,
       }),
     );
   }),

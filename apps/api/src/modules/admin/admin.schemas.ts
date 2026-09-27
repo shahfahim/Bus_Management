@@ -3,6 +3,7 @@ import {
   BookingStatus,
   BusStatus,
   CheckInResult,
+  CreditTransactionType,
   DriverStatus,
   IncidentCategory,
   IncidentStatus,
@@ -327,6 +328,24 @@ export const paymentQuerySchema = adminListQuerySchema.extend({
 });
 
 export const refundSchema = z.object({ reason: z.string().trim().min(3).max(500) });
+
+export const creditLedgerQuerySchema = adminListQuerySchema.extend({
+  type: enumValue(CreditTransactionType, { DEDUCTION: CreditTransactionType.ADJUSTMENT }).optional(),
+  studentId: idSchema.optional(),
+});
+
+// A top-up records money a student paid at the university office; a deduction corrects a mistake.
+export const creditAdjustmentSchema = z.object({
+  studentId: idSchema,
+  action: z.preprocess((value) => (typeof value === 'string' ? value.trim().toLowerCase() : value), z.enum(['top_up', 'deduct']).default('top_up')),
+  amount: z.coerce
+    .number()
+    .positive()
+    .max(100_000)
+    .refine((value) => Math.abs(value * 100 - Math.round(value * 100)) < 1e-6, 'Use at most two decimal places'),
+  reference: optionalText(64),
+  note: optionalText(500),
+});
 
 export const checkInQuerySchema = adminListQuerySchema.extend({
   status: z.preprocess((value) => (typeof value === 'string' ? value.toLowerCase() : value), z.enum(['valid', 'rejected', 'revoked']).optional()),

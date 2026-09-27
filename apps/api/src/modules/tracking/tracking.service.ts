@@ -17,7 +17,6 @@ import {
 } from '@prisma/client';
 import type { Prisma } from '@prisma/client';
 import type { z } from 'zod';
-import { env } from '../../config/env.js';
 import { AppError } from '../../lib/errors.js';
 import { lockBookings } from '../../lib/booking-lock.js';
 import { lockBusSchedule } from '../../lib/bus-schedule-lock.js';
@@ -27,6 +26,7 @@ import { paginated, toPagination } from '../../lib/pagination.js';
 import { logger } from '../../lib/logger.js';
 import { prisma } from '../../lib/prisma.js';
 import { emitToRole, emitToTrip } from '../../realtime/hub.js';
+import { CREDIT_CURRENCY } from '../credits/credit.service.js';
 import { notifyUser, notifyUsers } from '../notifications/notification.service.js';
 import type { createDriverTripSchema, driverTripQuerySchema, incidentSchema, locationUpdateSchema } from './tracking.schemas.js';
 import type { StoredIncidentImage } from './tracking.upload.js';
@@ -319,7 +319,7 @@ export const createDriverTrip = async (driverId: string, input: CreateDriverTrip
         boardingOpensAt: new Date(Math.max(Date.now(), input.scheduledStart.getTime() - 30 * 60_000)),
         bookingClosesAt: input.scheduledStart,
         fareAmount: input.fare,
-        currency: env.STRIPE_CURRENCY.toUpperCase(),
+        currency: CREDIT_CURRENCY,
       },
     });
     await tx.tripStop.createMany({

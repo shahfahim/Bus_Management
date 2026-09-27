@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import {
   AssignmentStatus,
   BusStatus,
+  CreditTransactionType,
   DriverStatus,
   PrismaClient,
   Role,
@@ -103,6 +104,27 @@ const main = async () => {
     create: { userId: student.id, studentNumber: 'STU-001', department: 'Computer Science', boardingCode: generateBoardingCode(), boardingCodeIssuedAt: new Date() },
     update: { department: 'Computer Science' },
   });
+  // Demo credits, as if the student had paid the transport office. Seeded once, never topped up again.
+  const seededTopUp = await prisma.creditTransaction.findFirst({ where: { studentId: student.id, reference: 'SEED-DEMO-TOPUP' } });
+  if (!seededTopUp) {
+    await prisma.$transaction(async (tx) => {
+      const profile = await tx.studentProfile.update({
+        where: { userId: student.id },
+        data: { creditBalance: { increment: 1000 } },
+        select: { creditBalance: true },
+      });
+      await tx.creditTransaction.create({
+        data: {
+          studentId: student.id,
+          type: CreditTransactionType.TOP_UP,
+          amount: 1000,
+          balanceAfter: profile.creditBalance,
+          reference: 'SEED-DEMO-TOPUP',
+          note: 'Demo credits',
+        },
+      });
+    });
+  }
 
   const bus = await prisma.bus.upsert({
     where: { fleetNumber: 'BUS-01' },

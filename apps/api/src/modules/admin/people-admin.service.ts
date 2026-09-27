@@ -522,7 +522,7 @@ export const cancelAdminBooking = async (id: string, reason: string, context: Au
     userId: updated.studentId,
     type: NotificationType.BOOKING_CANCELLED,
     title: 'Booking cancelled',
-    body: `Booking ${updated.bookingNumber} was cancelled by an administrator${refundRequired ? '; a refund is being processed' : ''}.`,
+    body: `Booking ${updated.bookingNumber} was cancelled by an administrator${refundRequired ? '; the fare is being returned to your credits' : ''}.`,
     data: { bookingId: updated.id, tripId: updated.tripId },
     dedupeKey: `admin-booking-cancelled:${updated.id}:${updated.updatedAt.getTime()}`,
   });
