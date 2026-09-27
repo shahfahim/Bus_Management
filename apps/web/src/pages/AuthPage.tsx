@@ -5,6 +5,7 @@ import { Brand } from '../components/Brand';
 import { Button, Field, InlineAlert } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { api, errorMessage, unwrap } from '../lib/api';
+import { PASSWORD_HINT, PASSWORD_MIN_LENGTH, passwordProblem } from '../lib/password';
 
 interface LocationState {
   from?: { pathname?: string };
@@ -36,9 +37,8 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
         await login({ email: String(form.get('email')), password: String(form.get('password')) });
       } else {
         const password = String(form.get('password'));
-        if (password.length < 10 || !/[a-z]/.test(password) || !/[A-Z]/.test(password) || !/\d/.test(password)) {
-          throw new Error('Use at least 10 characters, including lowercase, uppercase and a number.');
-        }
+        const problem = passwordProblem(password);
+        if (problem) throw new Error(problem);
         const formData = new FormData();
         const commonData = {
           name: String(form.get('name')),
@@ -209,10 +209,10 @@ export function AuthPage({ initialMode = 'login' }: { initialMode?: 'login' | 'r
             <div className="password-field">
               <Field
                 autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                hint={mode === 'register' ? '10+ characters with lowercase, uppercase and a number' : undefined}
+                hint={mode === 'register' ? PASSWORD_HINT : undefined}
                 icon={<LockKeyhole aria-hidden="true" size={18} />}
                 label="Password"
-                minLength={mode === 'register' ? 10 : 1}
+                minLength={mode === 'register' ? PASSWORD_MIN_LENGTH : 1}
                 name="password"
                 required
                 type={showPassword ? 'text' : 'password'}

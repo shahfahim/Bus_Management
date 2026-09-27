@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card, Field, InlineAlert, PageHeader, useToast } from '../components/ui';
 import { useAuth } from '../contexts/AuthContext';
 import { api, errorMessage, unwrap } from '../lib/api';
+import { PASSWORD_HINT, PASSWORD_MIN_LENGTH, passwordProblem } from '../lib/password';
 import type { User } from '../types';
 
 export function ChangePasswordPage() {
@@ -22,6 +23,11 @@ export function ChangePasswordPage() {
     const currentPassword = String(form.get('currentPassword') ?? '');
     const newPassword = String(form.get('newPassword') ?? '');
     const confirmation = String(form.get('confirmation') ?? '');
+    const problem = passwordProblem(newPassword);
+    if (problem) {
+      setError(problem);
+      return;
+    }
     if (newPassword !== confirmation) {
       setError('The new password and confirmation do not match.');
       return;
@@ -68,10 +74,10 @@ export function ChangePasswordPage() {
           />
           <Field
             autoComplete="new-password"
-            hint="Use 10–128 characters with uppercase, lowercase, and a number."
+            hint={PASSWORD_HINT}
             icon={<ShieldCheck aria-hidden="true" size={18} />}
             label="New password"
-            minLength={10}
+            minLength={PASSWORD_MIN_LENGTH}
             name="newPassword"
             required
             type="password"
@@ -79,7 +85,7 @@ export function ChangePasswordPage() {
           <Field
             autoComplete="new-password"
             label="Confirm new password"
-            minLength={10}
+            minLength={PASSWORD_MIN_LENGTH}
             name="confirmation"
             required
             type="password"

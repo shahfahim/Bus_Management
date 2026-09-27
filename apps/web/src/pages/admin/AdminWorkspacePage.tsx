@@ -357,7 +357,7 @@ const RESOURCE_CONFIGS: Record<AdminSectionId, ResourceConfig> = {
       { name: 'licenseNumber', label: 'Driver license number', kind: 'text', required: true, visibleWhen: { field: 'role', value: 'driver' } },
       { name: 'licenseExpiresAt', label: 'Driver license expiry', kind: 'date', required: true, visibleWhen: { field: 'role', value: 'driver' } },
       { name: 'status', label: 'Account status', kind: 'select', required: true, options: USER_STATUS_OPTIONS },
-      { name: 'temporaryPassword', label: 'Temporary password', kind: 'password', required: true, createOnly: true, min: 12, help: 'Use at least 12 characters. The user must change it at first sign-in.' },
+      { name: 'temporaryPassword', label: 'Temporary password', kind: 'password', required: true, createOnly: true, min: 6, help: 'At least 6 characters with a letter, a number and a special character. The user must change it at first sign-in.' },
     ],
     filters: [
       { name: 'role', label: 'All roles', options: [{ label: 'Students', value: 'student' }, { label: 'Drivers', value: 'driver' }, { label: 'Administrators', value: 'admin' }] },

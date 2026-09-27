@@ -5,7 +5,7 @@ import { registerSchema } from './auth.schemas.js';
 const common = {
   name: 'Registration User',
   email: 'person@gmail.com',
-  password: 'StrongPassword1',
+  password: 'student@2026',
 };
 
 describe('role-aware registration validation', () => {

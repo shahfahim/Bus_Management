@@ -103,9 +103,9 @@ describe('admin compatibility schemas', () => {
       status: 'active',
     };
     expect(() => createUserSchema.parse({ ...account, temporaryPassword: 'alllowercase12' })).toThrow();
-    expect(createUserSchema.parse({ ...account, temporaryPassword: 'Temporary123' }).temporaryPassword).toBe('Temporary123');
-    expect(createUserSchema.parse({ ...account, phone: '', temporaryPassword: 'Temporary123' }).phone).toBeUndefined();
-    expect(() => createUserSchema.parse({ ...account, phone: '123', temporaryPassword: 'Temporary123' })).toThrow();
+    expect(createUserSchema.parse({ ...account, temporaryPassword: 'temp@123' }).temporaryPassword).toBe('temp@123');
+    expect(createUserSchema.parse({ ...account, phone: '', temporaryPassword: 'temp@123' }).phone).toBeUndefined();
+    expect(() => createUserSchema.parse({ ...account, phone: '123', temporaryPassword: 'temp@123' })).toThrow();
   });
 
   it('normalizes incident filters and requires notes when an incident is closed', () => {

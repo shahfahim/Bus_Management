@@ -260,7 +260,7 @@ export const createUserSchema = z
     role: enumValue(Role),
     identifier: z.string().trim().min(1).max(64),
     status: enumValue(UserStatus, { INACTIVE: UserStatus.DEACTIVATED }).default(UserStatus.ACTIVE),
-    temporaryPassword: strongPassword(12),
+    temporaryPassword: strongPassword(),
     licenseNumber: optionalText(96),
     licenseExpiresAt: optionalDate,
     avatarUrl: optionalText(500),
