@@ -63,7 +63,7 @@ Open [https://uniride-shahfahim.onrender.com](https://uniride-shahfahim.onrender
 
 Render Free web services sleep after 15 minutes without inbound HTTP or WebSocket activity. The first request after sleeping can take about one minute. Render's filesystem is temporary, which is why uploads are stored privately in Supabase instead. This setup is suitable for a university project showcase, not a high-availability production transport service.
 
-Real card payments remain disabled until valid Stripe credentials and a public webhook are configured. All non-payment features work without Stripe.
+There is no online payment gateway. Students pay the university office and an administrator adds credits in **Admin → Credits** (see [CREDITS.md](CREDITS.md)).
 
 ## Updating the live site
 

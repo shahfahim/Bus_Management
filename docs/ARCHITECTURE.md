@@ -12,7 +12,7 @@ React/Vite client
                                      ▼
 Express API ─ domain services ─ Prisma ─ PostgreSQL
     │              │
-    │              ├─ Stripe Checkout + signed webhook verification
+    │              ├─ Prepaid student credits (ledger, no payment gateway)
     │              └─ Web Push (VAPID)
     └─ Socket.IO event hub
 ```
@@ -28,7 +28,8 @@ Routes validate untrusted input with Zod, enforce authentication and role policy
 - `trips`: the trip generator creates the next 7 days of trips (with stop timings and the schedule's fare) from active recurring schedules, using Asia/Dhaka calendar days. It takes a per-schedule advisory lock so overlapping runs cannot create duplicates.
 - `boarding`: personal Code 128 boarding cards (one per student, reissuable), bus door readers with hashed API keys, and atomic, auditable check-in that consumes the rider's paid booking for the reader's bus. See [DOOR_READERS.md](DOOR_READERS.md).
 - `subscriptions`: route-scoped travel-pass catalog, student pass history, booking eligibility, and remaining-ride accounting.
-- `payments`: Stripe Checkout, verified/idempotent webhooks, receipts, cumulative/out-of-order refund reconciliation, and payment/subscription lifecycle.
+- `credits`: prepaid student balances bought at the university office. Every change is a ledger row with the balance after it; the balance can never go negative.
+- `payments`: bookings and passes paid from credits, receipts, idempotent retries, and refunds back to credits.
 - `notifications`: in-app history, read state, push subscriptions, Web Push delivery, deduplication, real-time delivery, and bounded retry processing.
 - `maintenance` and `road-alerts`: admin lifecycle management and affected-student notification fan-out.
 - `lost-found`: reports, safe image uploads, search, match scoring, claim review, and match notifications.
@@ -43,8 +44,8 @@ PostgreSQL, not the browser, is the final authority for business rules.
 - Booking, payment, check-in, expiry, trip completion, and cancellation transitions share row-level booking locks and guarded updates so competing workflows cannot overwrite one another.
 - Bus scheduling and maintenance changes share advisory locks. A maintenance window cannot overlap an active/scheduled trip, and the bus returns to its exact pre-maintenance state.
 - A seat hold has a server timestamp and is expired by both request-time checks and a monitor.
-- Payment checkout is serialized per payable resource. Client and provider idempotency keys are separate defenses. Only signed Stripe webhook events can mark a payment successful.
-- A late successful payment cannot reclaim an expired seat; it enters the refund workflow. Stripe refunds are reconciled cumulatively even when charge/refund webhook events arrive out of order.
+- A booking is paid from credits in the same database transaction that confirms the seat, so there is no window where a seat is paid but unconfirmed (or the reverse). Too few credits aborts the whole booking and the seat hold stays.
+- Spending uses a conditional update (`creditBalance >= amount`) plus a CHECK constraint, so concurrent spends cannot overdraw. A university money receipt number can be credited only once (partial unique index).
 - A boarding card holds only a random 80-bit identifier. A scan checks in the student's CONFIRMED booking on the reader's bus through a guarded status transition, so each paid booking boards exactly once; door reader keys are stored only as SHA-256 hashes.
 - GPS timestamps, coordinates, assignment, trip state, throttling, and replay age are validated server-side. A fix implying more than 200 km/h from the previous one (after allowing for both readings' accuracy) is rejected, and an offline replay older than the latest fix is kept as history but never published as the live position.
 - Riders can cancel only before departure, so a no-show cannot claim a refund for a trip that ran; administrators can still cancel afterwards.
@@ -78,4 +79,4 @@ Driver GPS uses browser `watchPosition` with adaptive upload cadence: approximat
 
 ## Current external-service boundaries
 
-Development is fully usable without Stripe or VAPID except for real payments and browser push. ETA is based on stored route timing, live GPS, and internal alert multipliers; connecting a traffic-routing provider would improve road-network precision. Email verification, SMS delivery, and MFA are not included.
+Development is fully usable without VAPID except for browser push. ETA is based on stored route timing, live GPS, and internal alert multipliers; connecting a traffic-routing provider would improve road-network precision. Email verification, SMS delivery, and MFA are not included.

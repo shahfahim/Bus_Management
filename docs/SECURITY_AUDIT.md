@@ -5,7 +5,7 @@ Scope: repository source, dependency/configuration state, local automated checks
 
 ## Executive summary
 
-The application has a sound baseline: Prisma parameterization, database constraints for booking/seat/QR races, short-lived signed access tokens, rotating hashed refresh tokens, server-side session revocation, role checks, private object storage, upload content checks, Stripe webhook signature verification, exact-origin CORS, secure production cookies, and strong security headers.
+The application has a sound baseline: Prisma parameterization, database constraints for booking/seat/QR races, short-lived signed access tokens, rotating hashed refresh tokens, server-side session revocation, role checks, private object storage, upload content checks, an overdraft-proof credit ledger, exact-origin CORS, secure production cookies, and strong security headers.
 
 The audit confirmed eight security or abuse-control issues. All eight have targeted code fixes and regression checks. No critical vulnerability, SQL injection, command injection, path traversal, unrestricted file upload, unauthenticated admin access, or known vulnerable npm dependency was confirmed.
 
@@ -103,7 +103,7 @@ The most important remaining risk is verification depth: API line coverage is 27
 - Authorization/IDOR: admin router has global admin enforcement; booking/payment/QR/lost-and-found/driver services scope records to actor ownership or assignment.
 - Booking races: serializable transactions, advisory locks, partial unique indexes, and database triggers protect active seat/student allocations.
 - QR: signed, booking/trip/user-bound tokens are hashed in storage and atomically consumed once.
-- Payments: Stripe signatures, amounts, currency, references, ownership, event uniqueness, and idempotency are verified server-side; raw card details are not stored.
+- Payments: bookings and passes are paid from prepaid credits inside the confirming transaction; balances cannot go negative, each money receipt can be credited once, every change is ledgered and audited, and no card details are handled.
 - File upload/path traversal: bounded memory uploads, MIME allowlist, magic-byte checks, randomized names, strict filename regexes, private Supabase bucket, and encoded object keys are present.
 - WebSockets: session, status, role, password-change, expiry, trip membership, and assignment checks are enforced server-side.
 - Secrets: `.env` is not tracked; repository/history signature scans found no production secret. Test key strings are synthetic.

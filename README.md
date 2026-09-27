@@ -31,6 +31,7 @@
 ## ✨ Features
 
 - **🎓 Student Portal:** Seat booking (the two front seats of each bus are reserved for teachers), digital bus passes, and one personal barcode boarding card scanned by door readers on every bus.
+- **🪙 Student Credits:** No online payment gateway. Students pay the university office, the office adds credits (tied to the money receipt number), and bookings and passes are paid from the balance instantly. Cancellations refund to credits. See [docs/CREDITS.md](docs/CREDITS.md).
 - **🗺️ Live Tracking & GPS:** Real-time bus tracking and ETA updates via WebSockets.
 - **📅 Automated Scheduling:** Set up recurring trips and let the background worker generate future schedules automatically.
 - **🛡️ Admin Workspace:** RBAC-protected dashboard with dynamic role-based forms for managing users, trips, vehicles, incidents, and approvals.
@@ -96,7 +97,6 @@ Bus_Management/
 - Node.js 22+
 - npm 10+
 - PostgreSQL 15+ (or Docker)
-- *Optional: Stripe CLI for payment testing*
 
 ### Quick Start
 ```bash
@@ -126,7 +126,7 @@ The database seed creates these accounts (Passwords come from your `.env` `SEED_
 | :--- | :--- |
 | **Admin** | `admin@example.edu` |
 | **Driver** | `driver@example.edu` |
-| **Student** | `student@example.edu` |
+| **Student** | `student@example.edu` (starts with 1,000 demo credits) |
 
 *(Note: In production, self-registered students require manual admin verification before login, and driver accounts can only be created by an Admin).*
 

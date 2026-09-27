@@ -23,7 +23,7 @@ UniRide is a web application built as a monorepo (npm workspaces). It separates 
 - **Real-time Engine**: `socket.io` with JWT-authenticated user, role and trip rooms.
 - **Security**: `helmet`, exact-origin `cors`, `express-rate-limit`, bcrypt passwords, short-lived JWT access tokens and rotating refresh sessions in HttpOnly cookies.
 - **Validation**: `zod` request schemas.
-- **Integrations**: `stripe` (Checkout + signed webhooks), `web-push` (VAPID), optional Supabase Storage for uploads.
+- **Integrations**: `web-push` (VAPID), optional Supabase Storage for uploads. No payment gateway: students use prepaid credits bought at the university office.
 - **Background work**: in-process monitors for seat-hold expiry, maintenance reconciliation, GPS health, notification retries, and a trip generator that creates the next 7 days of trips from recurring schedules.
 
 ---
@@ -63,7 +63,8 @@ Bus_Management/
 │   │       │   ├── lost-found/       # Reports, image uploads, matching and claims
 │   │       │   ├── maintenance/      # Maintenance records and reconciliation monitor
 │   │       │   ├── notifications/    # In-app + Web Push delivery strategies and retry monitor
-│   │       │   ├── payments/         # Stripe Checkout, webhooks, receipts, refunds
+│   │       │   ├── credits/          # Prepaid student credits: balance, ledger, admin top-ups
+│   │       │   ├── payments/         # Paying with credits, receipts, refunds to credits
 │   │       │   ├── boarding/         # Boarding cards, door readers and barcode check-in
 │   │       │   ├── ratings/          # Driver ratings
 │   │       │   ├── road-alerts/      # Road alerts and affected-rider notifications

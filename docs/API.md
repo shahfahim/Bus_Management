@@ -72,15 +72,16 @@ The browser client authenticates with secure, HTTP-only, same-site cookies. Sess
 
 Active and scheduled windows cannot overlap for the same driver or bus. Assignments referenced by trips remain in the audit trail and must be cancelled instead of deleted.
 
-## Payments and notifications
+## Credits, payments and notifications
 
 | Method | Path | Purpose |
 | --- | --- | --- |
-| POST | `/payments/checkout` | Create/resume booking or subscription Stripe Checkout; send `Idempotency-Key` |
+| GET | `/credits` | Student's credit balance and paginated credit history |
+| POST | `/payments/pay` | Pay a pending booking (`bookingId`) or buy a pass (`subscriptionPlanId`) with credits; send `Idempotency-Key`. `/payments/checkout` is an alias |
 | GET | `/payments` | Own payment history |
 | GET | `/payments/:id/receipt` | Authorized digital receipt |
-| POST | `/payments/:id/refund` | Admin refund |
-| POST | `/webhooks/stripe` | Raw-body, signature-verified Stripe webhook |
+| POST | `/payments/:id/refund` | Admin refund, returned to the student's credits |
+| GET/POST | `/admin/credits` | Credit ledger (filter `type`, `studentId`, `search`) / record a top-up (`action: top_up`, `reference` = money receipt number) or a correction (`action: deduct`, `note` required) |
 | GET/PATCH | `/notifications` | Paginated inbox / mark notifications read |
 | GET | `/notifications/unread-count` | Unread counter |
 | GET | `/notifications/push-config` | Public VAPID key |
