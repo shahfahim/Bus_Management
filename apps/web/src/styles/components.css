@@ -104,6 +104,16 @@ td strong { color: var(--ink); }
 .map-tooltip-time { color: var(--ink-faint); font-weight: 600; }
 .live-buses-map { position: relative; min-height: 340px; }
 .live-buses-map > .map-frame { position: absolute; inset: 0; }
+/* The rider's own location: button under the zoom control, and why the blue dot may be missing. */
+.map-locate-button { position: absolute; z-index: 1000; top: 84px; left: 10px; display: grid; width: 34px; height: 34px; place-items: center; border: 2px solid rgba(0,0,0,.2); border-radius: 4px; background: #fff; color: #2563eb; background-clip: padding-box; cursor: pointer; }
+.map-locate-button:hover { background: #f4f4f4; }
+.map-locate-button:focus-visible { outline: 3px solid var(--primary); outline-offset: 2px; }
+.map-locate-button--busy svg { animation: map-locate-pulse 1.2s ease-in-out infinite; }
+@keyframes map-locate-pulse { 50% { opacity: .35; } }
+.map-location-notice { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0; padding: 9px 12px; background: var(--accent-soft); color: var(--ink); font-size: .72rem; line-height: 1.45; }
+.map-location-notice-overlay { position: absolute; z-index: 1000; right: 10px; bottom: 26px; left: 10px; pointer-events: none; }
+.map-location-notice-overlay .map-location-notice { border-radius: 10px; box-shadow: 0 6px 20px rgba(15, 40, 35, .15); pointer-events: auto; }
+
 .bus-map-marker { display: grid !important; place-items: center; border: 3px solid white; border-radius: 50%; background: var(--primary); box-shadow: 0 6px 15px rgb(13 55 48 / 30%); font-size: 19px; }
 .leaflet-tooltip { border: 0 !important; border-radius: 6px !important; box-shadow: var(--shadow-sm) !important; color: var(--ink) !important; font-size: .65rem !important; font-weight: 700; }
 .live-map { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-sm); }

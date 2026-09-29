@@ -2,7 +2,8 @@ import L, { type LatLngExpression } from 'leaflet';
 import { useEffect, useMemo, useState } from 'react';
 import { CircleMarker, MapContainer, Marker, Polyline, Popup, Tooltip } from 'react-leaflet';
 import { useSocket } from '../contexts/SocketContext';
-import { FitToPoints, KeepMapSized, OsmTiles } from './map-parts';
+import { useMyLocation, type MyLocation } from '../hooks/useMyLocation';
+import { FitToPoints, KeepMapSized, LocateMeButton, MyLocationLayer, MyLocationNotice, OsmTiles } from './map-parts';
 import type { Coordinates, RoadAlert, Route, Stop, Trip } from '../types';
 
 const DEFAULT_CENTER: LatLngExpression = [23.7806, 90.407];
@@ -11,13 +12,6 @@ const busIcon = L.divIcon({
   html: '<span aria-hidden="true">🚌</span>',
   iconSize: [38, 38],
   iconAnchor: [19, 19],
-});
-
-const userIcon = L.divIcon({
-  className: 'user-map-marker',
-  html: '<span aria-hidden="true" style="font-size: 24px;">📍</span>',
-  iconSize: [24, 24],
-  iconAnchor: [12, 12],
 });
 
 /** Trip states in which a bus is on the road and may be sharing its position. */
@@ -29,16 +23,18 @@ const shortTime = (value?: string) =>
 export function RouteMap({
   route,
   busLocation,
-  userLocation,
+  myLocation,
   alerts = [],
   className,
 }: {
   route?: Route;
   busLocation?: Coordinates;
-  userLocation?: Coordinates;
+  /** The rider's own position; pass useMyLocation() to show the blue dot and locate button. */
+  myLocation?: MyLocation;
   alerts?: RoadAlert[];
   className?: string;
 }) {
+  const userLocation = myLocation?.position;
   const routePath = useMemo<LatLngExpression[]>(() => {
     if (route?.path?.length) return route.path;
     return route?.stops?.map((stop) => [stop.latitude, stop.longitude] as LatLngExpression) ?? [];
@@ -98,13 +94,8 @@ export function RouteMap({
             </Tooltip>
           </Marker>
         )}
-        {userLocation && (
-          <Marker icon={userIcon} position={[userLocation.latitude, userLocation.longitude]}>
-            <Tooltip direction="top" offset={[0, -12]} permanent>
-              You are here
-            </Tooltip>
-          </Marker>
-        )}
+        {myLocation && <MyLocationLayer location={myLocation} />}
+        {myLocation && <LocateMeButton location={myLocation} />}
         <FitToPoints fitKey={fitKey} points={positions} />
       </MapContainer>
     </div>
@@ -119,19 +110,9 @@ interface LiveLocationPayload extends Coordinates {
 
 export function LiveTripMap({ trip, alerts }: { trip: Trip; alerts?: RoadAlert[] }) {
   const [location, setLocation] = useState<Coordinates | undefined>(trip.currentLocation ?? trip.bus?.currentLocation);
-  const [userLocation, setUserLocation] = useState<Coordinates | undefined>();
+  const myLocation = useMyLocation();
   const [recordedAt, setRecordedAt] = useState(trip.currentLocation?.recordedAt ?? trip.bus?.currentLocation?.recordedAt);
   const { socket, connected } = useSocket();
-
-  useEffect(() => {
-    if (!('geolocation' in navigator)) return undefined;
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => setUserLocation({ latitude: position.coords.latitude, longitude: position.coords.longitude }),
-      () => undefined,
-      { enableHighAccuracy: true }
-    );
-    return () => navigator.geolocation.clearWatch(watchId);
-  }, []);
 
   useEffect(() => {
     if (!socket) return undefined;
@@ -155,12 +136,15 @@ export function LiveTripMap({ trip, alerts }: { trip: Trip; alerts?: RoadAlert[]
         <span>{connected ? 'Live location' : 'Connecting to live location'}</span>
         {recordedAt && <small>Updated {shortTime(recordedAt)}</small>}
       </div>
-      <RouteMap alerts={alerts} busLocation={location} userLocation={userLocation} route={trip.route} />
+      <RouteMap alerts={alerts} busLocation={location} myLocation={myLocation} route={trip.route} />
+      <MyLocationNotice location={myLocation} />
     </div>
   );
 }
 
 export function GlobalLiveMap({ trips }: { trips: Trip[] }) {
+  const myLocation = useMyLocation();
+  const me = myLocation.position;
   const located = useMemo(
     () => trips.filter((trip) => LIVE_TRIP_STATUSES.includes(trip.status) && trip.currentLocation),
     [trips],
@@ -169,9 +153,14 @@ export function GlobalLiveMap({ trips }: { trips: Trip[] }) {
     () => located.map((trip) => [trip.currentLocation!.latitude, trip.currentLocation!.longitude] as LatLngExpression),
     [located],
   );
-  // Refit only when buses appear or disappear, so the view stays put while they move.
-  const fitKey = located.map((trip) => trip.id).sort().join(',');
-  const center = positions[0] ?? DEFAULT_CENTER;
+  const fitPoints = useMemo(
+    () => (me ? [...positions, [me.latitude, me.longitude] as LatLngExpression] : positions),
+    [positions, me],
+  );
+  // Refit only when buses appear or disappear, or the rider is first located, so the view stays
+  // put while everything moves.
+  const fitKey = `${located.map((trip) => trip.id).sort().join(',')}:${me ? 'me' : ''}`;
+  const center = fitPoints[0] ?? DEFAULT_CENTER;
 
   return (
     <div aria-label="Global live map" className="map-frame" role="region">
@@ -186,8 +175,11 @@ export function GlobalLiveMap({ trips }: { trips: Trip[] }) {
             </Tooltip>
           </Marker>
         ))}
-        {positions.length > 0 && <FitToPoints fitKey={fitKey} points={positions} />}
+        <MyLocationLayer location={myLocation} />
+        <LocateMeButton location={myLocation} />
+        {fitPoints.length > 0 && <FitToPoints fitKey={fitKey} points={fitPoints} />}
       </MapContainer>
+      <div className="map-location-notice-overlay"><MyLocationNotice location={myLocation} /></div>
     </div>
   );
 }
