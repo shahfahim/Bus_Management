@@ -1,6 +1,6 @@
 import { MapIcon } from 'lucide-react';
 import { useCallback, useEffect, useState } from 'react';
-import { GlobalLiveMap } from '../../components/LiveMap';
+import { GlobalLiveMap, LIVE_TRIP_STATUSES } from '../../components/LiveMap';
 import { PageHeader } from '../../components/ui';
 import { useSocket } from '../../contexts/SocketContext';
 import { api, asItems, errorMessage } from '../../lib/api';
@@ -16,7 +16,7 @@ export function LiveBusesPage() {
     setLoading(true);
     setError('');
     try {
-      const activeTrips = asItems<Trip>(await api.get<unknown>('/trips?status=IN_PROGRESS&status=SCHEDULED&status=DELAYED&pageSize=200'));
+      const activeTrips = asItems<Trip>(await api.get<unknown>('/trips?status=SCHEDULED&status=BOARDING&status=IN_PROGRESS&status=DELAYED&pageSize=100'));
       setTrips(activeTrips);
     } catch (reason) {
       setError(errorMessage(reason, 'Could not load live buses.'));
@@ -51,7 +51,7 @@ export function LiveBusesPage() {
     };
   }, [socket, load]);
 
-  const activeBuses = trips.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'DELAYED');
+  const activeBuses = trips.filter((t) => LIVE_TRIP_STATUSES.includes(t.status));
   const activeTripKey = activeBuses.map((trip) => trip.id).sort().join(',');
 
   // Location updates are only delivered to trip rooms, so follow every active bus.
@@ -83,7 +83,7 @@ export function LiveBusesPage() {
             <div style={{ padding: '16px' }}>No scheduled or active trips found.</div>
           ) : (
             trips.map((trip) => {
-              const isLive = trip.status === 'IN_PROGRESS' || trip.status === 'DELAYED';
+              const isLive = LIVE_TRIP_STATUSES.includes(trip.status);
               const hasLocation = !!trip.currentLocation;
               return (
                 <div key={trip.id} className="map-trip-option" style={{ pointerEvents: 'none' }}>
@@ -96,14 +96,18 @@ export function LiveBusesPage() {
                   {isLive && hasLocation ? (
                     <span className="live-dot" title="Live location available" />
                   ) : (
-                    <small style={{ color: 'var(--text-muted)' }}>Location unavailable</small>
+                    <small style={{ color: 'var(--text-muted)' }}>
+                      {isLive
+                        ? 'Waiting for GPS'
+                        : `Departs ${new Date(trip.departureTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`}
+                    </small>
                   )}
                 </div>
               );
             })
           )}
         </div>
-        <div className="map-frame" style={{ position: 'relative', overflow: 'hidden' }}>
+        <div className="live-buses-map">
           <GlobalLiveMap trips={trips} />
           {activeBuses.length === 0 && (
             <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--surface-sunken)', zIndex: 10 }}>

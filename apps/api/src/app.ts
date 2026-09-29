@@ -97,7 +97,7 @@ export const createApp = () => {
         directives: {
           defaultSrc: ["'self'"],
           connectSrc: ["'self'"],
-          imgSrc: ["'self'", 'data:', 'blob:', 'https://*.tile.openstreetmap.org'],
+          imgSrc: ["'self'", 'data:', 'blob:', 'https://tile.openstreetmap.org'],
           styleSrc: ["'self'", "'unsafe-inline'"],
           fontSrc: ["'self'", 'data:'],
           objectSrc: ["'none'"],

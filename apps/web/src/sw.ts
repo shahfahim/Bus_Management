@@ -27,8 +27,15 @@ const staticAssetsStrategy = new CacheFirst({
     new ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 30 * 24 * 60 * 60 }), // 30 Days
   ],
 });
+// Same-origin only. Cross-origin requests such as OpenStreetMap map tiles must go straight to the
+// network: fetches made by this worker are bound by the site's CSP (connect-src 'self'), so
+// routing tiles through it blocked every tile and left the map blank. The browser's own HTTP
+// cache still caches tiles as OpenStreetMap's headers allow.
+const workerOrigin = (self as unknown as { location: Location }).location.origin;
+const sameOrigin = (url: URL) => url.origin === workerOrigin;
+
 registerRoute(
-  ({ request }) => request.destination === 'image' || request.destination === 'font',
+  ({ request, url }) => sameOrigin(url) && (request.destination === 'image' || request.destination === 'font'),
   staticAssetsStrategy
 );
 
@@ -38,7 +45,7 @@ const lookupStrategy = new StaleWhileRevalidate({
   cacheName: 'lookup-cache',
 });
 registerRoute(
-  ({ url }) => url.pathname.match(/^\/api\/(routes|buses|stops)/),
+  ({ url }) => sameOrigin(url) && /^\/api\/(routes|buses|stops)/.test(url.pathname),
   lookupStrategy
 );
 
@@ -51,7 +58,7 @@ const apiStrategy = new NetworkFirst({
   ],
 });
 registerRoute(
-  ({ url }) => url.pathname.startsWith('/api/') && !url.pathname.match(/^\/api\/(routes|buses|stops)/),
+  ({ url }) => sameOrigin(url) && url.pathname.startsWith('/api/') && !/^\/api\/(routes|buses|stops)/.test(url.pathname),
   apiStrategy
 );
 

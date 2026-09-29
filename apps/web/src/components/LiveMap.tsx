@@ -1,7 +1,8 @@
 import L, { type LatLngExpression } from 'leaflet';
 import { useEffect, useMemo, useState } from 'react';
-import { CircleMarker, MapContainer, Marker, Polyline, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet';
+import { CircleMarker, MapContainer, Marker, Polyline, Popup, Tooltip } from 'react-leaflet';
 import { useSocket } from '../contexts/SocketContext';
+import { FitToPoints, KeepMapSized, OsmTiles } from './map-parts';
 import type { Coordinates, RoadAlert, Route, Stop, Trip } from '../types';
 
 const DEFAULT_CENTER: LatLngExpression = [23.7806, 90.407];
@@ -19,14 +20,11 @@ const userIcon = L.divIcon({
   iconAnchor: [12, 12],
 });
 
-function FitMap({ positions }: { positions: LatLngExpression[] }) {
-  const map = useMap();
-  useEffect(() => {
-    if (positions.length === 1) map.setView(positions[0], 15);
-    if (positions.length > 1) map.fitBounds(L.latLngBounds(positions), { padding: [38, 38], maxZoom: 16 });
-  }, [map, positions]);
-  return null;
-}
+/** Trip states in which a bus is on the road and may be sharing its position. */
+export const LIVE_TRIP_STATUSES = ['BOARDING', 'IN_PROGRESS', 'DELAYED'];
+
+const shortTime = (value?: string) =>
+  value ? new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : undefined;
 
 export function RouteMap({
   route,
@@ -54,14 +52,14 @@ export function RouteMap({
     [busLocation, userLocation, routePath],
   );
   const center = positions[0] ?? DEFAULT_CENTER;
+  // Refit when the route changes or the bus / rider first appears, not on every GPS update.
+  const fitKey = `${route?.id ?? ''}:${routePath.length}:${busLocation ? 'bus' : ''}:${userLocation ? 'me' : ''}`;
 
   return (
     <div aria-label="Route map" className={`map-frame ${className ?? ''}`} role="region">
       <MapContainer center={center} scrollWheelZoom={false} zoom={13}>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
+        <OsmTiles />
+        <KeepMapSized />
         {routePath.length > 1 && <Polyline pathOptions={{ color: '#0f766e', opacity: 0.9, weight: 5 }} positions={routePath} />}
         {route?.stops?.map((stop: Stop, index) => (
           <CircleMarker
@@ -107,7 +105,7 @@ export function RouteMap({
             </Tooltip>
           </Marker>
         )}
-        <FitMap positions={positions} />
+        <FitToPoints fitKey={fitKey} points={positions} />
       </MapContainer>
     </div>
   );
@@ -155,7 +153,7 @@ export function LiveTripMap({ trip, alerts }: { trip: Trip; alerts?: RoadAlert[]
       <div className="live-map__status">
         <span className={connected ? 'live-dot' : 'connection-dot'} />
         <span>{connected ? 'Live location' : 'Connecting to live location'}</span>
-        {recordedAt && <small>Updated {new Date(recordedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</small>}
+        {recordedAt && <small>Updated {shortTime(recordedAt)}</small>}
       </div>
       <RouteMap alerts={alerts} busLocation={location} userLocation={userLocation} route={trip.route} />
     </div>
@@ -163,32 +161,32 @@ export function LiveTripMap({ trip, alerts }: { trip: Trip; alerts?: RoadAlert[]
 }
 
 export function GlobalLiveMap({ trips }: { trips: Trip[] }) {
-  const activeTrips = trips.filter((t) => t.status === 'IN_PROGRESS' || t.status === 'DELAYED');
-  const positions = useMemo(() => {
-    return activeTrips
-      .filter((t) => t.currentLocation)
-      .map((t) => [t.currentLocation!.latitude, t.currentLocation!.longitude] as LatLngExpression);
-  }, [activeTrips]);
+  const located = useMemo(
+    () => trips.filter((trip) => LIVE_TRIP_STATUSES.includes(trip.status) && trip.currentLocation),
+    [trips],
+  );
+  const positions = useMemo(
+    () => located.map((trip) => [trip.currentLocation!.latitude, trip.currentLocation!.longitude] as LatLngExpression),
+    [located],
+  );
+  // Refit only when buses appear or disappear, so the view stays put while they move.
+  const fitKey = located.map((trip) => trip.id).sort().join(',');
   const center = positions[0] ?? DEFAULT_CENTER;
 
   return (
     <div aria-label="Global live map" className="map-frame" role="region">
-      <MapContainer center={center} scrollWheelZoom={false} zoom={12}>
-        <TileLayer
-          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-        />
-        {activeTrips.map((trip) => {
-          if (!trip.currentLocation) return null;
-          return (
-            <Marker key={trip.id} icon={busIcon} position={[trip.currentLocation.latitude, trip.currentLocation.longitude]}>
-              <Tooltip direction="top" offset={[0, -18]} permanent>
-                {trip.route?.name ?? 'Live bus'}
-              </Tooltip>
-            </Marker>
-          );
-        })}
-        {positions.length > 0 && <FitMap positions={positions} />}
+      <MapContainer center={center} scrollWheelZoom zoom={12}>
+        <OsmTiles />
+        <KeepMapSized />
+        {located.map((trip) => (
+          <Marker key={trip.id} icon={busIcon} position={[trip.currentLocation!.latitude, trip.currentLocation!.longitude]}>
+            <Tooltip direction="top" offset={[0, -18]} permanent>
+              {trip.route?.name ?? 'Live bus'}
+              {trip.currentLocation?.recordedAt && <small className="map-tooltip-time"> · {shortTime(trip.currentLocation.recordedAt)}</small>}
+            </Tooltip>
+          </Marker>
+        ))}
+        {positions.length > 0 && <FitToPoints fitKey={fitKey} points={positions} />}
       </MapContainer>
     </div>
   );

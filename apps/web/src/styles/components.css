@@ -101,6 +101,9 @@ td strong { color: var(--ink); }
 
 .map-frame { position: relative; min-height: 340px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: #dbe7e2; }
 .map-frame .leaflet-container { width: 100%; min-height: 340px; height: 100%; font-family: inherit; }
+.map-tooltip-time { color: var(--ink-faint); font-weight: 600; }
+.live-buses-map { position: relative; min-height: 340px; }
+.live-buses-map > .map-frame { position: absolute; inset: 0; }
 .bus-map-marker { display: grid !important; place-items: center; border: 3px solid white; border-radius: 50%; background: var(--primary); box-shadow: 0 6px 15px rgb(13 55 48 / 30%); font-size: 19px; }
 .leaflet-tooltip { border: 0 !important; border-radius: 6px !important; box-shadow: var(--shadow-sm) !important; color: var(--ink) !important; font-size: .65rem !important; font-weight: 700; }
 .live-map { overflow: hidden; border: 1px solid var(--line); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-sm); }
